@@ -12,8 +12,8 @@
 
 ### file names
 
-reference_filename	f000_crop/frame_000.raw		### reference tomography image volume
-correlate_filename	f010_crop/frame_010.raw		### correlation tomography image volume
+reference_filename	f000_crop/frame_000.mdh		### reference tomography image volume
+correlate_filename	f010_crop/frame_010.mdh		### correlation tomography image volume
 
 point_cloud_filename	central_grid.roi	### file of search point locations
 output_filename		central_grid		### base name for output files

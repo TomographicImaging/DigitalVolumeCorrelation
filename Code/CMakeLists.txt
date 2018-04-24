@@ -37,3 +37,17 @@ ADD_EXECUTABLE (dvc dvc.cpp ${DVC_SRCS})
 TARGET_LINK_LIBRARIES (dvc Eigen3::Eigen)
 INCLUDE_DIRECTORIES(dvc PUBLIC 
 		      ${CMAKE_CURRENT_SOURCE_DIR}/ )
+SET_TARGET_PROPERTIES(cilDVC PROPERTIES PUBLIC_HEADER "BoundBox.h;Cloud.h;DataCloud.h;FloatingCloud.h;InputRead.h;Interpolate.h;Matrix_4d.h;ObjectiveFunctions.h;Point.h;Search.h;SearchParams.h;Utility.h;dvc.h") 
+			  
+INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
+        LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
+	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+       )
+
+
+############Expose include files
+set(${PROJECT_NAME}_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}
+                                 ${C_INCLUDE_DIRS}
+CACHE INTERNAL "${PROJECT_NAME}: Include Directories" FORCE)			  
