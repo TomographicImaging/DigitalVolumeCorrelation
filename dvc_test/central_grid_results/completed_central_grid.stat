@@ -1,0 +1,40 @@
+
+### echo of the input file for this run
+
+reference_filename	f000_crop/frame_000.raw
+correlate_filename	f010_crop/frame_010.raw
+point_cloud_filename	central_grid.roi
+output_filename	central_grid
+
+vol_bit_depth	8
+vol_hdr_lngth	0
+vol_wide	1520
+vol_high	1257
+vol_tall	1260
+
+subvol_geom	sphere
+subvol_size	80
+subvol_npts	8000
+
+subvol_thresh	off
+
+disp_max	38
+num_srch_dof	6
+obj_function	znssd
+interp_type	tricubic
+
+rigid_trans	34	4	0
+basin_radius	0
+subvol_aspect	1	1	1
+
+### end of input file echo
+
+Point Cloud contains 4680 points
+
+	bounding box min = [50 212 630]
+	bounding box max = [1474 1028 630]
+
+running under dvc code version: 1.3
+
+Run start: Mon Apr 23 11:12:01 2018
+
