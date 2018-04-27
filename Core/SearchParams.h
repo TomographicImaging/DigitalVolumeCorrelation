@@ -1,4 +1,25 @@
+/**
+# -*- coding: utf-8 -*-
+#   This work is part of the Core Imaging Library developed by
+#   Visual Analytics and Imaging System Group of the Science Technology
+#   Facilities Council, STFC
 
+#   Copyright 2018 CCPi
+
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+
+#       http://www.apache.org/licenses/LICENSE-2.0
+
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+#   Code is derived from code developed by Prof. Brian Bay
+*/
 /*
 SearchParams manages the degrees-of-freedom associated with template matching.
 Some uses of the transform parameters will want a single vector, some will
@@ -19,9 +40,10 @@ those avaialble through return (but not setting) functions.
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include "CCPiDefines.h"
 
 /******************************************************************************/
-class SearchParams {
+class CCPI_EXPORT SearchParams {
 public:
 	SearchParams ();
 
