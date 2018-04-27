@@ -678,8 +678,8 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "\n";
 
 	file << "Created:  1 Jan 2014\n";
-	file << "Revised:  " << day_rev << " " << month_rev << " " << year_rev << "\n";
-	file << "version:  " << version << "\n";
+	file << "Revised:  " << DAY_REV << " " << MONTH_REV << " " << YEAR_REV << "\n";
+	file << "version:  " << VERSION << "\n";
 	file << "\n";
 	
 	file << "The dvc code is written in c++ with portability and simple compilation in mind.\n";
@@ -896,7 +896,7 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << "\t" << "bounding box max = [";
 	sta_file << search_box->max().x() << " " << search_box->max().y() << " " << search_box->max().z() << "]\n";
 
-	sta_file << "\n" << "running under dvc code version: " << version << "\n\n";
+	sta_file << "\n" << "running under dvc code version: " << VERSION << "\n\n";
 
 	return 1;
 }
