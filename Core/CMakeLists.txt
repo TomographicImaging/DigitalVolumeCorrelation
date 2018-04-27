@@ -33,19 +33,41 @@ IF(NOT WIN32)
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 ENDIF()
 	
-ADD_EXECUTABLE (dvc dvc.cpp ${DVC_SRCS})
-TARGET_LINK_LIBRARIES (dvc Eigen3::Eigen)
+
+
+# Allow the developer to select if Dynamic or Static libraries are built
+OPTION (BUILD_SHARED_LIBS "Build Shared Libraries" OFF)
+# Set the LIB_TYPE variable to STATIC
+SET (LIB_TYPE STATIC)
+IF (BUILD_SHARED_LIBS)
+  # User wants to build Dynamic Libraries, so change the LIB_TYPE variable to CMake keyword 'SHARED'
+  SET (LIB_TYPE SHARED)
+ENDIF (BUILD_SHARED_LIBS)
+
+IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+  SET_TARGET_PROPERTIES(cilDVC PROPERTIES COMPILE_FLAGS "-fPIC")
+ENDIF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+
+ADD_LIBRARY(cilDVC ${LIB_TYPE} ${DVC_SRCS} )
+TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
+
+ADD_EXECUTABLE (dvc dvc.cpp )
+TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
 INCLUDE_DIRECTORIES(dvc PUBLIC 
 		      ${CMAKE_CURRENT_SOURCE_DIR}/ )
+
 SET_TARGET_PROPERTIES(cilDVC PROPERTIES PUBLIC_HEADER "BoundBox.h;Cloud.h;DataCloud.h;FloatingCloud.h;InputRead.h;Interpolate.h;Matrix_4d.h;ObjectiveFunctions.h;Point.h;Search.h;SearchParams.h;Utility.h;dvc.h") 
-			  
+SET_TARGET_PROPERTIES(cilDVC PROPERTIES RUNTINE dvc)			  
+
 INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
         LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
 	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
 	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
 	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
        )
-
+INSTALL(TARGETS dvc 
+	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+       )
 
 ############Expose include files
 set(${PROJECT_NAME}_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}
