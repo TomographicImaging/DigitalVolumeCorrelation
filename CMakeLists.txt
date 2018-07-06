@@ -1,3 +1,16 @@
+#   Copyright 2018 CCPi
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 cmake_minimum_required(VERSION 3.0)
 project(cildvc)
 
@@ -37,7 +50,7 @@ target_include_directories(cildvc_static PUBLIC
 target_include_directories(cildvc_shared PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/eigen>
 	)
-add_executable (dvc dvc.cpp )
+add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/Core/dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
 target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC 
