@@ -11,81 +11,57 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-CMAKE_MINIMUM_REQUIRED (VERSION 3.0)
-PROJECT (CCPiDVC)
+cmake_minimum_required(VERSION 3.0)
+project(cildvc)
 
-SET(CCPIDVC_MAJOR_VERSION 0)
-SET(CCPIDVC_MINOR_VERSION 9)
-SET(CCPIDVC_PATCH_VERSION 3)
-SET(CCPIDVC_VERSION 
-		${CCPIDVC_MAJOR_VERSION}.${CCPIDVC_MINOR_VERSION}.${CCPIDVC_PATCH_VERSION})
-SET(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
-SET(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
-SET(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
 
-IF(WIN32 AND NOT CYGWIN)
-	SET(DEF_INSTALL_CMAKE_DIR cmake)
-ELSE()
-	SET(DEF_INSTALL_CMAKE_DIR lib/cmake/CCPiDVC)
-ENDIF()
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(OpenMP)
 
-SET(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
-	"Installation directory for CMake files")
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    #set (CMAKE_CXX_FLAGS "${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+
+SET (DVC_SRCS ${DVC_SRCS}
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/BoundBox.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Cloud.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/DataCloud.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/FloatingCloud.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/InputRead.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Interpolate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Matrix_4d.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/ObjectiveFunctions.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Point.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Search.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/SearchParams.cpp
+	)
 	
-#Make relative paths absolute
-FOREACH(p LIB BIN INCLUDE CMAKE)
-	SET(var INSTALL_{p}_DIR)
-	IF(NOT IS_ABSOLUTE "${${var}}")
-		SET(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
-	ENDIF()
-ENDFOREACH()
+add_library(cildvc_static "STATIC" ${DVC_SRCS} )
+add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
+#TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
+target_include_directories(cildvc_static PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/eigen>
+	)
 
-#setup include directories
-INCLUDE_DIRECTORIES(
-	"${PROJECT_SOURCE_DIR}"
-"${PROJECT_BINARY_DIR}")
+target_include_directories(cildvc_shared PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/eigen>
+	)
+add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/Core/dvc.cpp )
+#TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
+target_link_libraries (dvc cildvc_static)
+include_directories(dvc PUBLIC 
+	${CMAKE_CURRENT_SOURCE_DIR}/Core )
+#INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
+#        LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+#	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
+#	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+#	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+#       )
+#INSTALL(TARGETS dvc 
+#	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+#       )
 
-# Add sub-directories
-ADD_SUBDIRECTORY(Core)
-
-#OPTION(BUILD_AVIZO_PLUGIN "Build Avizo plugin" OFF)
-#IF(BUILD_AVIZO_PLUGIN)
-#	ADD_SUBDIRECTORY(Wrappers/Avizo)
-#ENDIF()
-#OPTION(BUILD_PARAVIEW_PLUGIN "Build Paraview plugin" OFF)
-#IF(BUILD_PARAVIEW_PLUGIN)
-#	ADD_SUBDIRECTORY(Wrappers/Paraview)
-#ENDIF()
-#OPTION(BUILD_IMAGEJ_PLUGIN "Build ImageJ plugin" OFF)
-#IF(BUILD_IMAGEJ_PLUGIN)
-#	add_subdirectory(Wrappers/ImageJ)
-#ENDIF()
-
-SET(CCPI_DVC_BUILD_LIBRARIES "cilDVC")
-export(TARGETS cilDVC
-	FILE "${PROJECT_BINARY_DIR}/CCPiDVCTargets.cmake")
-
-export(PACKAGE CCPiDVC)
-file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-	"${INSTALL_INCLUDE_DIR}")
-# for build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
-configure_file(${CMAKE_SOURCE_DIR}/CMake/CCPiDVCConfig.cmake.in  
-		"${PROJECT_BINARY_DIR}/CCPiDVCConfig.cmake" @ONLY)
-# for install tree
-set(CONF_INCLUDE_DIRS "\${CCPIDVC_CMAKE_DIR}/${REL_INCLUDE_DIR}")
-configure_file(${CMAKE_SOURCE_DIR}/CMake/CCPiDVCConfig.cmake.in
-		"${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CCPiDVCConfig.cmake" @ONLY)
-# for both
-configure_file(${CMAKE_SOURCE_DIR}/CMake/CCPiDVCConfigVersion.cmake.in
-		"${PROJECT_BINARY_DIR}/CCPiDVCConfigVersion.cmake" @ONLY)
-
-#Install
-install(FILES
-	"${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CCPiDVCConfig.cmake"
-	"${PROJECT_BINARY_DIR}/CCPiDVCConfigVersion.cmake"
-	DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
-
-# Install the export set
-install(EXPORT CCPiDVCTargets DESTINATION
-"${INSTALL_CMAKE_DIR}" COMPONENT dev)

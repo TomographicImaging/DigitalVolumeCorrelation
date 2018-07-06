@@ -1,7 +1,7 @@
 
 
-inc = include/
-obj = include/objects/
+inc = Core/
+obj = Core/objects/
 eig = $(inc)eigen
 
 objects = 	$(obj)Point.o \

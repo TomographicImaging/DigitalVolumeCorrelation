@@ -8,8 +8,8 @@ Search::Search(RunControl *run)
 	
 	bytes_per = run->vol_bit_depth/8;
 	subv_rad = (run->subvol_size)/2.0;	// easier to use than subvol_size
-	if (run->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)run->subvol_npts,1.0/3.0)),3.0);
-	if (run->sub_geo == Subvol_Type::sphere) subv_num = run->subvol_npts;
+	if (run->sub_geo == cube) subv_num = pow(ceil(pow((double)run->subvol_npts,1.0/3.0)),3.0);
+	if (run->sub_geo == sphere) subv_num = run->subvol_npts;
 	
 	// establish pointer to function set in input file
 	if (run->obj_fcn == SAD) obj_fcn = &obj_SAD;
@@ -66,7 +66,7 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 	if (rc->sub_geo == sphere)
 		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
 
-	if (rc->sub_geo == Subvol_Type::cube) {
+	if (rc->sub_geo == cube) {
 		Point sub_min = srch_pt;
 		sub_min.move_by(-subv_rad*rc->subvol_aspect[0], -subv_rad*rc->subvol_aspect[1], -subv_rad*rc->subvol_aspect[2]);
 		Point sub_max = srch_pt;

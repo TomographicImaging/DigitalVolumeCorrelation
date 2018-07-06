@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
 		// this is the index of the point being processed
 		int n = data.order[i];
 
+		std::cout << i << "/" << data.points.size() << " " ;
 		std::cout << data.labels[n] << "\t";
 		std::cout << std::setprecision(3) << std::fixed;
 		std::cout << data.points[n].x() << " ";
