@@ -14,30 +14,34 @@ endif()
 
 
 SET (DVC_SRCS ${DVC_SRCS}
-	${CMAKE_CURRENT_SOURCE_DIR}/include/BoundBox.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/Cloud.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/DataCloud.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/FloatingCloud.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/InputRead.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/Interpolate.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/Matrix_4d.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/ObjectiveFunctions.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/Point.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/Search.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/SearchParams.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/BoundBox.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Cloud.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/DataCloud.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/FloatingCloud.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/InputRead.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Interpolate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Matrix_4d.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/ObjectiveFunctions.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Point.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/Search.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Core/SearchParams.cpp
 	)
 	
-add_library(cildvc "STATIC" ${DVC_SRCS} )
+add_library(cildvc_static "STATIC" ${DVC_SRCS} )
+add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
 #TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
-target_include_directories(cildvc PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/eigen>
+target_include_directories(cildvc_static PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/eigen>
 	)
 
+target_include_directories(cildvc_shared PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Core/eigen>
+	)
 add_executable (dvc dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
-target_link_libraries (dvc cildvc)
+target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC 
-		      ${CMAKE_CURRENT_SOURCE_DIR}/include )
+	${CMAKE_CURRENT_SOURCE_DIR}/Core )
 #INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
 #        LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
 #	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
