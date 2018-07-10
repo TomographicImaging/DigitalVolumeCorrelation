@@ -25,7 +25,7 @@
 #define CCPIDEFINES_H
 
 #if defined(_WIN32) || defined(__WIN32__)
-  #if defined(cilDVC_EXPORTS) ||  defined(CCPiNexusWidget_EXPORTS) //  add by CMake 
+  #if defined(cilDVC_EXPORTS) ||  defined(CCPiNexusWidget_EXPORTS) || defined(CCPi_EXPORTS)//  add by CMake 
     #define  CCPI_EXPORT __declspec(dllexport)
     #define EXPIMP_TEMPLATE
   #else
