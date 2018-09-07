@@ -54,30 +54,32 @@ if (PYTHONINTERP_FOUND)
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/tomophantom ${CMAKE_CURRENT_BINARY_DIR}/tomophantom
                        COMMAND ${CMAKE_COMMAND} -E env CIL_VERSION=${CIL_VERSION}
-                                                       PREFIX=${CMAKE_SOURCE_DIR}/functions 
-                                                       LIBRARY_INC=${CMAKE_SOURCE_DIR}/functions 
-                                                       LIBRARY_LIB=${CMAKE_BINARY_DIR}/functions
+                                                       PREFIX=${CMAKE_SOURCE_DIR}/Core 
+                                                       LIBRARY_INC=${CMAKE_SOURCE_DIR}/Core 
+                                                       LIBRARY_LIB=${CMAKE_BINARY_DIR}/Core
                                                        ${PYTHON_EXECUTABLE} ${SETUP_PY} install
                        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
                        DEPENDS cilreg)
+      add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
 
     else()
       add_custom_command(OUTPUT ${OUTPUT}
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src
-                       COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/tomophantom ${CMAKE_CURRENT_BINARY_DIR}/tomophantom
+                       COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/ccpi ${CMAKE_CURRENT_BINARY_DIR}/ccpi
                        COMMAND ${CMAKE_COMMAND} -E env CIL_VERSION=${CIL_VERSION}
-                                                       PREFIX=${CMAKE_SOURCE_DIR}/functions 
-                                                       LIBRARY_INC=${CMAKE_SOURCE_DIR}/functions 
-                                                       LIBRARY_LIB=${CMAKE_BINARY_DIR}/functions/${CMAKE_BUILD_TYPE}
+                                                       PREFIX=${CMAKE_SOURCE_DIR}/Core 
+                                                       LIBRARY_INC=${CMAKE_SOURCE_DIR}/Core 
+                                                       LIBRARY_LIB=${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE}
                                                        ${PYTHON_EXECUTABLE} ${SETUP_PY} build_ext --inplace
                        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
                        )
-      install(PythonWrapper DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ccpi 
+      add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
+      install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ccpi 
               DESTINATION ${PYTHON_DEST})
     endif()
     
     
-    add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
+    
 
     #install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install)")
 endif()
