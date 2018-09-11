@@ -96,7 +96,7 @@ cdef extern from "Cloud.h":
         reset_box(Point , Point )
         echo_summary()
         echo_content()
-
+          
 cdef extern from "InputRead.h":
     cdef cppclass InputRead:
         InputRead()
@@ -112,6 +112,16 @@ cdef class PyPoint:
         self.c_point = new Point(xx, yy, zz)
     def __dealloc__(self):
         del self.c_point
+    @property
+    def x(self):
+        return self.c_point.x()
+    @property
+    def y(self):
+        return self.c_point.y()
+    @property
+    def z(self):
+        return self.c_point.z()
+    
 
 cdef class PyPoint2:
     cdef Point* thisptr
@@ -128,17 +138,40 @@ cdef class PyPointVector:
         self.vec = move(move_this)
 
     def __getitem__(self,idx):
-        return PyPoint(self,idx)
+        #p = self.vec[idx]
+        return PyPoint(0, 0, 0)
 
     def __len__(self):
         return self.vec.size()
-
+    def append(self, pypoint):
+        self.vec.push_back(Point(pypoint.x, pypoint.y, pypoint.z))
+        
 cdef class PyRunControl:
     cdef RunControl *c_runcontrol
     def __cinit__(self):
         self.c_runcontrol = <RunControl *> malloc(sizeof(RunControl))
     def __dealloc__(self):
         free(self.c_runcontrol)
+
+    @property
+    def vol_wide(self):
+        return self.c_runcontrol.vol_wide
+    @vol_wide.setter
+    def vol_wide(self,val):
+        self.c_runcontrol.vol_wide = val
+    
+    @property
+    def vol_high(self):
+        return self.c_runcontrol.vol_high
+    @vol_high.setter
+    def vol_high(self,val):
+        self.c_runcontrol.vol_high = val
+    @property
+    def vol_tall(self):
+        return self.c_runcontrol.vol_tall
+    @vol_tall.setter
+    def vol_tall(self,val):
+        self.c_runcontrol.vol_tall = val
 
 cdef class PyInputRead:
     cdef InputRead *c_inputread
