@@ -59,10 +59,11 @@ if (PYTHONINTERP_FOUND)
                                                        LIBRARY_LIB=${CMAKE_BINARY_DIR}/Core
                                                        ${PYTHON_EXECUTABLE} ${SETUP_PY} install
                        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-                       DEPENDS cilreg)
+                       DEPENDS  cildvc_shared)
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
 
     else()
+	  message("Library should be in ${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE}")
       add_custom_command(OUTPUT ${OUTPUT}
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/ccpi ${CMAKE_CURRENT_BINARY_DIR}/ccpi
@@ -72,6 +73,7 @@ if (PYTHONINTERP_FOUND)
                                                        LIBRARY_LIB=${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE}
                                                        ${PYTHON_EXECUTABLE} ${SETUP_PY} build_ext --inplace
                        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
+					   DEPENDS  cildvc_shared
                        )
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
       install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ccpi 

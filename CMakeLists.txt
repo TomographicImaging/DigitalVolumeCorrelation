@@ -16,6 +16,7 @@ project(cildvc)
 
 option (BUILD_PYTHON_WRAPPER "Build Python Wrappers" OFF)
 option (CONDA_BUILD "Conda Build" OFF)
+set (CMAKE_BUILD_TYPE "Release")
 
 
 add_subdirectory(Core)

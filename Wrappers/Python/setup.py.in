@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Copyright 2017  Srikanth Nagella / Daniil Kazantsev/ Edoardo Pasca
+Copyright 2018  Edoardo Pasca / Brian Bay
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,38 +22,53 @@ import os
 import platform	
 
 version = '1.0'
-extra_include_dirs = ['@CMAKE_SOURCE_DIR@/Core']
-extra_library_dirs = []
+extra_include_dirs = ['@CMAKE_SOURCE_DIR@/Core', 
+                      '@CMAKE_SOURCE_DIR@/Core/eigen',
+					  '@CMAKE_CURRENT_SOURCE_DIR@/src']
+extra_library_dirs = ['@CMAKE_BINARY_DIR@/Core/@CMAKE_BUILD_TYPE@']
 extra_compile_args = []
 extra_link_args    = []
-extra_libraries    = ['cildvc_shared']
+extra_libraries    = ['cildvc_shared'] 
 
 if platform.system() == 'Windows':
     extra_compile_args += ['/DWIN32', '/openmp' , '-Zi' , '/Od']
+    extra_compile_args += ['/TP','/EHsc','/DCCPiDVC_EXPORTS','/Ob2','/O2']
     extra_link_args += ["-debug"]
 else:
     extra_compile_args += ['-fopenmp', '-O2', '-Wall', '-std=c99']
     extra_libraries += ['m','gomp']
-    
+
+library_lib_path = ""
+try:
+    library_include_path = os.environ['LIBRARY_INC']
+    library_lib_path = os.environ['LIBRARY_LIB']
+except:
+    library_include_path = os.environ['PREFIX']+'/include'
+    pass
+
+
 setup(
-    name='tomophantom',
+    name='ccpi dvc',
     description='This is to generate phantom datasets for tomography experiments',
     version = version,
     cmdclass = {'build_ext': build_ext},
-    ext_modules = cythonize([ Extension("dvc",
-                            sources = [ "src/dvc.pyx",
+    ext_modules = cythonize([ Extension("ccpi.dvc",
+                            sources = [ 
+							  "src/dvc.pyx", "src/dvc_cmd.cpp"         
                                       ],
                             #https://github.com/cython/cython/issues/1718
-                            #include_path=[os.path.join('.', "src")],
+                            include_path = [os.path.join(
+							   os.path.abspath('@CMAKE_CURRENT_SOURCE_DIR@'), "src")],
                             include_dirs = extra_include_dirs,
                             library_dirs = extra_library_dirs,
                             extra_compile_args = extra_compile_args,
                             libraries = extra_libraries,
-                            extra_link_args = extra_link_args)]),
-    zip_safe = False,
-    include_package_data=True,
+                            extra_link_args = extra_link_args )],
+							language="c++"),
+    #zip_safe = False,
+    #include_package_data=True,
     #package_data={'ccpi.dvc':['*.dat','../functions/models/*.dat']},
-    packages = {'ccpi'}
+    packages = {'ccpi.dvc'}
 )
 
 
