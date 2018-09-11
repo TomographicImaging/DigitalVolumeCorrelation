@@ -25,7 +25,7 @@ version = '1.0'
 extra_include_dirs = ['@CMAKE_SOURCE_DIR@/Core', 
                       '@CMAKE_SOURCE_DIR@/Core/eigen',
 					  '@CMAKE_CURRENT_SOURCE_DIR@/src']
-extra_library_dirs = ['@CMAKE_BINARY_DIR@/Core/@CMAKE_BUILD_TYPE@']
+extra_library_dirs = ['@LIBRARY_LIB@']
 extra_compile_args = []
 extra_link_args    = []
 extra_libraries    = ['cildvc_shared'] 
@@ -35,7 +35,7 @@ if platform.system() == 'Windows':
     extra_compile_args += ['/TP','/EHsc','/DCCPiDVC_EXPORTS','/Ob2','/O2']
     extra_link_args += ["-debug"]
 else:
-    extra_compile_args += ['-fopenmp', '-O2', '-Wall', '-std=c99']
+    extra_compile_args += ['-fopenmp', '-O2', '-Wall' , '-std=c++0x', '-fPIC' ]
     extra_libraries += ['m','gomp']
 
 library_lib_path = ""
@@ -64,7 +64,8 @@ setup(
                             extra_compile_args = extra_compile_args,
                             libraries = extra_libraries,
                             extra_link_args = extra_link_args )],
-							language="c++"),
+			language="c++"
+			),
     #zip_safe = False,
     #include_package_data=True,
     #package_data={'ccpi.dvc':['*.dat','../functions/models/*.dat']},
