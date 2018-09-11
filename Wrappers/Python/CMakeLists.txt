@@ -45,6 +45,11 @@ if (PYTHONINTERP_FOUND)
     set (DEPS       "${CMAKE_BINARY_DIR}/functions/")
     set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/build/timestamp")
 
+    if (WIN32)
+      set (LIBRARY_LIB ${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE})
+    else()
+      set (LIBRARY_LIB ${CMAKE_BINARY_DIR}/Core/)
+    endif()
     configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
     message("Core binary dir " ${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE})
@@ -59,11 +64,12 @@ if (PYTHONINTERP_FOUND)
                                                        LIBRARY_LIB=${CMAKE_BINARY_DIR}/Core
                                                        ${PYTHON_EXECUTABLE} ${SETUP_PY} install
                        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-                       DEPENDS  cildvc_shared)
+                       DEPENDS  cildvc_static)
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
 
     else()
-	  message("Library should be in ${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE}")
+            
+	  message("Library should be in ${LIBRARY_LIB}")
       add_custom_command(OUTPUT ${OUTPUT}
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/ccpi ${CMAKE_CURRENT_BINARY_DIR}/ccpi
