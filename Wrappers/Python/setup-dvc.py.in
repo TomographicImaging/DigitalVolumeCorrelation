@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+import setuptools
+from distutils.core import setup
+from distutils.extension import Extension
+
+import os
+import sys
+import numpy
+import platform	
+
+cil_version="0.10.2"
+	
+library_include_path = ""
+library_lib_path = ""
+try:
+    library_include_path = os.environ['LIBRARY_INC']
+    library_lib_path = os.environ['LIBRARY_LIB']
+except:
+    library_include_path = os.environ['PREFIX']+'/include'
+    pass
+    
+extra_include_dirs = [numpy.get_include(), 
+                      '@CMAKE_SOURCE_DIR@/Core', 
+                      '@CMAKE_SOURCE_DIR@/Core/eigen',
+		      '@CMAKE_CURRENT_SOURCE_DIR@/src',
+		      '@Boost_INCLUDE_DIR@']
+#extra_library_dirs = [os.path.join(library_include_path, "..", "lib")]
+extra_compile_args = []
+extra_library_dirs = ['@LIBRARY_LIB@']
+extra_compile_args = []
+extra_link_args = []
+extra_libraries = ['cildvc_shared']
+
+
+if platform.system() == 'Windows':				   
+    extra_compile_args[0:] = ['/DWIN32','/EHsc','/DBOOST_ALL_NO_LIB' , '/openmp' 
+	, '/DCCPiDVC_EXPORTS']   
+else:
+    extra_compile_args = ['-fopenmp','-O2', '-funsigned-char', 
+    '-std=c++0x' , '-fPIC']
+    extra_libraries += ['m',@EXTRA_OMP_LIB@]
+    
+extra_libraries += ["@BOOST_PYTHON_LIB@", "@BOOST_NUMPY_LIB@"]
+
+
+setup(
+    name='ccpi',
+	description='CCPi Core Imaging Library - Digital Volume Correlation Module',
+	version=cil_version,
+    #cmdclass = {'build_ext': build_ext},
+    ext_modules = [Extension("ccpi.dvc",
+                             sources=[os.path.join("." , "src", "dvc_module.cpp" )],
+                             include_dirs=extra_include_dirs, 
+			     library_dirs=extra_library_dirs, 
+			     extra_compile_args=extra_compile_args, 
+			     libraries=extra_libraries ), 
+    
+    ],
+	zip_safe = False,	
+	packages = {'ccpi','ccpi.dvc'},
+)
+
