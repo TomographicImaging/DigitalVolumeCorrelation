@@ -27,7 +27,7 @@ extra_include_dirs = [numpy.get_include(),
 		      '@Boost_INCLUDE_DIR@']
 #extra_library_dirs = [os.path.join(library_include_path, "..", "lib")]
 extra_compile_args = []
-extra_library_dirs = ['@LIBRARY_LIB@']
+extra_library_dirs = ['@LIBRARY_LIB@','@Boost_LIBRARY_DIRS@']
 extra_compile_args = []
 extra_link_args = []
 extra_libraries = ['cildvc_shared']
@@ -49,7 +49,7 @@ setup(
 	description='CCPi Core Imaging Library - Digital Volume Correlation Module',
 	version=cil_version,
     #cmdclass = {'build_ext': build_ext},
-    ext_modules = [Extension("ccpi.dvc",
+    ext_modules = [Extension("ccpi.dvcw",
                              sources=[os.path.join("." , "src", "dvc_module.cpp" )],
                              include_dirs=extra_include_dirs, 
 			     library_dirs=extra_library_dirs, 
@@ -58,6 +58,6 @@ setup(
     
     ],
 	zip_safe = False,	
-	packages = {'ccpi','ccpi.dvc'},
+	packages = {'ccpi','ccpi.dvcw'},
 )
 

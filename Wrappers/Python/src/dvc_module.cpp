@@ -21,13 +21,16 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <iostream>
+#include <cmath>
+
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
-#include <cmath>
+#include <boost/python/enum.hpp>
 
 //#include "boost/tuple/tuple.hpp"
 #include "Utility.h"
 #include "Point.h"
+#include "DataCloud.h"
 
 #if defined(_WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(_WIN64)
 #include <windows.h>
@@ -39,31 +42,155 @@ __if_not_exists(uint16_t) { typedef __int8 uint16_t; }
 namespace bp = boost::python;
 namespace np = boost::python::numpy;
 
+int loadPointCloudFromNumpy(DataCloud * dc, np::ndarray pointcloud) {
+	// load the point cloud in the DataCloud from a Numpy Array
+	int npoints = pointcloud.shape(0);
+	Point a_point(0.0, 0.0, 0.0);
+	int a_label;
+	double ptx, pty, ptz;
+	for (long i = 0; i < npoints; i++) {
+		
+		ptx = (double)bp::extract<double>(pointcloud[i][1]);
+		pty = (double)bp::extract<double>(pointcloud[i][2]);
+		ptz = (double)bp::extract<double>(pointcloud[i][3]);
+
+		dc->points.push_back(a_point);
+		dc->points[i].move_to(ptx, pty, ptz);
+		dc->labels.push_back(a_label);
+		a_label = (int)bp::extract<double>(pointcloud[i][0]);
+		dc->labels[i] = a_label;
+	}
+    //c_value = (unsigned char)bp::extract<int>(pointcloud[index]);
+	return npoints;
+}
+
+np::ndarray getPoint(DataCloud * dc, int index) {
+	// get a specific point in the DataCloud
+	double data[] = { 0,0,0,0 };
+	Py_intptr_t shape[1] = { 4 };
+	np::ndarray result = np::zeros(1, shape, np::dtype::get_builtin<double>());
+	if (index < dc->points.size()) {
+		data[0] = (double)dc->labels[index];
+		data[1] = dc->points[index].x();
+		data[2] = dc->points[index].y();
+		data[3] = dc->points[index].z();
+	}
+	std::copy(data, data+shape[0], reinterpret_cast<double*>(result.get_data()));
+	return result;
+}
 
 
-BOOST_PYTHON_MODULE(dvc)
+BOOST_PYTHON_MODULE(dvcw)
 {
 	np::initialize();
 
 	//To specify that this module is a package
 	bp::object package = bp::scope();
-	package.attr("__path__") = "dvc";
+	package.attr("__path__") = "dvcw";
 	
 	np::dtype dt1 = np::dtype::get_builtin<uint8_t>();
 	np::dtype dt2 = np::dtype::get_builtin<uint16_t>();
+	/*Point class*/
 	bp::class_<Point>("Point", bp::init<double, double, double>())
-		.def("move_to", &Point::move_to)
-		.def("move_by", &Point::move_by)
-		.def("pt_dist", &Point::pt_dist)
-		.def("x",       &Point::x)
-		.def("y",       &Point::y)
-		.def("z",       &Point::z)
-		.def("ix",      &Point::ix)
-		.def("iy",      &Point::iy)
-		.def("iz",      &Point::iz)
+		.def("move_to",     &Point::move_to)
+		.def("move_by",     &Point::move_by)
+		.def("pt_dist",     &Point::pt_dist)
+		.def("pt_encl_vol", &Point::pt_encl_vol)
+		.def("x",           &Point::x)
+		.def("y",           &Point::y)
+		.def("z",           &Point::z)
+		.def("ix",          &Point::ix)
+		.def("iy",          &Point::iy)
+		.def("iz",          &Point::iz)
+		.def("rx",          &Point::rx)
+		.def("ry",          &Point::ry)
+		.def("rz",          &Point::rz)
 		;
 		//.def("SingleUncollapse", &CilContourTreeSegmentation::SingleUnCollapse)
 		//.def("SingleCollapse", &CilContourTreeSegmentation::SingleCollapse)
 		
+	/*****************************RunControl***********************************/
+	bp::class_<RunControl>("RunControl")
+		.def_readwrite("ref_fname",     &RunControl::ref_fname)
+		.def_readwrite("cor_fname",     &RunControl::cor_fname)
+		.def_readwrite("pts_fname",     &RunControl::pts_fname)
+		.def_readwrite("out_fname",     &RunControl::out_fname)
+		.def_readwrite("res_fname",     &RunControl::res_fname)
+		.def_readwrite("sta_fname",     &RunControl::sta_fname)
+
+		.def_readwrite("vol_bit_depth", &RunControl::vol_bit_depth)
+		.def_readwrite("vol_endian",    &RunControl::vol_endian)
+		.def_readwrite("vol_hdr_lngth", &RunControl::vol_hdr_lngth)
+		.def_readwrite("vol_wide",      &RunControl::vol_wide)
+		.def_readwrite("vol_high",      &RunControl::vol_high)
+		.def_readwrite("vol_tall",      &RunControl::vol_tall)
+
+		.def_readwrite("subvol_geom", &RunControl::subvol_geom)
+		.def_readwrite("subvol_size", &RunControl::subvol_size)
+		.def_readwrite("subvol_npts", &RunControl::subvol_npts)
+
+		.def_readwrite("subvol_thresh",   &RunControl::subvol_thresh)
+		.def_readwrite("gray_thresh_min", &RunControl::gray_thresh_min)
+		.def_readwrite("gray_thresh_max", &RunControl::gray_thresh_max)
+		.def_readwrite("min_vol_fract",   &RunControl::min_vol_fract)
+
+		.def_readwrite("disp_max",     &RunControl::disp_max)
+		.def_readwrite("num_srch_dof", &RunControl::num_srch_dof)
+
+		.def_readwrite("obj_fcn", &RunControl::obj_fcn)
+		.def_readwrite("int_typ", &RunControl::int_typ)
+		.def_readwrite("sub_geo", &RunControl::sub_geo)
+
+		.def_readwrite("obj_function", &RunControl::obj_function)
+		.def_readwrite("interp_type",  &RunControl::interp_type)
+
+		.def_readwrite("rigid_trans",   &RunControl::rigid_trans)
+		.def_readwrite("basin_radius",  &RunControl::basin_radius)
+		.def_readwrite("subvol_aspect", &RunControl::subvol_aspect)
+
+		.def_readwrite("fine_srch", &RunControl::fine_srch)
+		;
+
+	bp::enum_<Objfcn_Type>("Objfcn_Type")
+		.value("SAD",    SAD)
+		.value("SSD",    SSD)
+		.value("ZSSD",   ZSSD)
+		.value("NSSD",   NSSD)
+		.value("ZNSSD",  ZNSSD)
+		;
+	bp::enum_<Interp_Type>("Interp_Type")
+		.value("nearest", nearest)
+		.value("trilinear", trilinear)
+		.value("tricubic", tricubic)
+		;
+	bp::enum_<Search_Type>("Search_Type")
+		.value("global", global)
+		.value("amoeba", amoeba)
+		.value("congrad", congrad)
+		.value("qnwtdfp", qnwtdfp)
+		.value("powells", powells)
+		;
+	bp::enum_<Subvol_Type>("Subvol_Type")
+		.value("cube", cube)
+		.value("sphere", sphere)
+		;
+	bp::enum_<Endian_Type>("Endian_Type")
+		.value("little", little)
+		.value("big", big)
+		;
+	bp::enum_<On_Off_Type>("On_Off_Type")
+		.value("on", on)
+		.value("off", off)
+		;
+	/*******************************************************************/
+
+	bp::class_<DataCloud>("DataCloud")
+		.def("organize_cloud", &DataCloud::organize_cloud)
+		.def("n_n_m", &DataCloud::n_n_m)
+		.def("n_n_p", &DataCloud::n_n_p)
+		.def("n_d_p", &DataCloud::n_d_p)
+		.def("loadPointCloudFromNumpy", loadPointCloudFromNumpy)
+		.def("getPoint", getPoint)
+		;
 }
 
