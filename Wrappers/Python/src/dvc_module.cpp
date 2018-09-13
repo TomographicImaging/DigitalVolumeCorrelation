@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <fstream> 
 
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
@@ -79,6 +80,104 @@ np::ndarray getPoint(DataCloud * dc, int index) {
 	return result;
 }
 
+np::ndarray get_rigid_trans(RunControl * rc){
+	double data[] = { 0,0,0 };
+	Py_intptr_t shape[1] = { 3 };
+	np::ndarray result = np::zeros(1, shape, np::dtype::get_builtin<double>());
+	if (rc->rigid_trans.size() == 0)
+		rc->rigid_trans.resize(3, 0.0);
+	data[0] = rc->rigid_trans[0];
+	data[1] = rc->rigid_trans[1];
+	data[2] = rc->rigid_trans[2];
+	
+	std::copy(data, data + shape[0], reinterpret_cast<double*>(result.get_data()));
+	return result;
+}
+
+void set_rigid_trans(RunControl * rc, np::ndarray rt) {
+	rc->rigid_trans.resize(3, 0.0);
+	rc->rigid_trans[0] = (double)bp::extract<double>(rt[0]);
+	rc->rigid_trans[1] = (double)bp::extract<double>(rt[1]);
+	rc->rigid_trans[2] = (double)bp::extract<double>(rt[2]);
+}
+
+np::ndarray get_subvol_aspect(RunControl * rc) {
+	double data[] = { 0,0,0 };
+	Py_intptr_t shape[1] = { 3 };
+	np::ndarray result = np::zeros(1, shape, np::dtype::get_builtin<double>());
+	if (rc->subvol_aspect.size() == 0)
+		rc->subvol_aspect.resize(3, 1.0);
+	data[0] = rc->subvol_aspect[0];
+	data[1] = rc->subvol_aspect[1];
+	data[2] = rc->subvol_aspect[2];
+
+	std::copy(data, data + shape[0], reinterpret_cast<double*>(result.get_data()));
+	return result;
+}
+
+void set_subvol_aspect(RunControl * rc, np::ndarray rt) {
+	rc->subvol_aspect.resize(3, 1.0);
+	rc->subvol_aspect[0] = (double)bp::extract<double>(rt[0]);
+	rc->subvol_aspect[1] = (double)bp::extract<double>(rt[1]);
+	rc->subvol_aspect[2] = (double)bp::extract<double>(rt[2]);
+}
+
+bp::list parse_npy(RunControl * rc) {
+
+	std::ifstream ifs;
+
+	ifs.open(rc->ref_fname, std::ifstream::in );
+	char magic[6] ;
+	char major, minor;
+	int offset = 0, header_length=0;
+	char header_v1[2];
+	char header_v2[4];
+	ifs.read(magic, 6);
+	offset += 6;
+	std::cout << "Magic string: <" << magic << ">" << std::endl;
+	ifs.read(&major, 1);
+	offset++;
+	ifs.read(&minor, 1);
+	offset++;
+
+	std::cout << "Version: " << (short)(major) << "." << (short)(minor) << std::endl;
+	
+	if (major == 1) {
+		ifs.read(header_v1, 2);
+		std::cout << "header: " << *(reinterpret_cast<unsigned short*>(header_v1)) << std::endl;
+		offset += 2;
+		header_length = *(reinterpret_cast<unsigned short*>(header_v1));
+	}
+	else if (major == 2)
+	{
+		ifs.read(header_v2, 4);
+		std::cout << "header: " << *(reinterpret_cast<unsigned int*>(header_v2)) << std::endl;
+		offset += 4;
+		header_length = *(reinterpret_cast<unsigned int*>(header_v2));
+	}
+
+	offset += header_length;
+	int j = 0;
+	char *the_header;
+	the_header = (char *)malloc(header_length * sizeof(char));
+	while (j < header_length) {
+		char c = ifs.get();
+		the_header[j] = c;
+		std::cout << c;
+		j++;
+	}
+	std::cout << std::endl;
+	//i = *((unsigned int *)header_length);
+	//std::cout << "Header Length: " << i << std::endl;
+
+	ifs.close();
+	std::string out(the_header);
+	bp::list result;
+	result.append<std::string>(out);
+	result.append<int>(offset);
+	free(the_header);
+	return result;
+}
 
 BOOST_PYTHON_MODULE(dvcw)
 {
@@ -144,11 +243,17 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def_readwrite("obj_function", &RunControl::obj_function)
 		.def_readwrite("interp_type",  &RunControl::interp_type)
 
-		.def_readwrite("rigid_trans",   &RunControl::rigid_trans)
+		//.def_readwrite("rigid_trans",   &RunControl::rigid_trans)
+		.def("get_rigid_trans",   get_rigid_trans)
+		.def("set_rigid_trans",   set_rigid_trans)
 		.def_readwrite("basin_radius",  &RunControl::basin_radius)
-		.def_readwrite("subvol_aspect", &RunControl::subvol_aspect)
+		//.def_readwrite("subvol_aspect", &RunControl::subvol_aspect)
+		.def("get_subvol_aspect", get_subvol_aspect)
+		.def("set_subvol_aspect", set_subvol_aspect)
 
 		.def_readwrite("fine_srch", &RunControl::fine_srch)
+
+		.def("parse_npy" , parse_npy)
 		;
 
 	bp::enum_<Objfcn_Type>("Objfcn_Type")
