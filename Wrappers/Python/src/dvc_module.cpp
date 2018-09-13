@@ -32,6 +32,9 @@
 #include "Utility.h"
 #include "Point.h"
 #include "DataCloud.h"
+#include "Search.h"
+
+#include "dvc_cmd.h"
 
 #if defined(_WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(_WIN64)
 #include <windows.h>
@@ -171,11 +174,12 @@ bp::list parse_npy(RunControl * rc) {
 	//std::cout << "Header Length: " << i << std::endl;
 
 	ifs.close();
-	std::string out(the_header);
+	std::string out(the_header); free(the_header);
+
 	bp::list result;
 	result.append<std::string>(out);
 	result.append<int>(offset);
-	free(the_header);
+	
 	return result;
 }
 
@@ -254,6 +258,7 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def_readwrite("fine_srch", &RunControl::fine_srch)
 
 		.def("parse_npy" , parse_npy)
+		.def("run_dvc_cmd", run_dvc_cmd)
 		;
 
 	bp::enum_<Objfcn_Type>("Objfcn_Type")
@@ -297,5 +302,6 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def("loadPointCloudFromNumpy", loadPointCloudFromNumpy)
 		.def("getPoint", getPoint)
 		;
+
 }
 
