@@ -23,6 +23,7 @@
 #include <iostream>
 #include <cmath>
 #include <fstream> 
+#include <vector>
 
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
@@ -81,6 +82,12 @@ np::ndarray getPoint(DataCloud * dc, int index) {
 	}
 	std::copy(data, data+shape[0], reinterpret_cast<double*>(result.get_data()));
 	return result;
+}
+
+std::vector<Point> const& dataCloudGetData(DataCloud * dc) {
+	// get a specific point in the DataCloud
+	
+	return dc->points;
 }
 
 np::ndarray get_rigid_trans(RunControl * rc){
@@ -183,6 +190,17 @@ bp::list parse_npy(RunControl * rc) {
 	return result;
 }
 
+int example(RunControl * runc, DataCloud * datac) {
+	DataCloud data = * datac;
+	std::cout << "running example" << std::endl;
+	std::cout << "datac " << (int)(datac) << std::endl;
+	std::cout << "datac->points " << (datac->points.size()) << std::endl;
+	std::cout << "datac->labels " << (datac->labels.size()) << std::endl;
+	std::cout << "data.points " << (data.points.size()) << std::endl;
+	std::cout << "data.labels " << (data.labels.size()) << std::endl;
+	return 0;
+}
+
 BOOST_PYTHON_MODULE(dvcw)
 {
 	np::initialize();
@@ -212,6 +230,7 @@ BOOST_PYTHON_MODULE(dvcw)
 		//.def("SingleUncollapse", &CilContourTreeSegmentation::SingleUnCollapse)
 		//.def("SingleCollapse", &CilContourTreeSegmentation::SingleCollapse)
 		
+
 	/*****************************RunControl***********************************/
 	bp::class_<RunControl>("RunControl")
 		.def_readwrite("ref_fname",     &RunControl::ref_fname)
@@ -301,7 +320,13 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def("n_d_p", &DataCloud::n_d_p)
 		.def("loadPointCloudFromNumpy", loadPointCloudFromNumpy)
 		.def("getPoint", getPoint)
+		.def_readonly("points", &DataCloud::points)
+		.def("getData", dataCloudGetData, bp::return_value_policy<bp::copy_const_reference>())
 		;
+	bp::register_ptr_to_python< shared_ptr<DataCloud> >();
+	bp::register_ptr_to_python< shared_ptr<std::vector<Point>> >();
+	bp::register_ptr_to_python< shared_ptr<std::vector<int>> >();
 
+	bp::class_< std::vector<Point> >("std::vector<Point>");
 }
 
