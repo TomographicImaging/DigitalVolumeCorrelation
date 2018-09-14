@@ -140,7 +140,8 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 
 	interp->center_on(offset_pt);
 
-	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian);
+	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, 
+		(unsigned int)rc->vol_hdr_lngth);
 	
 	
 	

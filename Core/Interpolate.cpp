@@ -115,7 +115,11 @@ Interpolate::Interpolate(const BoundBox *region)
 
 }
 /******************************************************************************/
-void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian)
+void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian) {
+	return Interpolate::kernels(voxfname, vox_box, bytes_per, endian, 0);
+}
+
+void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian, unsigned int offset)
 
 // Load values from a voxel file. Derivatives are calculated at each voxel, but
 // Lekien coeff's are not automatically evaluated (flagged to false to reflect new
@@ -142,7 +146,7 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
    	char swap_val[] = {0,0};
    	unsigned short *u_short = (unsigned short*) swap_val;
 
-	int file_pos = 0;
+	unsigned int file_pos = offset;
 	vfs.seekg (file_pos);
 
 	for (int is=0; is<est_box->itall(); is++) {
