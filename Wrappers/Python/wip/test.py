@@ -187,8 +187,7 @@ class DVC(object):
         cor = os.path.abspath(self.run.cor_fname)
         
         self.run.ref_fname = "a.npy"
-        hd = self.run.understand_npy()
-        print ("received hd" , hd)
+        hd = self.run.parse_npy()
         npyheader = eval(hd[0])
         shape = npyheader['shape']
         if npyheader['fortran_order']:
@@ -212,8 +211,10 @@ class DVC(object):
         if not (npyheader['descr'][1] == 'i' or npyheader['descr'][1] == 'u'):
             raise TypeError('Input other than unsigned char or unsigned short are not supperted')
         # bit depth only 8 or 16 accepted
-        if (npyheader['descr'][2] == '8' or npyheader['descr'][2] == '16' )
-            self.run.vol_bit_depth = int(npyheader['descr'][2])
+        if npyheader['descr'][2] == '1':
+            self.run.vol_bit_depth = 8
+        elif npyheader['descr'][2] == '2' :
+            self.run.vol_bit_depth = 16
         else:
             raise TypeError('Input bit depth not supported ', npyheader['descr'][2] )
         
@@ -241,6 +242,9 @@ class DVC(object):
         msg += str(self.run.min_vol_fract) + '\n'
         
         return msg
+    
+    def run_dvc(self, datacloud):
+        self.run.run_dvc_dmc(datacloud)
                 
         
             
@@ -285,6 +289,7 @@ print (controller)
 
 pc = dvcw.DataCloud()
 pc.loadPointCloudFromNumpy(roi[:10])
+pc.organize_cloud(controller.run)
 print ("Point read from PointCloud " , pc.getPoint(1))
 print ("Point in roi" , roi[1])
 
@@ -299,7 +304,8 @@ with open('example.json', "r") as f:
 print (config['rigid_trans'])
         
 controller.run.ref_fname = "a.npy"
-hd = controller.run.understand_npy()
+hd = controller.run.parse_npy()
 print ("received hd" , hd)
 details = eval(hd[0])
 
+controller.run.run_dvc_cmd(pc)

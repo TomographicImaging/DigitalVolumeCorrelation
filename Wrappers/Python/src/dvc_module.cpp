@@ -84,12 +84,6 @@ np::ndarray getPoint(DataCloud * dc, int index) {
 	return result;
 }
 
-std::vector<Point> const& dataCloudGetData(DataCloud * dc) {
-	// get a specific point in the DataCloud
-	
-	return dc->points;
-}
-
 np::ndarray get_rigid_trans(RunControl * rc){
 	double data[] = { 0,0,0 };
 	Py_intptr_t shape[1] = { 3 };
@@ -144,24 +138,24 @@ bp::list parse_npy(RunControl * rc) {
 	char header_v2[4];
 	ifs.read(magic, 6);
 	offset += 6;
-	std::cout << "Magic string: <" << magic << ">" << std::endl;
+	//std::cout << "Magic string: <" << magic << ">" << std::endl;
 	ifs.read(&major, 1);
 	offset++;
 	ifs.read(&minor, 1);
 	offset++;
 
-	std::cout << "Version: " << (short)(major) << "." << (short)(minor) << std::endl;
+	//std::cout << "Version: " << (short)(major) << "." << (short)(minor) << std::endl;
 	
 	if (major == 1) {
 		ifs.read(header_v1, 2);
-		std::cout << "header: " << *(reinterpret_cast<unsigned short*>(header_v1)) << std::endl;
+		//std::cout << "header: " << *(reinterpret_cast<unsigned short*>(header_v1)) << std::endl;
 		offset += 2;
 		header_length = *(reinterpret_cast<unsigned short*>(header_v1));
 	}
 	else if (major == 2)
 	{
 		ifs.read(header_v2, 4);
-		std::cout << "header: " << *(reinterpret_cast<unsigned int*>(header_v2)) << std::endl;
+		//std::cout << "header: " << *(reinterpret_cast<unsigned int*>(header_v2)) << std::endl;
 		offset += 4;
 		header_length = *(reinterpret_cast<unsigned int*>(header_v2));
 	}
@@ -177,10 +171,10 @@ bp::list parse_npy(RunControl * rc) {
 		j++;
 	}
 	std::cout << std::endl;
-	//i = *((unsigned int *)header_length);
-	//std::cout << "Header Length: " << i << std::endl;
-
+	
 	ifs.close();
+	// pass the header to Python as it is easier to handle text
+	// TODO: handle it here
 	std::string out(the_header); free(the_header);
 
 	bp::list result;
@@ -188,17 +182,6 @@ bp::list parse_npy(RunControl * rc) {
 	result.append<int>(offset);
 	
 	return result;
-}
-
-int example(RunControl * runc, DataCloud * datac) {
-	DataCloud data = * datac;
-	std::cout << "running example" << std::endl;
-	std::cout << "datac " << (int)(datac) << std::endl;
-	std::cout << "datac->points " << (datac->points.size()) << std::endl;
-	std::cout << "datac->labels " << (datac->labels.size()) << std::endl;
-	std::cout << "data.points " << (data.points.size()) << std::endl;
-	std::cout << "data.labels " << (data.labels.size()) << std::endl;
-	return 0;
 }
 
 BOOST_PYTHON_MODULE(dvcw)
@@ -227,10 +210,7 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def("ry",          &Point::ry)
 		.def("rz",          &Point::rz)
 		;
-		//.def("SingleUncollapse", &CilContourTreeSegmentation::SingleUnCollapse)
-		//.def("SingleCollapse", &CilContourTreeSegmentation::SingleCollapse)
 		
-
 	/*****************************RunControl***********************************/
 	bp::class_<RunControl>("RunControl")
 		.def_readwrite("ref_fname",     &RunControl::ref_fname)
@@ -320,13 +300,6 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def("n_d_p", &DataCloud::n_d_p)
 		.def("loadPointCloudFromNumpy", loadPointCloudFromNumpy)
 		.def("getPoint", getPoint)
-		.def_readonly("points", &DataCloud::points)
-		.def("getData", dataCloudGetData, bp::return_value_policy<bp::copy_const_reference>())
 		;
-	bp::register_ptr_to_python< shared_ptr<DataCloud> >();
-	bp::register_ptr_to_python< shared_ptr<std::vector<Point>> >();
-	bp::register_ptr_to_python< shared_ptr<std::vector<int>> >();
-
-	bp::class_< std::vector<Point> >("std::vector<Point>");
 }
 

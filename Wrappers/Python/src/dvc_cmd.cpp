@@ -178,9 +178,7 @@ int run_dvc_cmd(RunControl * runc, DataCloud * datac)
 	in.append_time_date(run.sta_fname, "Run start: ", dts);
 
 	// create optimizer from the input parameters
-
 	Search optimize = Search(&run);
-
 	// main search loop
 
 	// establish results file for output while running, in case of interupt
@@ -196,12 +194,13 @@ int run_dvc_cmd(RunControl * runc, DataCloud * datac)
 
 	std::vector<double> blank_par_min = optimize.par_min;
 	for (int i = 0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
-
+	
 	for (unsigned int i = 0; i<data.points.size(); i++) {
 
 		// this is the index of the point being processed
 		int n = data.order[i];
 
+		std::cout << i << "/" << data.points.size() << " ";
 		std::cout << data.labels[n] << "\t";
 		std::cout << std::setprecision(3) << std::fixed;
 		std::cout << data.points[n].x() << " ";
