@@ -7,14 +7,32 @@
 #include <string>
 #include <iostream>
 
-int parse_npy(char*);
+struct npy_header {
+	int X, Y, Z;
+	bool isBigEndian;
+	short bit;
+	bool isFortranOrder;
+	int header_length;
+	char * the_header;
+	int major, minor;
+
+
+};
+
+int parse_npy(char*, npy_header *);
 
 int main(int argc, char**argv) {
-	if (argc>1) return parse_npy(argv[1]);
+	npy_header nh;
+	if (argc > 1) {
+		parse_npy(argv[1], &nh);
+		std::cout << "PROVA " << nh.header_length << std::endl;
+		std::cout << "PROVA " << nh.bit << std::endl;
+		return 0;
+	}
 	else return -1;
 }
 
-int parse_npy(char*fname){
+int parse_npy(char*fname, npy_header * head){
 	std::ifstream ifs;
 
 	ifs.open(fname, std::ifstream::in);
@@ -234,7 +252,28 @@ int parse_npy(char*fname){
 	//std::cout << out << std::endl;
 	free(the_header);
 
-	
+	//npy_header head;
+	head->X = std::stoi(tuple[0]);
+	head->Y = std::stoi(tuple[1]);
+	head->Z = std::stoi(tuple[2]);
+	head->isBigEndian = values[0][0] == '<' ? false : true;
+	head->header_length = header_length;
+	head->isFortranOrder = values[1][0] == 'T' ? true : false;
+	head->major = major;
+	head->minor = minor;
+	if (values[0][2] == '1') {
+		head->bit = 8;
+		std::cout << "8 bit" << std::endl;
+	}
+	else if (values[0][2] == '2'){
+		head->bit = 16;
+		std::cout << "16 bit" << std::endl;
+	}
+	else {
+		std::cout << "error parsing bit" << std::endl;
+	}
+	head->the_header =  the_header;
+
 
 	return 0;
 }
