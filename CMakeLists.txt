@@ -14,6 +14,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(cildvc)
 
+set (CMAKE_CXX_STANDARD 11)
 option (BUILD_PYTHON_WRAPPER "Build Python Wrappers" OFF)
 option (CONDA_BUILD "Conda Build" OFF)
 set (CMAKE_BUILD_TYPE "Release")

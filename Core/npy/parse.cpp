@@ -7,7 +7,6 @@
 #include <string>
 #include <iostream>
 
-#include "jsmn.h"
 int main (int argc, char**argv) {
 
 	std::ifstream ifs;
@@ -225,8 +224,8 @@ int main (int argc, char**argv) {
 	ifs.close();
 	// pass the header to Python as it is easier to handle text
 	// TODO: handle it here
-	std::string out(the_header); 
-	std::cout << out << std::endl;
+	//std::string out(the_header); 
+	//std::cout << out << std::endl;
 	free(the_header);
 
 	
