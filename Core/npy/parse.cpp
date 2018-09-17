@@ -7,11 +7,17 @@
 #include <string>
 #include <iostream>
 
-int main (int argc, char**argv) {
+int parse_npy(char*);
 
+int main(int argc, char**argv) {
+	if (argc>1) return parse_npy(argv[1]);
+	else return -1;
+}
+
+int parse_npy(char*fname){
 	std::ifstream ifs;
 
-	ifs.open(argv[1], std::ifstream::in);
+	ifs.open(fname, std::ifstream::in);
 	char magic[6];
 	char major, minor;
 	int offset = 0, header_length = 0;
@@ -70,7 +76,7 @@ int main (int argc, char**argv) {
 		the_header[j] = c;
 		//std::cout << "read character " << c << std::endl;
 
-		if (c == 0x7b && parse_key == 0 && parse_value == 0) {
+		if (c == '{' && parse_key == 0 && parse_value == 0) {
 			// it means we are at the beginning
 			parse_key = 1;
 			parse_value = 0;
@@ -78,7 +84,7 @@ int main (int argc, char**argv) {
 
 		if (parse_key == 1) {
 			//std::cout << "parse_key " << c << std::endl;
-			if (c == 0x20 || c == 0x7b || c == 0x2c) {
+			if (c == ' ' || c == '{' || c == ',') {
 				//std::cout << "skip" << std::endl;
 			}
 			else if (c == 0x27) {
@@ -90,11 +96,11 @@ int main (int argc, char**argv) {
 					//std::cout << "parse_key parsing  1 -> 0" << std::endl;
 					parsing = 0;
 					keys.push_back(key);
-					std::cout << "key = " << key << " <> " << std::endl;
+					std::cout << "key = " << key <<  std::endl;
 					key.clear();
 				}
 			}
-			else if (c == 0x3a) {
+			else if (c == ':') {
 				//std::cout << "parse_key -> 0 parse_value -> 1" << std::endl;
 				parse_key = 0;
 				parse_value = 1;
@@ -113,11 +119,11 @@ int main (int argc, char**argv) {
 		// ( 0x28
 		// ) 0x29
 		if (parse_value == 1) {
-			if (c == 0x20) {
+			if (c == ' ' ) {
 				//skip
 			}
 			else {
-				if (c == 0x3a) {
+				if (c == ':') {
 					//parsing = 0;
 				}
 				else if ((c == 0x27 )) {
@@ -163,7 +169,7 @@ int main (int argc, char**argv) {
 					}
 
 				}
-				else if (c == 0x2c) {
+				else if (c == ',') {
 					if (istruefalse == 1) {
 						istruefalse = 0;
 						values.push_back(val);
@@ -178,16 +184,16 @@ int main (int argc, char**argv) {
 						val.clear();
 					}
 				}
-				else if (c == 0x28) {
+				else if (c == '(') {
 					istuple = 1;
 					parsing = 1;
 					//val.append(1, c);
 				}
-				else if (c == 0x46 || c == 0x66 || c == 0x54 || c == 0x74) {
+				else if (c == 'f' || c == 'F' || c == 't' || c == 'T') {
 					istruefalse = 1;
 					val.append(1, c);
 				}
-				else if (c == 0x29) {
+				else if (c == ')') {
 					//val.append(1, c);
 					istuple = 0;
 					tuple.push_back(val);
