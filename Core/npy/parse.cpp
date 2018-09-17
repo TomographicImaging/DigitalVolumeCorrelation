@@ -105,6 +105,14 @@ int main (int argc, char**argv) {
 				key.append(1, c);
 			}
 		}
+		// { 0x7b
+		// } 0x7d
+		// space 0x20
+		// ' 0x27
+		// : 0x3a
+		// , 0x2c
+		// ( 0x28
+		// ) 0x29
 		if (parse_value == 1) {
 			if (c == 0x20) {
 				//skip
@@ -166,19 +174,22 @@ int main (int argc, char**argv) {
 						parse_value = 0;
 					}
 					else if (istuple == 1) {
-						val.append(c, 1);
+						//val.append(c, 1);
+						tuple.push_back(val);
+						val.clear();
 					}
 				}
 				else if (c == 0x28) {
 					istuple = 1;
 					parsing = 1;
-					val.append(1, c);
+					//val.append(1, c);
 				}
 				else if (c == 0x46 || c == 0x66 || c == 0x54 || c == 0x74) {
 					istruefalse = 1;
 					val.append(1, c);
 				}
 				else if (c == 0x29) {
+					//val.append(1, c);
 					istuple = 0;
 					tuple.push_back(val);
 					parsing = 0;
@@ -208,7 +219,7 @@ int main (int argc, char**argv) {
 		std::cout << "key " << key << std::endl;
 	}
 	for (auto key : tuple) {
-		std::cout << "tuple " << key << std::endl;
+		std::cout << "tuple :" << key << std::endl;
 	}
 	
 	ifs.close();
