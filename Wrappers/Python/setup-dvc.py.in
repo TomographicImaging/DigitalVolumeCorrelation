@@ -37,8 +37,9 @@ if platform.system() == 'Windows':
     extra_compile_args[0:] = ['/DWIN32','/EHsc','/DBOOST_ALL_NO_LIB' , '/openmp' 
 	, '/DCCPiDVC_EXPORTS']   
 else:
-    extra_compile_args = ['-fopenmp','-O2', '-funsigned-char', 
-    '-std=c++0x' , '-fPIC']
+    #extra_compile_args = ['-fopenmp','-O2', '-funsigned-char', 
+    #'-std=c++0x' , '-fPIC']
+    extra_compile_args = []
     extra_libraries += ['m',@EXTRA_OMP_LIB@]
     
 extra_libraries += ["@BOOST_PYTHON_LIB@", "@BOOST_NUMPY_LIB@"]

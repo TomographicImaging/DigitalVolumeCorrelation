@@ -136,7 +136,9 @@ bp::list wparse_npy(RunControl * rc) {
 
 	std::ifstream ifs;
 
-	ifs.open(rc->ref_fname, std::ifstream::in );
+	// C++11
+	//ifs.open(rc->ref_fname, std::ifstream::in );
+	ifs.open(rc->ref_fname.c_str(), std::ifstream::in );
 	char magic[6] ;
 	char major, minor;
 	int offset = 0, header_length=0;
@@ -239,18 +241,22 @@ bp::list wparse_npy(RunControl * rc) {
 		j++;
 	}
 	std::cout << std::endl;
-
+/*
 	for (auto val : values) {
 		std::cout << "val " << val << std::endl;
 	}
 	for (auto key : keys) {
 		std::cout << "key " << key << std::endl;
 	}
-	
+*/	
 	ifs.close();
 	// pass the header to Python as it is easier to handle text
 	// TODO: handle it here
-	std::string out(the_header); free(the_header);
+	// C++11 
+	//std::string out(the_header);
+	std::string out;
+	out.assign(the_header, header_length);
+	free(the_header);
 
 	bp::list result;
 	result.append<std::string>(out);
