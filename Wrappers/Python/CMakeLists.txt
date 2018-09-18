@@ -86,7 +86,7 @@ if (PYTHONINTERP_FOUND)
     set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup-dvc.py.in")
     set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup-dvc.py")
     #set(DEPS        "${CMAKE_CURRENT_SOURCE_DIR}/module/__init__.py")
-    set (DEPS       "${CMAKE_BINARY_DIR}/functions/")
+    set (DEPS       "${CMAKE_BINARY_DIR}/Core/")
     set(OUTPUT      "${CMAKE_CURRENT_BINARY_DIR}/build/timestamp")
 
     if (WIN32)
