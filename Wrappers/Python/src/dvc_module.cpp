@@ -24,18 +24,24 @@
 #include <cmath>
 #include <fstream> 
 #include <vector>
+#include <string>
+#include <iostream>
+#include <string>
+#include <iostream>
 
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
 #include <boost/python/enum.hpp>
 
 //#include "boost/tuple/tuple.hpp"
+//#include "npy/parse.h"
 #include "Utility.h"
 #include "Point.h"
 #include "DataCloud.h"
 #include "Search.h"
 
 #include "dvc_cmd.h"
+
 
 #if defined(_WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(_WIN64)
 #include <windows.h>
@@ -126,7 +132,7 @@ void set_subvol_aspect(RunControl * rc, np::ndarray rt) {
 	rc->subvol_aspect[2] = (double)bp::extract<double>(rt[2]);
 }
 
-bp::list parse_npy(RunControl * rc) {
+bp::list wparse_npy(RunControl * rc) {
 
 	std::ifstream ifs;
 
@@ -164,13 +170,82 @@ bp::list parse_npy(RunControl * rc) {
 	int j = 0;
 	char *the_header;
 	the_header = (char *)malloc(header_length * sizeof(char));
+	std::vector<std::string> keys;
+	std::string key = std::string();
+	std::vector<std::string> values;
+	std::string val = std::string();
+	int parsing = 0;
+	int parse_key = 0; int parse_value = 0;
+
 	while (j < header_length) {
 		char c = ifs.get();
 		the_header[j] = c;
-		std::cout << c;
+		std::cout << "read character " << c << std::endl;
+
+		if (strcmp(&c, "{") && parse_key == 0 && parse_value == 0) {
+			// it means we are at the beginning
+			parse_key = 1;
+			parse_value = 0;
+		} 
+		
+		if (parse_key == 1) {
+			std::cout << "parse_key " << c << std::endl;
+			if (strcmp(&c, " ")) {
+				std::cout << "skip" << std::endl;
+			}
+			else if (strcmp(&c, "'")) {
+				if (parsing == 0) {
+					std::cout << "parse_key parsing  0 -> 1" << std::endl;
+					parsing = 1;
+				}
+				else {
+					std::cout << "parse_key parsing  1 -> 0" << std::endl;
+					parsing = 0;
+					keys.push_back(key);
+					std::cout << "key = " << key.size() << " <> " << std::endl;
+					key.clear();
+				}
+			}
+			else if (strcmp(&c, ":")) {
+				std::cout << "parse_key -> 0 parse_value -> 1" << std::endl;
+				parse_key = 0;
+				parse_value = 1;
+			}
+			else {
+				std::cout << "append char" << std::endl;
+				key.append(1, c);
+			}
+		}
+		if (parse_value == 1) {
+			if (strcmp(&c, " ")) {
+				//skip
+			}
+			else if (strcmp(&c, "'")) {
+				if (parsing == 0) {
+					parsing = 1;
+				}
+				else {
+					parsing = 0;
+					values.push_back(val);
+					std::cout << "val = " << val << std::endl;
+					val.clear();
+				}
+			}
+			else {
+				val.append(1, c);
+			}
+		}
+
 		j++;
 	}
 	std::cout << std::endl;
+
+	for (auto val : values) {
+		std::cout << "val " << val << std::endl;
+	}
+	for (auto key : keys) {
+		std::cout << "key " << key << std::endl;
+	}
 	
 	ifs.close();
 	// pass the header to Python as it is easier to handle text
@@ -210,7 +285,7 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def("ry",          &Point::ry)
 		.def("rz",          &Point::rz)
 		;
-		
+	
 	/*****************************RunControl***********************************/
 	bp::class_<RunControl>("RunControl")
 		.def_readwrite("ref_fname",     &RunControl::ref_fname)
@@ -256,7 +331,8 @@ BOOST_PYTHON_MODULE(dvcw)
 
 		.def_readwrite("fine_srch", &RunControl::fine_srch)
 
-		.def("parse_npy" , parse_npy)
+		.def("parse_npy" , wparse_npy)
+		//.def("get_npy_header_offset" , )
 		.def("run_dvc_cmd", run_dvc_cmd)
 		;
 
