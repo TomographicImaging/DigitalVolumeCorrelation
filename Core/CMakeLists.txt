@@ -27,6 +27,8 @@ if (WIN32)
 endif()
 
 
+
+
 SET (DVC_SRCS ${DVC_SRCS}
 	${CMAKE_CURRENT_SOURCE_DIR}/BoundBox.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/Cloud.cpp
@@ -59,6 +61,11 @@ include_directories(dvc PUBLIC
 
 #add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
 
+#IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+#    SET_TARGET_PROPERTIES(cildvc_static PROPERTIES COMPILE_FLAGS "-fPIC")
+#ENDIF( )
+
+set_property(TARGET cildvc_static PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 #INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
 #        LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
