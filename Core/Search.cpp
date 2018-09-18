@@ -121,7 +121,7 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 
 	interp->center_on(srch_pt);
 
-	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian);
+	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
 	if (rc->int_typ == nearest) interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	if (rc->int_typ == trilinear) interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
