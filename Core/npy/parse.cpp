@@ -245,16 +245,19 @@ int parse_npy(char*fname, npy_header * head){
 	if (values[0][2] == '1') {
 		head->bit = 8;
 		std::cout << "8 bit" << std::endl;
+		head->data_offset = 6 + 1 + 1 + 2 + header_length;
 	}
 	else if (values[0][2] == '2'){
 		head->bit = 16;
 		std::cout << "16 bit" << std::endl;
+		head->data_offset = 6 + 1 + 1 + 4 + header_length;
 	}
 	else {
 		std::cout << "error parsing bit" << std::endl;
 	}
 	head->the_header =  the_header;
 
+	std::cout << "data offset " << head->data_offset << std::endl;
 
 	return 0;
 }
