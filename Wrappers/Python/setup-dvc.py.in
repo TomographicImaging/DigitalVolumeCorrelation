@@ -30,7 +30,7 @@ extra_compile_args = []
 extra_library_dirs = ['@LIBRARY_LIB@','@Boost_LIBRARY_DIRS@']
 extra_compile_args = []
 extra_link_args = []
-extra_libraries = ['cildvc_static']
+extra_libraries = ['cildvc_shared']
 
 
 if platform.system() == 'Windows':				   

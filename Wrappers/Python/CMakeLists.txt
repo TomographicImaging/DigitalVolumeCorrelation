@@ -128,6 +128,12 @@ if (PYTHONINTERP_FOUND)
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
       install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ccpi 
               DESTINATION ${PYTHON_DEST})
+      install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/wip/test.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/wip/dvc_input.json
+		    ${CMAKE_SOURCE_DIR}/Core/wip/central_grid.roi
+              DESTINATION ${PYTHON_DEST})
+      install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ccpi/__init__.py
+              DESTINATION ${PYTHON_DEST}/ccpi)
     endif()
     
     

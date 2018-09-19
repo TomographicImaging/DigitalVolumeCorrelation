@@ -1,11 +1,10 @@
-import dvcw
+from ccpi import dvcw
 import numpy
 
 import json
 
 import vtk
 import os
-from ccpi.viewer.CILViewer2D import Converter
 
 class DVC(object):
     def __init__(self):
@@ -186,7 +185,7 @@ class DVC(object):
         ref = os.path.abspath(self.run.ref_fname)
         cor = os.path.abspath(self.run.cor_fname)
         
-        self.run.ref_fname = "a.npy"
+        #self.run.ref_fname = "a.npy"
         hd = self.run.parse_npy()
         npyheader = eval(hd[0])
         shape = npyheader['shape']
@@ -283,7 +282,7 @@ run.obj_fcn = fnc
 print (fnc, run.obj_fcn)
 
 controller = DVC()
-controller.config_run('example.json')
+controller.config_run('dvc_input.json')
 
 print (controller)
 
@@ -299,11 +298,11 @@ controller.run.set_rigid_trans(numpy.asarray([0,1,2], dtype=numpy.float64))
 a = controller.run.get_rigid_trans()
 print ("rigid_trans", a)
 
-with open('example.json', "r") as f:
+with open('dvc_input.json', "r") as f:
     config = json.load(f) 
 print (config['rigid_trans'])
         
-controller.run.ref_fname = "a.npy"
+#controller.run.ref_fname = "a.npy"
 hd = controller.run.parse_npy()
 print ("received hd" , hd)
 details = eval(hd[0])
