@@ -36,21 +36,7 @@ int dvc_cmd(std::string filename)
 
 	Search optimize = Search(&run);
 
-	std::cout << "Search(" << std::endl <<
-		"bytes_per " << optimize.bytes_per << std::endl <<
-		"subv_rad " << optimize.subv_rad << std::endl <<
-		"subv_num " << optimize.subv_num << std::endl <<
-		"obj_fun " << objfun << std::endl <<
-		"input shape " << run.vol_wide << " " <<
-		run.vol_high << " " <<
-		run.vol_tall << std::endl <<
-		"subvol aspect " << run.subvol_aspect[0] << " " <<
-		run.subvol_aspect[1] << " " <<
-		run.subvol_aspect[2] << std::endl <<
-		"numr_search_dof " << run.num_srch_dof << std::endl <<
-		"disp max " << run.disp_max << std::endl <<
-		")";
-	
+	std::cout << "Search: ( " << std::endl << optimize <<  std::endl << ") " << std::endl;
 	// main search loop
 
 	// establish results file for output while running, in case of interupt

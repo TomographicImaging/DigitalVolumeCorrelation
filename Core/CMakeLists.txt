@@ -55,7 +55,7 @@ target_include_directories(cildvc_shared PUBLIC
 	)
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
-target_link_libraries (dvc cildvc_static)
+target_link_libraries (dvc cildvc_shared)
 include_directories(dvc PUBLIC 
 	${CMAKE_CURRENT_SOURCE_DIR} )
 

@@ -182,7 +182,7 @@ bp::list wparse_npy(RunControl * rc) {
 	while (j < header_length) {
 		char c = ifs.get();
 		the_header[j] = c;
-		std::cout << "read character " << c << std::endl;
+		//std::cout << "read character " << c << std::endl;
 
 		if (strcmp(&c, "{") && parse_key == 0 && parse_value == 0) {
 			// it means we are at the beginning
@@ -191,30 +191,30 @@ bp::list wparse_npy(RunControl * rc) {
 		} 
 		
 		if (parse_key == 1) {
-			std::cout << "parse_key " << c << std::endl;
+			//std::cout << "parse_key " << c << std::endl;
 			if (strcmp(&c, " ")) {
-				std::cout << "skip" << std::endl;
+				//std::cout << "skip" << std::endl;
 			}
 			else if (strcmp(&c, "'")) {
 				if (parsing == 0) {
-					std::cout << "parse_key parsing  0 -> 1" << std::endl;
+				//	std::cout << "parse_key parsing  0 -> 1" << std::endl;
 					parsing = 1;
 				}
 				else {
-					std::cout << "parse_key parsing  1 -> 0" << std::endl;
+				//	std::cout << "parse_key parsing  1 -> 0" << std::endl;
 					parsing = 0;
 					keys.push_back(key);
-					std::cout << "key = " << key.size() << " <> " << std::endl;
+				//	std::cout << "key = " << key.size() << " <> " << std::endl;
 					key.clear();
 				}
 			}
 			else if (strcmp(&c, ":")) {
-				std::cout << "parse_key -> 0 parse_value -> 1" << std::endl;
+				//std::cout << "parse_key -> 0 parse_value -> 1" << std::endl;
 				parse_key = 0;
 				parse_value = 1;
 			}
 			else {
-				std::cout << "append char" << std::endl;
+				//std::cout << "append char" << std::endl;
 				key.append(1, c);
 			}
 		}
@@ -229,7 +229,7 @@ bp::list wparse_npy(RunControl * rc) {
 				else {
 					parsing = 0;
 					values.push_back(val);
-					std::cout << "val = " << val << std::endl;
+					//std::cout << "val = " << val << std::endl;
 					val.clear();
 				}
 			}
@@ -240,7 +240,7 @@ bp::list wparse_npy(RunControl * rc) {
 
 		j++;
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 /*
 	for (auto val : values) {
 		std::cout << "val " << val << std::endl;
