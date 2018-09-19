@@ -167,6 +167,7 @@ class DVC(object):
                                                     dtype=numpy.float64))
                     try:
                         subvol_aspect = numpy.asarray(config['subvol_aspect'])
+                        print ("subvol_aspect", subvol_aspect)
                         asp_min = 0.1
                         asp_max = 10.
                         inlimits = numpy.asarray([True if i <= asp_max and \
@@ -179,7 +180,16 @@ class DVC(object):
                     except KeyError as ke:
                         self.run.set_subvol_aspect(numpy.ones((3,), 
                                                         dtype=numpy.float64))
-                    
+                    if not 'subvol_size' in config.keys():
+                        raise ValueError('subvol_size unspecified')
+                    else:
+                        self.run.subvol_size = config['subvol_size']
+                        
+                    if not 'subvol_npts' in config.keys():
+                        raise ValueError('subvol_size unspecified')
+                    else:
+                        self.run.subvol_npts = config['subvol_npts']
+
                     
     def check_input_files(self):
         ref = os.path.abspath(self.run.ref_fname)
