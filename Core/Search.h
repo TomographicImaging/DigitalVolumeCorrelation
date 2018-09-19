@@ -97,7 +97,45 @@ public:
 	std::vector<double> min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol);
 
 //	struct Min_Ftor_new;	// leave declared for now, not working
-	
+	std::ostream& operator<<(const Search &a) {
+		RunControl * run = a.rc;
+		std::string objfun;
+		if (run->obj_fcn == SAD) {
+			//obj_fcn = &obj_SAD;
+			objfun = std::string("objective function SAD");
+		}
+		if (run->obj_fcn == SSD) {
+			//obj_fcn = &obj_SSD;
+			objfun = std::string("objective function SSD");
+		}
+		if (run->obj_fcn == ZSSD) {
+			//obj_fcn = &obj_ZSSD;
+			objfun = std::string("objective function ZSSD");
+		}
+		if (run->obj_fcn == NSSD) {
+			//obj_fcn = &obj_NSSD;
+			objfun = std::string("objective function NSSD");
+		}
+		if (run->obj_fcn == ZNSSD) {
+			//obj_fcn = &obj_ZNSSD;
+			objfun = std::string("objective function ZNSSD");
+		}
+
+		return std::cout << "Search(" << std::endl <<
+			"bytes_per " << a.bytes_per << std::endl <<
+			"subv_rad " << a.subv_rad << std::endl <<
+			"subv_num " << a.subv_num << std::endl <<
+			"obj_fun " << objfun << std::endl <<
+			"input shape " << run->vol_wide << " " <<
+			run->vol_high << " " <<
+			run->vol_tall << std::endl <<
+			"subvol aspect " << run->subvol_aspect[0] << " " <<
+			run->subvol_aspect[1] << " " <<
+			run->subvol_aspect[2] << std::endl <<
+			"numr_search_dof " << run->num_srch_dof << std::endl <<
+			"disp max " << run->disp_max << std::endl <<
+			")";
+	}
 private:
 	//friend std::ostream& operator<<(std::ostream&, const Search&);
 

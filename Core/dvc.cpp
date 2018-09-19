@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
 		//obj_fcn = &obj_ZNSSD;
 		objfun = std::string("objective function ZNSSD");
 	}
+	/*
 	std::cout << "Search(" << std::endl <<
 		"bytes_per " << optimize.bytes_per << std::endl <<
 		"subv_rad " << optimize.subv_rad << std::endl <<
@@ -157,6 +158,8 @@ int main(int argc, char *argv[])
 		"numr_search_dof " << run.num_srch_dof << std::endl <<
 		"disp max " << run.disp_max << std::endl <<
 		")";
+		*/
+	std::cout << &optimize << std::endl;
 	// main search loop
 
 	// establish results file for output while running, in case of interupt
