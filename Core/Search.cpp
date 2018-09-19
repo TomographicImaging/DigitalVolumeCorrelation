@@ -14,23 +14,23 @@ Search::Search(RunControl *run)
 	// establish pointer to function set in input file
 	if (run->obj_fcn == SAD) {
 		obj_fcn = &obj_SAD;
-		std::cout << "objective function SAD" << std::endl;
+		//std::cout << "objective function SAD" << std::endl;
 	}
 	if (run->obj_fcn == SSD){
 		obj_fcn = &obj_SSD;
-		std::cout << "objective function SSD" << std::endl;
+		//std::cout << "objective function SSD" << std::endl;
 	}
 	if (run->obj_fcn == ZSSD) {
 		obj_fcn = &obj_ZSSD;
-		std::cout << "objective function ZSSD" << std::endl;
+		//std::cout << "objective function ZSSD" << std::endl;
 	}
 	if (run->obj_fcn == NSSD){
 		obj_fcn = &obj_NSSD;
-		std::cout << "objective function NSSD" << std::endl;
+		//std::cout << "objective function NSSD" << std::endl;
 	}
 	if (run->obj_fcn == ZNSSD){
 		obj_fcn = &obj_ZNSSD;
-		std::cout << "objective function ZNSSD" << std::endl;
+		//std::cout << "objective function ZNSSD" << std::endl;
 	}
 
 	Point vox_box_min(0.0, 0.0, 0.0);
@@ -686,3 +686,42 @@ double Search::Min_Ftor_new::operator() (const std::vector<double> x)
 }*/
 /******************************************************************************/
 
+ std::ostream& operator<<(std::ostream &strm, const Search &a) {
+	RunControl * run = a.rc;
+	std::string objfun;
+	if (run->obj_fcn == SAD) {
+		//obj_fcn = &obj_SAD;
+		objfun = std::string("objective function SAD");
+	}
+	if (run->obj_fcn == SSD) {
+		//obj_fcn = &obj_SSD;
+		objfun = std::string("objective function SSD");
+	}
+	if (run->obj_fcn == ZSSD) {
+		//obj_fcn = &obj_ZSSD;
+		objfun = std::string("objective function ZSSD");
+	}
+	if (run->obj_fcn == NSSD) {
+		//obj_fcn = &obj_NSSD;
+		objfun = std::string("objective function NSSD");
+	}
+	if (run->obj_fcn == ZNSSD) {
+		//obj_fcn = &obj_ZNSSD;
+		objfun = std::string("objective function ZNSSD");
+	}
+
+	return strm << "Search(" << std::endl <<
+		"bytes_per " << a.bytes_per << std::endl <<
+		"subv_rad " << a.subv_rad << std::endl <<
+		"subv_num " << a.subv_num << std::endl <<
+		"obj_fun " << objfun << std::endl <<
+		"input shape " << run->vol_wide << " " <<
+		run->vol_high << " " <<
+		run->vol_tall << std::endl <<
+		"subvol aspect " << run->subvol_aspect[0] << " " <<
+		run->subvol_aspect[1] << " " <<
+		run->subvol_aspect[2] << std::endl <<
+		"numr_search_dof " << run->num_srch_dof << std::endl <<
+		"disp max " << run->disp_max << std::endl <<
+		")";
+}

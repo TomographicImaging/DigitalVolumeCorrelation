@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 		"disp max " << run.disp_max << std::endl <<
 		")";
 		*/
-	std::cout << &optimize << std::endl;
+	std::cout << optimize << std::endl;
 	// main search loop
 
 	// establish results file for output while running, in case of interupt
