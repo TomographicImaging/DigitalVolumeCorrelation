@@ -121,8 +121,42 @@ int main(int argc, char *argv[])
 	Search optimize = Search(&run);
 
 	// *** print configuration to screen
-	std::cout << optimize << std::endl;
-
+	//std::cout << optimize << std::endl;
+	std::string objfun;
+	if (run.obj_fcn == SAD) {
+		//obj_fcn = &obj_SAD;
+		objfun = std::string("objective function SAD");
+	}
+	if (run.obj_fcn == SSD) {
+		//obj_fcn = &obj_SSD;
+		objfun = std::string("objective function SSD");
+	}
+	if (run.obj_fcn == ZSSD) {
+		//obj_fcn = &obj_ZSSD;
+		objfun = std::string("objective function ZSSD");
+	}
+	if (run.obj_fcn == NSSD) {
+		//obj_fcn = &obj_NSSD;
+		objfun = std::string("objective function NSSD");
+	}
+	if (run.obj_fcn == ZNSSD) {
+		//obj_fcn = &obj_ZNSSD;
+		objfun = std::string("objective function ZNSSD");
+	}
+	std::cout << "Search(" << std::endl <<
+		"bytes_per " << optimize.bytes_per << std::endl <<
+		"subv_rad " << optimize.subv_rad << std::endl <<
+		"subv_num " << optimize.subv_num << std::endl <<
+		"obj_fun " << objfun << std::endl <<
+		"input shape " << run.vol_wide << " " <<
+		run.vol_high << " " <<
+		run.vol_tall << std::endl <<
+		"subvol aspect " << run.subvol_aspect[0] << " " <<
+		run.subvol_aspect[1] << " " <<
+		run.subvol_aspect[2] << std::endl <<
+		"numr_search_dof " << run.num_srch_dof << std::endl <<
+		"disp max " << run.disp_max << std::endl <<
+		")";
 	// main search loop
 
 	// establish results file for output while running, in case of interupt

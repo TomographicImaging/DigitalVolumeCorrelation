@@ -99,7 +99,7 @@ public:
 //	struct Min_Ftor_new;	// leave declared for now, not working
 	
 private:
-	friend std::ostream& operator<<(std::ostream&, const Search&);
+	//friend std::ostream& operator<<(std::ostream&, const Search&);
 
 };
 
@@ -126,8 +126,7 @@ private:
 };*/
 /******************************************************************************/
 
-#endif
-
+/*
 std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
 	std::string objfun;
@@ -164,6 +163,10 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 		run->subvol_aspect[1] << " " <<
 		run->subvol_aspect[2] << std::endl <<
 		"numr_search_dof " << run->num_srch_dof << std::endl <<
-		"disp max " << run->disp_max << std::endl << 
-	    ")";
+		"disp max " << run->disp_max << std::endl <<
+		")";
 }
+
+*/
+#endif
+
