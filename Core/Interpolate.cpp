@@ -170,6 +170,9 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 					kern_4d->set(ic,ir,is,0,(unsigned char)row_seg[ic]);
 
 					kern_4d->set_Lc_avail(ic,ir,is,false);
+					//if (ic %10 == 0 ){
+					//  std::cout << "read -> " << row_seg[ic] << std::endl;
+					//}
 
 				}
 			}

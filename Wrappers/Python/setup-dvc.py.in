@@ -30,15 +30,16 @@ extra_compile_args = []
 extra_library_dirs = ['@LIBRARY_LIB@','@Boost_LIBRARY_DIRS@']
 extra_compile_args = []
 extra_link_args = []
-extra_libraries = ['cildvc_shared']
+extra_libraries = ['cildvc_static']
 
 
 if platform.system() == 'Windows':				   
     extra_compile_args[0:] = ['/DWIN32','/EHsc','/DBOOST_ALL_NO_LIB' , '/openmp' 
 	, '/DCCPiDVC_EXPORTS']   
 else:
-    extra_compile_args = ['-fopenmp','-O2', '-funsigned-char', 
-    '-std=c++0x' , '-fPIC']
+    #extra_compile_args = ['-fopenmp','-O2', '-funsigned-char', 
+    #'-std=c++0x' , '-fPIC']
+    extra_compile_args = ['-fPIC']
     extra_libraries += ['m',@EXTRA_OMP_LIB@]
     
 extra_libraries += ["@BOOST_PYTHON_LIB@", "@BOOST_NUMPY_LIB@"]
@@ -51,7 +52,7 @@ setup(
     #cmdclass = {'build_ext': build_ext},
     ext_modules = [Extension("ccpi.dvcw",
                              sources=[os.path.join("." , "src", "dvc_module.cpp" ),
-							          os.path.join("." , "src", "dvc_cmd.cpp" )],
+	os.path.join("." , "src", "dvc_cmd.cpp" )],
                              include_dirs=extra_include_dirs, 
 			     library_dirs=extra_library_dirs, 
 			     extra_compile_args=extra_compile_args, 
