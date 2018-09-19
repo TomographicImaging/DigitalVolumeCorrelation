@@ -59,7 +59,8 @@ target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC 
 	${CMAKE_CURRENT_SOURCE_DIR} )
 
-#add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
+add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
+set_property(TARGET parse_header PROPERTY CMAKE_CXX_STANDARD 11)
 
 set_property(TARGET cildvc_static PROPERTY POSITION_INDEPENDENT_CODE ON)
 
