@@ -12,11 +12,26 @@ Search::Search(RunControl *run)
 	if (run->sub_geo == sphere) subv_num = run->subvol_npts;
 	
 	// establish pointer to function set in input file
-	if (run->obj_fcn == SAD) obj_fcn = &obj_SAD;
-	if (run->obj_fcn == SSD) obj_fcn = &obj_SSD;
-	if (run->obj_fcn == ZSSD) obj_fcn = &obj_ZSSD;
-	if (run->obj_fcn == NSSD) obj_fcn = &obj_NSSD;
-	if (run->obj_fcn == ZNSSD) obj_fcn = &obj_ZNSSD;
+	if (run->obj_fcn == SAD) {
+		obj_fcn = &obj_SAD;
+		std::cout << "objective function SAD" << std::endl;
+	}
+	if (run->obj_fcn == SSD){
+		obj_fcn = &obj_SSD;
+		std::cout << "objective function SSD" << std::endl;
+	}
+	if (run->obj_fcn == ZSSD) {
+		obj_fcn = &obj_ZSSD;
+		std::cout << "objective function ZSSD" << std::endl;
+	}
+	if (run->obj_fcn == NSSD){
+		obj_fcn = &obj_NSSD;
+		std::cout << "objective function NSSD" << std::endl;
+	}
+	if (run->obj_fcn == ZNSSD){
+		obj_fcn = &obj_ZNSSD;
+		std::cout << "objective function ZNSSD" << std::endl;
+	}
 
 	Point vox_box_min(0.0, 0.0, 0.0);
 	Point vox_box_max(run->vol_wide, run->vol_high, run->vol_tall);

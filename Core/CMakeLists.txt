@@ -57,7 +57,7 @@ target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC 
 	${CMAKE_CURRENT_SOURCE_DIR} )
 
-add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
+#add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
 
 
 #INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
