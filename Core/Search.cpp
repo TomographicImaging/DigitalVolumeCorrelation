@@ -33,26 +33,6 @@ Search::Search(RunControl *run)
 		std::cout << "objective function ZNSSD" << std::endl;
 	}
 
-	if (run->obj_fcn == SAD) {
-		obj_fcn = &obj_SAD;
-		std::cout << "objective function SAD" << std::endl;				}
-		if (run->obj_fcn == SSD){
-			obj_fcn = &obj_SSD;
-			std::cout << "objective function SSD" << std::endl;
-		}
-		if (run->obj_fcn == ZSSD) {
-			obj_fcn = &obj_ZSSD;
-			std::cout << "objective function ZSSD" << std::endl;
-		}
-		if (run->obj_fcn == NSSD){
-			obj_fcn = &obj_NSSD;
-			std::cout << "objective function NSSD" << std::endl;
-		}
-		if (run->obj_fcn == ZNSSD){
-			obj_fcn = &obj_ZNSSD;
-			std::cout << "objective function ZNSSD" << std::endl;
-		}
-
 	Point vox_box_min(0.0, 0.0, 0.0);
 	Point vox_box_max(run->vol_wide, run->vol_high, run->vol_tall);
 	vox_box = new BoundBox(vox_box_min, vox_box_max);

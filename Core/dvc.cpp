@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
 
 	data.organize_cloud(&run);
 	
+	
 	// *** begin run
 
 	time_t start_time_date = time(NULL);
@@ -118,6 +119,9 @@ int main(int argc, char *argv[])
 	// create optimizer from the input parameters
 
 	Search optimize = Search(&run);
+
+	// *** print configuration to screen
+	std::cout << optimize << std::endl;
 
 	// main search loop
 
