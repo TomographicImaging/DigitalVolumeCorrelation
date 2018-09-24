@@ -3,7 +3,7 @@ import numpy
 
 import json
 
-import vtk
+#import vtk
 import os
 
 class DVC(object):

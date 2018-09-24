@@ -61,6 +61,6 @@ setup(
     
     ],
 	zip_safe = False,	
-	packages = {'ccpi','ccpi.dvcw'},
+	packages = {'ccpi'},
 )
 
