@@ -18,8 +18,8 @@ requirements:
     - python
     - numpy x.x
     - setuptools
-    - boost
-    - boost-cpp
+    - boost >=1.65
+    - boost-cpp >=1.65
 #    - cython
 #    - vc 14 # [win and py36] 
 #    - vc 14 # [win and py35] 
@@ -29,7 +29,7 @@ requirements:
   run:
     - python
     - numpy x.x
-    - boost
+    - boost >=1.65
 #    - vc 14 # [win and py36] 
 #    - vc 14 # [win and py35] 
 #    - vc 9  # [win and py27]

@@ -132,13 +132,18 @@ void set_subvol_aspect(RunControl * rc, np::ndarray rt) {
 	rc->subvol_aspect[2] = (double)bp::extract<double>(rt[2]);
 }
 
-bp::list wparse_npy(RunControl * rc) {
+bp::list wparse_npy(RunControl * rc, int which) {
 
 	std::ifstream ifs;
-
+	
+	switch (which) {
+	case 0: ifs.open(rc->ref_fname.c_str(), std::ifstream::in); break;
+	case 1: ifs.open(rc->cor_fname.c_str(), std::ifstream::in); break;
+	default: ifs.open(rc->ref_fname.c_str(), std::ifstream::in); break;
+	}
 	// C++11
 	//ifs.open(rc->ref_fname, std::ifstream::in );
-	ifs.open(rc->ref_fname.c_str(), std::ifstream::in );
+	//ifs.open(rc->ref_fname.c_str(), std::ifstream::in );
 	char magic[6] ;
 	char major, minor;
 	int offset = 0, header_length=0;

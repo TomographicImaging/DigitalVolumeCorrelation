@@ -50,7 +50,7 @@ setup(
 	description='CCPi Core Imaging Library - Digital Volume Correlation Module',
 	version=cil_version,
     #cmdclass = {'build_ext': build_ext},
-    ext_modules = [Extension("ccpi.dvcw",
+    ext_modules = [Extension("ccpi.dvc.dvcw",
                              sources=[os.path.join("." , "src", "dvc_module.cpp" ),
 	os.path.join("." , "src", "dvc_cmd.cpp" )
 	],
@@ -61,6 +61,6 @@ setup(
     
     ],
 	zip_safe = False,	
-	packages = {'ccpi'},
+	packages = {'ccpi', 'ccpi.dvc'},
 )
 
