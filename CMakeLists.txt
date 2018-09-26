@@ -22,6 +22,13 @@ option (BUILD_PYTHON_WRAPPER "Build Python Wrappers" OFF)
 option (CONDA_BUILD "Conda Build" OFF)
 set (CMAKE_BUILD_TYPE "Release")
 
+set(INSTALL_DIR "" CACHE PATH "Install Directory")
+if (INSTALL_DIR)
+    set(INSTALL_BIN_DIR "${INSTALL_DIR}")
+else() 
+    set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}")
+endif()
+message(STATUS "DVC will be installed in " ${INSTALL_BIN_DIR})
 
 add_subdirectory(Core)
 

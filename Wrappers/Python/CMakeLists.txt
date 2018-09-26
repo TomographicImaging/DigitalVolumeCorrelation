@@ -101,7 +101,7 @@ if (PYTHONINTERP_FOUND)
     if (CONDA_BUILD)
       add_custom_command(OUTPUT ${OUTPUT}
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src
-                       COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/tomophantom ${CMAKE_CURRENT_BINARY_DIR}/tomophantom
+                       COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/ccpi ${CMAKE_CURRENT_BINARY_DIR}/ccpi
                        COMMAND ${CMAKE_COMMAND} -E env CIL_VERSION=${CIL_VERSION}
                                                        PREFIX=${CMAKE_SOURCE_DIR}/Core 
                                                        LIBRARY_INC=${CMAKE_SOURCE_DIR}/Core 
@@ -112,7 +112,13 @@ if (PYTHONINTERP_FOUND)
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
 
     else()
-            
+      if (WIN32)
+        set(LIBRARY_LIB ${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE})
+      else()
+        set(LIBRARY_LIB ${CMAKE_BINARY_DIR}/Core/)
+      endif()
+
+     
 	  message("Library should be in ${LIBRARY_LIB}")
       add_custom_command(OUTPUT ${OUTPUT}
                        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}/src
@@ -120,8 +126,7 @@ if (PYTHONINTERP_FOUND)
                        COMMAND ${CMAKE_COMMAND} -E env CIL_VERSION=${CIL_VERSION}
                                                        PREFIX=${CMAKE_SOURCE_DIR}/Core 
                                                        LIBRARY_INC=${CMAKE_SOURCE_DIR}/Core 
-                                                       LIBRARY_LIB=${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE}
-                                                       ${PYTHON_EXECUTABLE} ${SETUP_PY} build_ext --inplace
+                                                       LIBRARY_LIB=${LIBRARY_LIB}                                                       ${PYTHON_EXECUTABLE} ${SETUP_PY} build_ext --inplace
                        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
                        DEPENDS  cildvc_static
                        )
