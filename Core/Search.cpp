@@ -686,7 +686,10 @@ double Search::Min_Ftor_new::operator() (const std::vector<double> x)
 }*/
 /******************************************************************************/
 
- std::ostream& operator<<(std::ostream &strm, const Search &a) {
+#if defined(_WIN32) || defined(__WIN32__)
+/**/
+#else
+std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
 	std::string objfun;
 	if (run->obj_fcn == SAD) {
@@ -725,3 +728,4 @@ double Search::Min_Ftor_new::operator() (const std::vector<double> x)
 		"disp max " << run->disp_max << std::endl <<
 		")";
 }
+#endif

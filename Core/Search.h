@@ -98,8 +98,11 @@ public:
 
 //	struct Min_Ftor_new;	// leave declared for now, not working
 private:
-	friend std::ostream& operator<<(std::ostream&, const Search & ) ;
-
+#if defined(_WIN32) || defined(__WIN32__)
+	//friend CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search & ) ;
+#else
+	friend CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search &);
+#endif
 };
 
 /******************************************************************************/

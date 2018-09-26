@@ -36,9 +36,13 @@ int run_dvc_cmd(RunControl * runc, DataCloud * datac)
 	// create optimizer from the input parameters
 	Search optimize = Search(&run);
 	// main search loop
+#if defined(_WIN32) || defined(__WIN32__)
+	//std::cout << std::endl << std::endl << "*************************" << std::endl;
+	//std::cout << "Search: ( " << std::endl << optimize <<  std::endl << ") " << std::endl <<std::endl;
+#else
 	std::cout << std::endl << std::endl << "*************************" << std::endl;
-	std::cout << "Search: ( " << std::endl << optimize <<  std::endl << ") " << std::endl <<std::endl;
-
+	std::cout << "Search: ( " << std::endl << optimize << std::endl << ") " << std::endl << std::endl;
+#endif
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
 
