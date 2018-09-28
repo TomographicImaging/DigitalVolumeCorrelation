@@ -387,13 +387,13 @@ InputRead::InputRead()
 	manual.push_back(kwh_rigid_trans);
 
 	kwh_basin_radius.word.assign("basin_radius");
-	kwh_basin_radius.exam.assign("2.0");
+	kwh_basin_radius.exam.assign("0.0");
 	kwh_basin_radius.reqd.assign("no");
 	kwh_basin_radius.pool.assign("opt_tune");
-	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 2.0, max = disp_max, suppress = 0.0");
+	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = disp_max");
 	kwh_basin_radius.help.assign("   A fine-search must start within the 'basin of attraction' of the global optimum.\n");
 	kwh_basin_radius.help.append("   The nominal size of the basin sets the coarse-search resolution.\n");
-	kwh_basin_radius.help.append("   If basin_radius is not specified, a default value of 2.0 voxels is used.\n");
+	kwh_basin_radius.help.append("   If basin_radius is not specified, a default value of 0.0 voxels is used.\n");
 	kwh_basin_radius.help.append("   A small basin_radius (< 1 voxel) will cause very slow execution if disp_max is large.\n");
 	kwh_basin_radius.help.append("   A large basin_radius (> 5 voxels) will cause unreliable matching if subvol_size is small.\n");
 	kwh_basin_radius.help.append("   A basin_radius value of 0.0 suppresses the coarse search process.\n");
