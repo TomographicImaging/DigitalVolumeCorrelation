@@ -391,12 +391,13 @@ InputRead::InputRead()
 	kwh_basin_radius.reqd.assign("no");
 	kwh_basin_radius.pool.assign("opt_tune");
 	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = disp_max");
-	kwh_basin_radius.help.assign("   A fine-search must start within the 'basin of attraction' of the global optimum.\n");
-	kwh_basin_radius.help.append("   The nominal size of the basin sets the coarse-search resolution.\n");
-	kwh_basin_radius.help.append("   If basin_radius is not specified, a default value of 0.0 voxels is used.\n");
+	
+	kwh_basin_radius.help.assign("   The default process uses cloud points sorted from a global start to establish initial disp values.\n");
+	kwh_basin_radius.help.append("   To conduct a coarse search in addition (gridded translation), set basin_radius to a non-zero value.\n");
+	kwh_basin_radius.help.append("   The basin_radius value sets the coarse-search resolution (grid step size).\n");
+	kwh_basin_radius.help.append("   If basin_radius is not specified, the default value of 0.0 voxels is set and no coarse search is done.\n");
 	kwh_basin_radius.help.append("   A small basin_radius (< 1 voxel) will cause very slow execution if disp_max is large.\n");
 	kwh_basin_radius.help.append("   A large basin_radius (> 5 voxels) will cause unreliable matching if subvol_size is small.\n");
-	kwh_basin_radius.help.append("   A basin_radius value of 0.0 suppresses the coarse search process.\n");
 	kwh_basin_radius.help.append("   Use the ImageJ plugin 'cv_Match_Template' to explore this parameter.\n");
 	kwh_basin_radius.help.append("\n");
 	manual.push_back(kwh_basin_radius);
@@ -480,6 +481,8 @@ int InputRead::check_eol(std::ifstream &file, char &eol, std::string &term)
 /******************************************************************************/
 int InputRead::input_file_read(RunControl *run)
 // load the RunControl struct in Utility
+// parameter limit values set and checked
+// default values for optional parameters also set in this routine
 {
 	check_eol(input_file, inp_eol, inp_term);
 
@@ -541,7 +544,7 @@ int InputRead::input_file_read(RunControl *run)
 
 	// optional parameters
 
-	run->basin_radius = 2.0;
+	run->basin_radius = 0.0;
 	if(parse_line_min_max(kwh_basin_radius, 0, run->disp_max, run->basin_radius, false) == param_invalid) return 0;
 
 	run->rigid_trans.resize(3, 0.0);
