@@ -11,6 +11,20 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+find_package(OpenMP)
+
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    #set (CMAKE_CXX_FLAGS "${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+if (WIN32)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DCCPi_EXPORTS")
+endif()
+
 find_package(PythonInterp REQUIRED)
 if (PYTHONINTERP_FOUND)
   message ("Current Python " ${PYTHON_VERSION_STRING} " found " ${PYTHON_EXECUTABLE})
@@ -115,12 +129,7 @@ if (PYTHONINTERP_FOUND)
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
 
     else()
-      if (WIN32)
-        set(LIBRARY_LIB ${CMAKE_BINARY_DIR}/Core/${CMAKE_BUILD_TYPE})
-      else()
-        set(LIBRARY_LIB ${CMAKE_BINARY_DIR}/Core/)
-      endif()
-
+      
      
 	  message("Library should be in ${LIBRARY_LIB}")
       add_custom_command(OUTPUT ${OUTPUT}
@@ -134,7 +143,7 @@ if (PYTHONINTERP_FOUND)
                        DEPENDS  cildvc_static
                        )
       add_custom_target(PythonWrapper ALL DEPENDS ${OUTPUT})
-      install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ccpi 
+      install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ccpi 
               DESTINATION ${PYTHON_DEST})
       install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/wip/test.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/wip/dvc_input.json
