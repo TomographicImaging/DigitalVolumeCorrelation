@@ -270,6 +270,40 @@ bp::list wparse_npy(RunControl * rc, int which) {
 	return result;
 }
 
+bp::list get_results(RunControl * rc, DataCloud * datac)
+//std::string fname, int n, Point pt, const int status, double obj_min, std::vector<double> result
+{
+	DataCloud data = *datac;
+	bp::list result;
+	int trg = 0;
+	for (unsigned int i = 0; i < data.points.size(); i++) {
+		bp::list row;
+		//in.append_result(run.res_fname, data.labels[i], data.points[i], data.results[trg][i].status, data.results[trg][i].obj_min, data.results[trg][i].par_min);
+		row.append<int>(data.labels[i]);
+		//res_file << n;
+		row.append<double>(data.points[i].x());
+		row.append<double>(data.points[i].y());
+		row.append<double>(data.points[i].z());
+		//res_file << "\t" << pt.x() << "\t" << pt.y() << "\t" << pt.z();
+		row.append<int>(data.results[trg][i].status);
+		//res_file << "\t" << status;
+		row.append<double>(data.results[trg][i].obj_min);
+		//res_file << "\t" << obj_min;
+
+		//res_file << std::fixed << std::setprecision(6);
+
+		//for (int i = 0; i < result.size(); i++) res_file << "\t" << result[i];
+		for (int j = 0; j < data.results[trg][i].par_min.size(); j++) {
+			row.append<double>(data.results[trg][i].par_min[j]);
+		}
+
+		//res_file << "\n";
+		result.append<bp::list>(row);
+	}
+	return result;
+}
+
+
 BOOST_PYTHON_MODULE(dvcw)
 {
 	np::initialize();
@@ -345,6 +379,7 @@ BOOST_PYTHON_MODULE(dvcw)
 		.def("parse_npy" , wparse_npy)
 		//.def("get_npy_header_offset" , )
 		.def("run_dvc_cmd", run_dvc_cmd)
+		.def("get_results" , get_results)
 		;
 
 	bp::enum_<Objfcn_Type>("Objfcn_Type")
