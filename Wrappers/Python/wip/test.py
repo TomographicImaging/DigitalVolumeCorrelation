@@ -196,7 +196,7 @@ class DVC(object):
         cor = os.path.abspath(self.run.cor_fname)
         
         #self.run.ref_fname = "a.npy"
-        hd = self.run.parse_npy()
+        hd = self.run.parse_npy(0)
         npyheader = eval(hd[0])
         shape = npyheader['shape']
         if npyheader['fortran_order']:
@@ -313,8 +313,11 @@ with open('dvc_input.json', "r") as f:
 print (config['rigid_trans'])
         
 #controller.run.ref_fname = "a.npy"
-hd = controller.run.parse_npy()
+hd = controller.run.parse_npy(0)
 print ("received hd" , hd)
 details = eval(hd[0])
 
 controller.run.run_dvc_cmd(pc)
+results = controller.run.get_results(pc)
+print ("results >>>>>>>>>>>>> ")
+print (results)
