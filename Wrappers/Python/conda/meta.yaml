@@ -1,0 +1,40 @@
+package:
+  name: ccpi-dvc
+  version: 0.11.0
+
+
+build:
+  preserve_egg_dir: False
+#  number: 0
+  
+#test:
+#  files:
+#    - lena_gray_512.tif
+#  requires:
+#    - pillow
+
+requirements:
+  build:
+    - python
+    - numpy x.x
+    - setuptools
+    - boost >=1.65
+    - boost-cpp >=1.65
+#    - cython
+#    - vc 14 # [win and py36] 
+#    - vc 14 # [win and py35] 
+#    - vc 9  # [win and py27]
+    - cmake >=3.9
+
+  run:
+    - python
+    - numpy x.x
+    - boost >=1.65
+#    - vc 14 # [win and py36] 
+#    - vc 14 # [win and py35] 
+#    - vc 9  # [win and py27]
+	
+about:
+  home: http://www.ccpi.ac.uk
+  license:  BSD license
+  summary: 'CCPi Core Imaging Library DVC Toolbox'

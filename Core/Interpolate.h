@@ -53,7 +53,9 @@ public:
 	Interpolate(const BoundBox *region);
 	~Interpolate();
 
+	void kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian, unsigned int offset);
 	void kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian);
+
 	void kernels_derivs();
 	void kernels_Lekien_all();
 	void kernels_Lekien_one(int x, int y, int z);

@@ -11,10 +11,12 @@ AddPoint, which updates box to reflect the change. */
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
+
+#include "CCPiDefines.h"
 //
 
 /******************************************************************************/
-class Cloud
+class CCPI_EXPORT Cloud
 {
 public:
 	Cloud();
