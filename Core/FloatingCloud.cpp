@@ -24,15 +24,21 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 	moving_refpt = new Point(cen.x(), cen.y(), cen.z());
 
 	srand (time(NULL));
+
 	double dbl_rand_max = RAND_MAX;
 
 // std::ofstream svol_file("subvol_points.txt", std::ios_base::app);	// subvol echo
 
 	int point_count = 0;
 	while (point_count < num) {
-		double rel_x = rad_max*((2*rand())/dbl_rand_max);
-		double rel_y = rad_max*((2*rand())/dbl_rand_max);
-		double rel_z = rad_max*((2*rand())/dbl_rand_max);
+		//double rel_x = rad_max*((2*rand())/dbl_rand_max);
+		//double rel_y = rad_max*((2*rand())/dbl_rand_max);
+		//double rel_z = rad_max*((2*rand())/dbl_rand_max);
+
+		//not relying on int wrapping
+		double rel_x = rad_max*(2.0*rand()/dbl_rand_max - 1.0);
+		double rel_y = rad_max*(2.0*rand()/dbl_rand_max - 1.0);
+		double rel_z = rad_max*(2.0*rand()/dbl_rand_max - 1.0);
 
 		double radius = sqrt(rel_x*rel_x + rel_y*rel_y + rel_z*rel_z);
 
@@ -46,8 +52,9 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 			Point apt = Point(x, y, z);
 			AddPoint(apt);
 //if (float_cloud_num == 0) svol_file << x << "\t" << y << "\t" << z << "\n";	// subvol echo
-			}
+		}
 	 }
+
 // float_cloud_num += 1;							// subvol echo
 }
 /******************************************************************************/

@@ -14,12 +14,12 @@
 cmake_minimum_required(VERSION 3.1.3)
 project(cildvc)
 
-set (CMAKE_CXX_STANDARD 98)
+set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 
 option (BUILD_PYTHON_WRAPPER "Build Python Wrappers" OFF)
-option (CONDA_BUILD "Conda Build" OFF)
+option (CONDA_BUILD "Conda Build" ON)
 set (CMAKE_BUILD_TYPE "Release")
 
 set(INSTALL_DIR "" CACHE PATH "Install Directory")
