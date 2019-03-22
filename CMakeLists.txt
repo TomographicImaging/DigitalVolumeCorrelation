@@ -19,7 +19,7 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 
 option (BUILD_PYTHON_WRAPPER "Build Python Wrappers" OFF)
-option (CONDA_BUILD "Conda Build" ON)
+option (CONDA_BUILD "Conda Build" OFF)
 set (CMAKE_BUILD_TYPE "Release")
 
 set(INSTALL_DIR "" CACHE PATH "Install Directory")
