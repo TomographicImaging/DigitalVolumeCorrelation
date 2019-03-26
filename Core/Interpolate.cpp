@@ -371,7 +371,8 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 {
 	try {act_box->contains(bbox);} catch (Bound_Fail) {throw Intrp_Fail();}
 
-	for (unsigned int n=0; n<pts.size(); n++) {
+	for (unsigned int n=0; n<pts.size(); n++)
+	{
 
 		int cx = pts[n].ix() - est_box->min().ix();
 		int cy = pts[n].iy() - est_box->min().iy();
@@ -385,15 +386,53 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 		double rz = pts[n].rz();
 
 		ivals[n] = 0.0;
+		
+		double pow_rx[4];
+		double pow_ry[4];
+		double pow_rz[4];
 
-		for (int i=0; i<=3; i++)
-		for (int j=0; j<=3; j++)
-		for (int k=0; k<=3; k++) {
+		pow_rx[0] = 1.0;
+		pow_ry[0] = 1.0;
+		pow_rz[0] = 1.0; 
 
-			// see Lekien paper
-			int aijk = kern_4d->Lek_offset() + i + 4*j + 16*k;
-			double alpha = kern_4d->get(cx,cy,cz,aijk);
-			ivals[n] += alpha*pow(rx,i)*pow(ry,j)*pow(rz,k);
+		pow_rx[1] = rx;
+		pow_ry[1] = ry;
+		pow_rz[1] = rz; 
+
+		pow_rx[2] = rx*rx;
+		pow_ry[2] = ry*ry;
+		pow_rz[2] = rz*rz; 
+
+		pow_rx[3] = pow_rx[2] * rx;
+		pow_ry[3] = pow_ry[2] * ry;
+		pow_rz[3] = pow_rz[2] * rz; 			
+
+		double alpha;
+		int aijk;
+
+		int a = kern_4d->Lek_offset();
+		for (int i=0; i < 4; i++)
+		{
+			int ai = a + i;
+			for (int j=0; j < 4; j++)
+			{
+				// see Lekien paper
+				aijk = ai + 4 * j;
+				alpha = kern_4d->get(cx, cy, cz, aijk);
+				ivals[n] += alpha * pow_rx[i] * pow_ry[j] * pow_rz[0];
+
+				aijk +=16;
+				alpha = kern_4d->get(cx, cy, cz, aijk);
+				ivals[n] += alpha * pow_rx[i] * pow_ry[j] * pow_rz[1];
+
+				aijk +=16;
+				alpha = kern_4d->get(cx, cy, cz, aijk);
+				ivals[n] += alpha * pow_rx[i] * pow_ry[j] * pow_rz[2];
+				
+				aijk +=16;
+				alpha = kern_4d->get(cx, cy, cz, aijk);
+				ivals[n] += alpha * pow_rx[i] * pow_ry[j] * pow_rz[3];												
+			}
 		}
 	}
 }
