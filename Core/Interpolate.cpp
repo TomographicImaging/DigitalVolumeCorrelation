@@ -118,7 +118,7 @@ Interpolate::Interpolate(const BoundBox *region)
 void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian) {
 	return Interpolate::kernels(voxfname, vox_box, bytes_per, endian, 0);
 }
-
+/******************************************************************************/
 void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian, unsigned int offset)
 
 // Load values from a voxel file. Derivatives are calculated at each voxel, but
@@ -131,78 +131,59 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 	vfs.open(voxfname.c_str(), std::ifstream::in | std::ifstream::binary);
 	if (!vfs){std::cout <<"\n-> Can't open " << voxfname << "\n\n";return;}
 
-	int vox_wide = vox_box->iwide();
-	int vox_high = vox_box->ihigh();
+	// long ints needed for proper indexing into big (>4gb) files
+	long vox_wide = vox_box->iwide();
+	long vox_high = vox_box->ihigh();
 
-	int est_box_min_x = est_box->min().ix();
-	int est_box_min_y = est_box->min().iy();
-	int est_box_min_z = est_box->min().iz();
+	long est_box_min_x = est_box->min().ix();
+	long est_box_min_y = est_box->min().iy();
+	long est_box_min_z = est_box->min().iz();
 
-	int voxls_in_row = est_box->iwide();
-	int bytes_in_row = bytes_per*voxls_in_row;
+	long voxls_in_row = est_box->iwide();
+	long bytes_in_row = bytes_per*voxls_in_row;
+
+	long file_pos = 0;
 
 	char *row_seg = new char [bytes_in_row];	// storage space for bytes read
-
-   	char swap_val[] = {0,0};
-   	unsigned short *u_short = (unsigned short*) swap_val;
-
-	unsigned int file_pos = offset;
-	vfs.seekg (file_pos);
+  char swap_val[] = {0,0};	// for 16 bit file reads
+  unsigned short *u_short = (unsigned short*) swap_val;
 
 	for (int is=0; is<est_box->itall(); is++) {
 		for (int ir=0; ir<est_box->ihigh(); ir++) {
 
-//			file_pos = bytes_per*((is + est_box->min().iz())*vox_wide*vox_high
-//				 + (ir + est_box->min().iy())*vox_wide
-//				       + est_box->min().ix());
+			file_pos = offset
+						+ bytes_per*((is + est_box_min_z)*vox_wide*vox_high
+						+ (ir + est_box_min_y)*vox_wide
+						+ est_box_min_x);
 
-			file_pos = bytes_per*((is + est_box_min_z)*vox_wide*vox_high
-				 + (ir + est_box_min_y)*vox_wide
-				       + est_box_min_x);
-
-			vfs.seekg (file_pos);
+			vfs.clear();
+			vfs.seekg(file_pos, std::ifstream::beg);
 			vfs.read (row_seg, bytes_in_row);	// read a row
 
-			if (bytes_per == 1)	// 8-bit images
-			{
-				for (int ic=0; ic<voxls_in_row; ic++)
-				{
+			if (bytes_per == 1)	{		// 8-bit images
+				for (int ic=0; ic<voxls_in_row; ic++) {
 					kern_4d->set(ic,ir,is,0,(unsigned char)row_seg[ic]);
-
 					kern_4d->set_Lc_avail(ic,ir,is,false);
-					//if (ic %10 == 0 ){
-					//  std::cout << "read -> " << row_seg[ic] << std::endl;
-					//}
-
 				}
 			}
 
-			if (bytes_per == 2)	// 16-bit images
-			{
-   				for (int ic=0; ic<voxls_in_row; ic++)
-				{
-					if (endian == "big")	// swap
-					{
+			if (bytes_per == 2)	{		// 16-bit images
+   				for (int ic=0; ic<voxls_in_row; ic++) {
+					if (endian == "big") {	// swap
 						swap_val[0] = row_seg[bytes_per*ic+1];
 						swap_val[1] = row_seg[bytes_per*ic];
 					}
-
-					if (endian == "little")	// no swap
-					{
+					if (endian == "little")	{	// no swap
 						swap_val[1] = row_seg[bytes_per*ic+1];
 						swap_val[0] = row_seg[bytes_per*ic];
 					}
-
 					kern_4d->set(ic,ir,is,0,u_short[0]);
-
 					kern_4d->set_Lc_avail(ic,ir,is,false);
-
 				}
 			}
 
 		}
 	}
-
 	vfs.close();
 
 	kernels_derivs();
@@ -386,14 +367,35 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 
 		ivals[n] = 0.0;
 
-		for (int i=0; i<=3; i++)
-		for (int j=0; j<=3; j++)
-		for (int k=0; k<=3; k++) {
+		// avoiding use of pow function for much better c++11 performance
 
-			// see Lekien paper
-			int aijk = kern_4d->Lek_offset() + i + 4*j + 16*k;
-			double alpha = kern_4d->get(cx,cy,cz,aijk);
-			ivals[n] += alpha*pow(rx,i)*pow(ry,j)*pow(rz,k);
+		double pow_rx[4];
+		double pow_ry[4];
+		double pow_rz[4];
+
+		pow_rx[0] = 1.0;
+		pow_ry[0] = 1.0;
+		pow_rz[0] = 1.0;
+
+		for (int i=0; i<3; i++)
+		{
+			pow_rx[i+1] = pow_rx[i] * rx;
+			pow_ry[i+1] = pow_ry[i] * ry;
+			pow_rz[i+1] = pow_rz[i] * rz;
+		}
+
+		for (int i=0; i<4; i++)
+		{
+			for (int j=0; j<4; j++)
+			{
+				for (int k=0; k<4; k++) // see Lekien paper
+				{
+					int aijk = kern_4d->Lek_offset() + i + 4*j + 16*k;
+					double alpha = kern_4d->get(cx,cy,cz,aijk);
+					ivals[n] += alpha * pow_rx[i] * pow_ry[j] * pow_rz[k];
+					// ivals[n] += alpha*pow(rx,i)*pow(ry,j)*pow(rz,k);
+				}
+			}
 		}
 	}
 }
@@ -405,4 +407,3 @@ void Interpolate::center_on(const Point pt)
 	act_box->BoundBox::center_on(pt);
 }
 /******************************************************************************/
-
