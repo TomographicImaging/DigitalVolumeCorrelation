@@ -42,7 +42,7 @@ SET (DVC_SRCS ${DVC_SRCS}
 	${CMAKE_CURRENT_SOURCE_DIR}/Search.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/SearchParams.cpp
 	)
-	
+
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
 add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
 #TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
@@ -56,11 +56,12 @@ target_include_directories(cildvc_shared PUBLIC
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
 target_link_libraries (dvc cildvc_static)
-include_directories(dvc PUBLIC 
+include_directories(dvc PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR} )
 
-add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
-set_property(TARGET parse_header PROPERTY CXX_STANDARD 11)
+# BKB: commenting out next 2 lines for make of Core to work
+# add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
+# set_property(TARGET parse_header PROPERTY CXX_STANDARD 11)
 
 set_property(TARGET cildvc_static PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -75,7 +76,7 @@ set(INSTALL_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include)
 
-install(TARGETS dvc 
+install(TARGETS dvc
 	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
        )
 install(TARGETS cildvc_shared
@@ -84,5 +85,5 @@ install(TARGETS cildvc_shared
 	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
 	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
 	)
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/Core/wip 
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/Core/wip
 	DESTINATION ${INSTALL_BIN_DIR})
