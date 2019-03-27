@@ -31,6 +31,7 @@
 #include <fstream>
 #include <iostream>
 #include <time.h>
+#include <random>
 
 // adjust Makefile if changes here
 #include "Point.h"
