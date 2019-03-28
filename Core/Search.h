@@ -64,10 +64,10 @@ public:
 
 	// pointer to the objective function set in RunControl
 	double (*obj_fcn)(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol);
-	
+
 	int bytes_per;		// keep for now, derived
 	double subv_rad;	// keep for now, derived
-	int subv_num;		// keep for now, derived	
+	int subv_num;		// keep for now, derived
 
 	BoundBox *vox_box;	// image volume dimensions
 	BoundBox *est_box_nom;	// for allocating an interpolator kernel
@@ -88,9 +88,12 @@ public:
 
 	double obj_val_at(const std::vector<double> x);	// this version uses nominals set at Search construct
 
+	std::vector<double> obj_grad_at(const std::vector<double> x); // simple finite diff, to get started
+	std::vector< std::vector<double> > obj_Hess_at(const std::vector<double> x);
+
 	// translation grid style global search
-	void trgrid_global(double displ_max, double basin_rad);
-	
+	void trgrid_global(double displ_max, double basin_rad, int n);
+
 	// randomized points style global search
 	void random_global(double displ_max, double basin_rad);
 
@@ -120,13 +123,12 @@ private:
 	Objfcn_Type lobj_typ;
 	Interp_Type lint_typ;
 
-	
+
 	Min_Ftor_new(const Interp_Type int_typ, const Objfcn_Type obj_typ, const int ndof, FloatingCloud *fcld, Interpolate *interp, const std::vector<double> &ref_subvol);
-	
+
 	double operator() (const std::vector<double> x);
 
 };*/
 /******************************************************************************/
 
 #endif
-
