@@ -6,14 +6,15 @@ FloatingCloud::FloatingCloud (double ref_x, double ref_y, double ref_z)
 {
 	stable = new Cloud();
 	moving = new Cloud();
-	
+
 	params = new SearchParams();
-	
+
 	stable_refpt = new Point(ref_x, ref_y, ref_z);
 	moving_refpt = new Point(ref_x, ref_y, ref_z);
 }
 /******************************************************************************/
 FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z)
+// sphere
 {
 	stable = new Cloud();
 	moving = new Cloud();
@@ -26,7 +27,9 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 	srand (time(NULL));
 	double dbl_rand_max = RAND_MAX;
 
+// subvolo echo
 // std::ofstream svol_file("subvol_points.txt", std::ios_base::app);	// subvol echo
+//
 
 	int point_count = 0;
 	while (point_count < num) {
@@ -45,13 +48,18 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 
 			Point apt = Point(x, y, z);
 			AddPoint(apt);
-//if (float_cloud_num == 0) svol_file << x << "\t" << y << "\t" << z << "\n";	// subvol echo
+
+			// subvol echo
+			// svol_file << x << "\t" << y << "\t" << z << "\n";
+			//
+
 			}
 	 }
 // float_cloud_num += 1;							// subvol echo
 }
 /******************************************************************************/
 FloatingCloud::FloatingCloud (Point box_min, Point box_max, int nx, int ny, int nz)
+// cube
 {
 	// check that box_min and box_max are OK
 
@@ -75,7 +83,9 @@ FloatingCloud::FloatingCloud (Point box_min, Point box_max, int nx, int ny, int 
 	double pos_y = box_min.y();
 	double pos_z = box_min.z();
 
-// std::ofstream svol_file("subvol_points.txt", std::ios_base::app);	// subvol echo
+	// subvol echo
+	// std::ofstream svol_file("subvol_points.txt", std::ios_base::app);
+	//
 
 	for (int i=0; i<nz; i++) {
 		pos_z = box_min.z() + i*inc_z;
@@ -85,8 +95,9 @@ FloatingCloud::FloatingCloud (Point box_min, Point box_max, int nx, int ny, int 
 				pos_x = box_min.x() + k*inc_x;
 				Point apt = Point(pos_x, pos_y, pos_z);
 				AddPoint(apt);
-
-// if (float_cloud_num == 0) svol_file << pos_x << "\t" << pos_y << "\t" << pos_z << "\n";	// subvol echo
+	// subvol echo
+	// svol_file << pos_x << "\t" << pos_y << "\t" << pos_z << "\n";	// subvol echo
+	//
 			}
 		}
 	}
@@ -200,9 +211,9 @@ void FloatingCloud::resize_bbox(std::vector<Point> &ptvect)
 /******************************************************************************/
 
 void FloatingCloud::affine_to (const std::vector<double> &t_vect, int ndof)
-/* A key routine, and somewhat complex. The degrees of freedom are grouped as 
+/* A key routine, and somewhat complex. The degrees of freedom are grouped as
 	 (translation), (translation, rotation), (translation, rotation, strain).
-	 For any transform, the floating bbox is adjusted to encompas the cloud. 
+	 For any transform, the floating bbox is adjusted to encompas the cloud.
 */
 {
 	// fill the complete param vector, and form required matrices
@@ -307,7 +318,7 @@ void FloatingCloud::file_cloud_data(std::string ofname)
 			ofs << moving->bbox()->max().x() << "\t";
 			ofs << moving->bbox()->min().x() << "\t";
 		}
-		
+
 		if (i==1) {
 			ofs << moving->bbox()->min().y() << "\t";
 			ofs << moving->bbox()->min().y() << "\t";
@@ -318,7 +329,7 @@ void FloatingCloud::file_cloud_data(std::string ofname)
 			ofs << moving->bbox()->max().y() << "\t";
 			ofs << moving->bbox()->max().y() << "\t";
 		}
-		
+
 		if (i==2) {
 			ofs << moving->bbox()->min().z() << "\t";
 			ofs << moving->bbox()->min().z() << "\t";
@@ -335,5 +346,3 @@ void FloatingCloud::file_cloud_data(std::string ofname)
 	ofs.close();
 }
 /******************************************************************************/
-
-
