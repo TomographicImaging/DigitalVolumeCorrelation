@@ -309,9 +309,19 @@ void Search::look_with(Search_Type method, int ndof, double ftol)
 	for (int i=0; i<ndof; i++)
 	{
 		pmin[i] = par_min[i];
-		if (i >= 0 && i< 3) dels[i] = del_tra;
-		if (i >= 3 && i< 6) dels[i] = del_rot;
-		if (i >= 6 && i<12) dels[i] = del_str;
+
+		if (i< 3)
+		{
+			dels[i] = del_tra;
+		}
+		else if (i< 6)
+		{
+			dels[i] = del_rot;
+		}
+		else if (i<12)
+		{
+			dels[i] = del_str;
+		}
 	}
 
 	// custom Nelder-Mead using the functor, not working
@@ -486,7 +496,6 @@ std::vector< std::vector<double> > Search::obj_Hess_at(const std::vector<double>
 /******************************************************************************/
 std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol)
 {
-
 	const int MAX_FUNC = 2000;		// max allowed objective function evaluations
 	const double NOT_ZERO = 1.0e-10;	// prevent divide by zero
 
@@ -514,19 +523,42 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 
 	simplex.resize(nvrt);
 	for (int i=0; i<nvrt; i++)
+	{
 		simplex[i].resize(ndof);
+	}
 
-	for (int i=0; i<nvrt; i++) {
+	for (int i=0; i<nvrt; i++)
+	{
 		for (int j=0; j<ndof; j++)
+		{
 			simplex[i][j] = start[j];
+		}
+
 		if (i != 0)
+		{
 			simplex[i][i-1] += dels[i-1];
+		}
 	}
 
-	for (int i=0; i<nvrt; i++) {			// get vertex objective function values
-		try {vrt_val[i] = obj_val_at(simplex[i]);}
-		catch (Range_Fail) {throw Range_Fail();}
+//	std::cout << "\n";				// output initial simplex vertices
+//	for (int i=0; i<nvrt; i++) {
+//		for (int j=0; j<ndof; j++)
+//			std::cout << simplex[i][j] << "\t";
+//		std::cout << "\n";
+//	}
+
+	for (int i=0; i<nvrt; i++)
+	{			// get vertex objective function values
+		try
+		{
+			vrt_val[i] = obj_val_at(simplex[i]);
+		}
+		catch (Range_Fail)
+		{
+			throw Range_Fail();
+		}
 	}
+
 	num_func += nvrt;
 
 // Note: standard formulation uses centroid as a reference point for new locations
@@ -543,40 +575,59 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 //	a. if xcon is better than wrst, substitute xcon for wrst and iterate
 // 	b. if xcon not better than wrst, contract all but best toward best by a factor of omega (typically 0.5; >0, <=0.5)
 //
-
 	for (;;) {
-
 		int wrst = 0;		// wrst, poor, best: poor = "second worst"
 		int best = 0;
-		for (int i=1; i<nvrt; i++) {
-			if (vrt_val[i] > vrt_val[wrst]) wrst = i;
-			if (vrt_val[i] < vrt_val[best]) best = i;
+		for (int i=1; i<nvrt; i++)
+		{
+			if (vrt_val[i] > vrt_val[wrst])
+			{
+				wrst = i;
+			}
+			if (vrt_val[i] < vrt_val[best])
+			{
+				best = i;
+			}
 		}
 
 		int poor = best;
-		for (int i=0; i<nvrt; i++) {
+
+		for (int i=0; i<nvrt; i++)
+		{
 			if ((i != wrst) && (i != best))
-				if (vrt_val[i] > vrt_val[poor]) poor = i;
-
-		// for convg tracking, use a single point cloud, run as > file.txt
-		// std::cout << "\n" << simplex[i][0] << "\t" << simplex[i][1] << "\t" << simplex[i][2] << "\t" << vrt_val[best] << "\t" << i ;
-		//
-
+			{
+				if (vrt_val[i] > vrt_val[poor])
+				{
+					poor = i;
+				}
+			}
 		}
-
 		// Note: the individual vertex values are updated during simplex evaluation below
 
 		double rel_diff = 2.0*fabs(vrt_val[wrst]-vrt_val[best])/(fabs(vrt_val[wrst])+fabs(vrt_val[best])+NOT_ZERO);
 
-		if (rel_diff < conv_tol) return simplex[best];	// successful convergence, normal return from minimize
-		if (num_func > MAX_FUNC) throw Convg_Fail();	// wandering around aimlessly
+		if (rel_diff < conv_tol)
+		{
+			return simplex[best];	// successful convergence, normal return from minimize
+		}
+
+		if (num_func > MAX_FUNC)
+		{
+			throw Convg_Fail();	// wandering around aimlessly
+		}
 
 		// prepare for simplex modification
 
-		for (int j=0; j<ndof; j++) {
+		for (int j=0; j<ndof; j++)
+		{
 			centroid[j] = 0.0;
 			for (int i=0; i<nvrt; i++)
-				if (i != wrst) centroid[j] += simplex[i][j];
+			{
+				if (i != wrst)
+				{
+					centroid[j] += simplex[i][j];
+				}
+			}
 			centroid[j] /= ndof;
 			del_vect[j] = centroid[j] - simplex[wrst][j];
 //			del_vect[j] = centroid[j] - simplex[wrst][j] + NUDGE*(simplex[best][j] - centroid[j]);
@@ -586,29 +637,52 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 		while (eval) {		// evaluate and adjust the simplex
 
 			for (int i=0; i<ndof; i++)
+			{
 				xref[i] = centroid[i] + ALPHA*del_vect[i];
-			try {yref = obj_val_at(xref);}
-			catch (Range_Fail) {throw Range_Fail();}
+			}
+			try
+			{
+				yref = obj_val_at(xref);
+			}
+			catch (Range_Fail)
+			{
+				throw Range_Fail();
+			}
+
 			num_func += 1;
 
-			if ((yref <= vrt_val[poor]) && (yref >= vrt_val[best])) {
+			if ((yref <= vrt_val[poor]) && (yref >= vrt_val[best]))
+			{
 				simplex[wrst] = xref;
 				vrt_val[wrst] = yref;
 				break;
 			}
 
-			if (yref < vrt_val[best]) {
+			if (yref < vrt_val[best])
+			{
 				for (int i=0; i<ndof; i++)
+				{
 					xexp[i] = centroid[i] + GAMMA*del_vect[i];
-				try {yexp = obj_val_at(xexp);}
-				catch (Range_Fail) {throw Range_Fail();}
+				}
+				try
+				{
+					yexp = obj_val_at(xexp);
+				}
+				catch (Range_Fail)
+				{
+					throw Range_Fail();
+				}
+
 				num_func += 1;
 
-				if (yexp < vrt_val[best]) {
+				if (yexp < vrt_val[best])
+				{
 					simplex[wrst] = xexp;
 					vrt_val[wrst] = yexp;
 					break;
-				} else {
+				}
+				else
+				{
 					simplex[wrst] = xref;
 					vrt_val[wrst] = yref;
 					break;
@@ -616,22 +690,46 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 			}
 
 			for (int i=0; i<ndof; i++)
+			{
 				xcon[i] = centroid[i] + DELTA*del_vect[i];
-			try {ycon = obj_val_at(xcon);}
-			catch (Range_Fail) {throw Range_Fail();}
+			}
+
+			try
+			{
+				ycon = obj_val_at(xcon);
+			}
+			catch (Range_Fail)
+			{
+				throw Range_Fail();
+			}
+
 			num_func += 1;
 
-			if (ycon < vrt_val[best]) {
+			if (ycon < vrt_val[best])
+			{
 				simplex[wrst] = xcon;
 				vrt_val[wrst] = ycon;
 				break;
-			} else {
-				for (int i=0; i<nvrt; i++) {
-					if (i != best) {
+			}
+			else
+			{
+				for (int i=0; i<nvrt; i++)
+				{
+					if (i != best)
+					{
 						for (int j=0; j<ndof; j++)
+						{
 							simplex[i][j] = simplex[best][j] + OMEGA*(simplex[i][j] - simplex[best][j]);
-						try {vrt_val[i] = obj_val_at(simplex[i]);}
-						catch (Range_Fail) {throw Range_Fail();}
+						}
+						try
+						{
+							vrt_val[i] = obj_val_at(simplex[i]);
+						}
+						catch (Range_Fail)
+						{
+							throw Range_Fail();
+						}
+
 						num_func += 1;
 					}
 				}
@@ -645,6 +743,9 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 
 
 	} // for end
+
+
+
 }
 /******************************************************************************/
 void Search::trgrid_global(double displ_max, double basin_radius, int n)

@@ -24,8 +24,10 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 	stable_refpt = new Point(cen.x(), cen.y(), cen.z());
 	moving_refpt = new Point(cen.x(), cen.y(), cen.z());
 
-	srand (time(NULL));
-	double dbl_rand_max = RAND_MAX;
+	//using random.h now
+	std::mt19937 mt(time(NULL));
+	//std::mt19937 mt(1);
+	std::uniform_real_distribution<double> dist(-rad_max, rad_max);
 
 // subvolo echo
 // std::ofstream svol_file("subvol_points.txt", std::ios_base::app);	// subvol echo
@@ -33,9 +35,10 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 
 	int point_count = 0;
 	while (point_count < num) {
-		double rel_x = rad_max*((2*rand())/dbl_rand_max);
-		double rel_y = rad_max*((2*rand())/dbl_rand_max);
-		double rel_z = rad_max*((2*rand())/dbl_rand_max);
+
+		double rel_x = dist(mt);
+		double rel_y = dist(mt);
+		double rel_z = dist(mt);
 
 		double radius = sqrt(rel_x*rel_x + rel_y*rel_y + rel_z*rel_z);
 
@@ -48,13 +51,10 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 
 			Point apt = Point(x, y, z);
 			AddPoint(apt);
-
-			// subvol echo
-			// svol_file << x << "\t" << y << "\t" << z << "\n";
-			//
-
-			}
+			//if (float_cloud_num == 0) svol_file << x << "\t" << y << "\t" << z << "\n";	// subvol echo
+		}
 	 }
+
 // float_cloud_num += 1;							// subvol echo
 }
 /******************************************************************************/
@@ -150,26 +150,26 @@ void FloatingCloud::strain_ptvect(std::vector<Point> &ptvect)
 /******************************************************************************/
 void FloatingCloud::rotate_ptvect(std::vector<Point> &ptvect)
 {
-	double A00 = params->matr_rot()[0][0];
-	double A01 = params->matr_rot()[0][1];
-	double A02 = params->matr_rot()[0][2];
-	double A10 = params->matr_rot()[1][0];
-	double A11 = params->matr_rot()[1][1];
-	double A12 = params->matr_rot()[1][2];
-	double A20 = params->matr_rot()[2][0];
-	double A21 = params->matr_rot()[2][1];
-	double A22 = params->matr_rot()[2][2];
+	double A00 = this->params->matr_rot()[0][0];
+	double A01 = this->params->matr_rot()[0][1];
+	double A02 = this->params->matr_rot()[0][2];
+	double A10 = this->params->matr_rot()[1][0];
+	double A11 = this->params->matr_rot()[1][1];
+	double A12 = this->params->matr_rot()[1][2];
+	double A20 = this->params->matr_rot()[2][0];
+	double A21 = this->params->matr_rot()[2][1];
+	double A22 = this->params->matr_rot()[2][2];
 
 	for (unsigned int i=0; i<ptvect.size(); i++) {
 		// rel is a position vector wrt the cloud reference point
-		double rel_x = ptvect[i].x() - moving_refpt->x();
-		double rel_y = ptvect[i].y() - moving_refpt->y();
-		double rel_z = ptvect[i].z() - moving_refpt->z();
+		double rel_x = ptvect[i].x() - this->moving_refpt->x();
+		double rel_y = ptvect[i].y() - this->moving_refpt->y();
+		double rel_z = ptvect[i].z() - this->moving_refpt->z();
 
 		// apply the rotation matrix to the rel vector
-		double rot_x =	A00*rel_x + A01*rel_y + A02*rel_z;
-		double rot_y =	A10*rel_x + A11*rel_y + A12*rel_z;
-		double rot_z =	A20*rel_x + A21*rel_y + A22*rel_z;
+		double rot_x =	A00 * rel_x + A01 * rel_y + A02 * rel_z;
+		double rot_y =	A10 * rel_x + A11 * rel_y + A12 * rel_z;
+		double rot_z =	A20 * rel_x + A21 * rel_y + A22 * rel_z;
 
 		// delta between the rot and rel vectors
 		double del_x = rot_x - rel_x;

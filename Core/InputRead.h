@@ -134,9 +134,9 @@ public:
 	std::vector<std::string> ok_vol_endian;
 	int vol_dim_min, vol_dim_max;
 	int vol_hdr_min, vol_hdr_max;
-	int ref_file_length;
-	int cor_file_length;
-	int pts_file_length;
+	unsigned long ref_file_length;
+	unsigned long cor_file_length;
+	unsigned long pts_file_length;
 
 	std::vector<std::string> ok_subvol_geom;
 	int subvol_size_min, subvol_size_max;
@@ -171,7 +171,7 @@ public:
 
 	// read and check keyword parameters
 
-	int parse_line_old_file(key_word_help kwh, std::string &arg1, int &bytes, bool req);
+	int parse_line_old_file(key_word_help kwh, std::string &arg1, unsigned long &bytes, bool req);
 	int parse_line_new_file(key_word_help kwh, std::string &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<std::string> vals, std::string &arg1, bool req);
