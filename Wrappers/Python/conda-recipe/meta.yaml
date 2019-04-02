@@ -1,6 +1,6 @@
 package:
   name: ccpi-dvc
-  version: 0.11.0
+  version: {{CIL_VERSION}}
 
 
 build:
