@@ -38,7 +38,7 @@ if platform.system() == 'Windows':
 else:
     #extra_compile_args = ['-fopenmp','-O2', '-funsigned-char', 
     #'-std=c++0x' , '-fPIC']
-    extra_compile_args = ['-fPIC']
+    extra_compile_args = ['-fPIC', '@CMAKE_CXX_FLAGS@']
     extra_libraries += ['m',@EXTRA_OMP_LIB@]
     
 extra_libraries += ["@BOOST_PYTHON_LIB@", "@BOOST_NUMPY_LIB@"]
