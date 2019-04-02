@@ -26,10 +26,12 @@ Search::Search(RunControl *run)
 	}
 	if (run->obj_fcn == NSSD){
 		obj_fcn = &obj_NSSD;
+		obj_fcn_res = &obj_NSSD;
 		//std::cout << "objective function NSSD" << std::endl;
 	}
 	if (run->obj_fcn == ZNSSD){
 		obj_fcn = &obj_ZNSSD;
+		obj_fcn_res = &obj_ZNSSD;
 		//std::cout << "objective function ZNSSD" << std::endl;
 	}
 
@@ -97,33 +99,38 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 
 	search_pt_setup(srch_pt, neigh_res);
 
-	// testing gradient routines, values at search start, not used currently
-	//std::vector<double> gradient(par_min.size(), 0.0);
-	//gradient = obj_grad_at(par_min);
-	//obj_Hess_at(par_min);
 
 	// coarse search step
-
-//	trgrid_global(rc->disp_max, rc->basin_radius, NSSD, trilinear); // old
-//	random_global(rc->disp_max, rc->basin_radius, NSSD, trilinear); // old
-
 	trgrid_global(rc->disp_max, rc->basin_radius, n);
-//	random_global(rc->disp_max, rc->basin_radius);
+	//	random_global(rc->disp_max, rc->basin_radius);
 
+
+	// testing direct LM calculations
+	// currently uses a fixed number of pure QN steps
+	int ndof = par_min.size();
+	std::vector<double> jump(ndof, 0.0);
+	jump = min_Lev_Mar(par_min, 0.000001);
+	for (int i=0; i<ndof; i++)
+	{
+		par_min[i] = jump[i];
+	}
+	//
+	//
+
+/*
+	// basic N-M process
+	//
+	//
 	try
 	{
-		// this reflects various search strategies
-
 		// look_with(amoeba, 3, 0.00001); // does disp only search first for all searches
-
-		// do translation only searches as standalone
-		if (rc->num_srch_dof == 3) look_with(amoeba, 3, 0.00001);
-
 		// sequence the 6 and 12 dof searches
 		//if (rc->num_srch_dof > 3) look_with(amoeba, 6, 0.0000001);
 		//if (rc->num_srch_dof > 6) look_with(amoeba,12, 0.0000001);
 
+
 		// do all standalone
+		if (rc->num_srch_dof == 3) look_with(amoeba, 3, 0.00001);
 		if (rc->num_srch_dof == 6) look_with(amoeba, 6, 0.0000001);
 		if (rc->num_srch_dof == 12) look_with(amoeba,12, 0.0000001);
 
@@ -138,17 +145,78 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 		delete fcld;
 		throw Range_Fail();
 	}
+	//
+	//
+	//
+*/
+
 
 	// update status of Search members
 	try {obj_min = obj_val_at(par_min);}
 	catch (Range_Fail) {throw Range_Fail();}
 
-	//	double gradient = obj_grad_at(par_min);
-	// obj_Hess_at(par_min);
-
-
 	delete fcld;
 	throw Point_Good();
+}
+/******************************************************************************/
+std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const double conv_tol)
+{
+	int npts = subv_num;
+	int ndof = start.size();
+	std::vector<double> jump(ndof, 0.0);
+
+	Eigen::VectorXd e = Eigen::VectorXd(npts);
+	Eigen::MatrixXd J = Eigen::MatrixXd(npts,ndof);
+	Eigen::MatrixXd JTJ = Eigen::MatrixXd(ndof,ndof);
+	Eigen::VectorXd JTe = Eigen::VectorXd(ndof);
+	Eigen::VectorXd update = Eigen::VectorXd(ndof);
+
+	for (int i=0; i<ndof; i++)
+	{
+			jump[i] = start[i];
+	}
+
+	//	 std::cout << "\n" << std::setprecision(12);
+	// convergence loop, test with fixed nits
+	//
+	//
+	double obj_old = 0.0;
+	int nits = 0;
+	for (int i=0; i<20; i++) {
+		double obj = LM_prep_at(jump, e, J);
+
+		if (fabs(obj - obj_old) < conv_tol) {
+			nits = i+1;
+			break;
+		}
+	//	std::cout << "\n obj = " << obj << "tol = " << conv_tol << "del = " << (obj-obj_old) << "\n";
+
+		JTJ = J.transpose()*J;
+		JTe = J.transpose()*e;
+		update = JTJ.colPivHouseholderQr().solve(-JTe);
+
+		for (int i=0; i<ndof; i++)
+		{
+				jump[i] += update(i);
+		}
+
+		obj_old = obj;
+	}
+	//
+	//
+	//
+	// std::cout << "\n nits = " << nits << "\n" << std::setprecision(6);
+
+/*
+	std::cout << "\n";
+	for (int i=0; i<ndof; i++)
+	{
+			std::cout << jump[i] << "\t";
+	}
+	std::cout << "\n";
+*/
+
+	return jump;
 }
 /******************************************************************************/
 void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
@@ -370,6 +438,95 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 	double obj_val = obj_fcn(ref_subvol, tar_subvol);
 
 	return obj_val;
+}
+/******************************************************************************/
+double Search::obj_val_at(const std::vector<double> x, std::vector<double> &residual)	// this version returns residual vector as well
+{
+	fcld->affine_to(x, x.size());
+
+	if (rc->int_typ == nearest) {
+		try {interp->nearest(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		catch (Intrp_Fail) {throw Range_Fail();}}
+
+	if (rc->int_typ == trilinear) {
+		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		catch (Intrp_Fail) {throw Range_Fail();}}
+
+	if (rc->int_typ == tricubic) {
+		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		catch (Intrp_Fail) {throw Range_Fail();}}
+
+	double obj_val = obj_fcn_res(ref_subvol, tar_subvol, residual);
+
+	return obj_val;
+}
+/******************************************************************************/
+double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J)
+{
+	int npts = e.size();
+	int ndof = a.size();
+
+	std::vector<double> base_res(npts, 0.0);
+	std::vector<double> step_res(npts, 0.0);
+	std::vector<double> step_x(ndof, 0.0);
+
+	double obj = obj_val_at(a, base_res);
+	// double h = 1E-8;
+	double h = 1E-10;
+
+	for (int i=0; i<ndof; i++)
+	{
+		step_x = a;
+		step_x[i] += h;
+		obj_val_at(step_x, step_res);
+		for (int j=0; j<npts; j++)
+		{
+			J(j,i) = (step_res[j] - base_res[j])/h;
+		}
+	}
+
+	for (int j=0; j<npts; j++)
+	{
+		e(j) = base_res[j];
+	}
+
+	//std::cout << "\n" << std::setprecision(20);
+	//std::cout << J(0,0) << "\t" << J(npts-1,ndof-1) << "\t" << "\n";
+	//std::cout << e(0) << "\t" << e(npts-1) << "\n";
+	//std::cout << "\n" << std::setprecision(6);
+
+	return obj;
+}
+/******************************************************************************/
+void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<double> > &J)
+// a[ndof]
+// J[npts][ndof]
+// simple forward diff
+{
+	int npts = J.size();
+	int ndof = J[0].size();
+
+	std::vector<double> base_res(npts, 0.0);
+	std::vector<double> step_res(npts, 0.0);
+	std::vector<double> step_x(ndof, 0.0);
+
+	obj_val_at(a, base_res);
+	double h = 1E-8;
+
+	for (int i=0; i<ndof; i++)
+	{
+		step_x = a;
+		step_x[i] += h;
+		obj_val_at(step_x, step_res);
+		for (int j=0; j<npts; j++)
+		{
+			J[j][i] = (step_res[j] - base_res[j])/h;
+		}
+	}
+std::cout << "\n" << std::setprecision(20);
+std::cout << J[0][0] << "\t" << J[npts-1][ndof-1] << "\t" << "\n";
+std::cout << "\n" << std::setprecision(6);
+
 }
 /******************************************************************************/
 std::vector<double> Search::obj_grad_at(const std::vector<double> x)
