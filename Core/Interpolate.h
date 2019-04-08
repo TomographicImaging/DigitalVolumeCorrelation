@@ -27,8 +27,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <omp.h>
-
 
 // Adjust Makefile if changes made here
 #include "Point.h"
