@@ -14,25 +14,23 @@ Search::Search(RunControl *run)
 	// establish pointer to function set in input file
 	if (run->obj_fcn == SAD) {
 		obj_fcn = &obj_SAD;
-		//std::cout << "objective function SAD" << std::endl;
+		obj_fcn_res = &obj_SAD;
 	}
-	if (run->obj_fcn == SSD){
+	if (run->obj_fcn == SSD) {
 		obj_fcn = &obj_SSD;
-		//std::cout << "objective function SSD" << std::endl;
+		obj_fcn_res = &obj_SSD;
 	}
 	if (run->obj_fcn == ZSSD) {
 		obj_fcn = &obj_ZSSD;
-		//std::cout << "objective function ZSSD" << std::endl;
+		obj_fcn_res = &obj_ZSSD;
 	}
-	if (run->obj_fcn == NSSD){
+	if (run->obj_fcn == NSSD) {
 		obj_fcn = &obj_NSSD;
 		obj_fcn_res = &obj_NSSD;
-		//std::cout << "objective function NSSD" << std::endl;
 	}
-	if (run->obj_fcn == ZNSSD){
+	if (run->obj_fcn == ZNSSD) {
 		obj_fcn = &obj_ZNSSD;
 		obj_fcn_res = &obj_ZNSSD;
-		//std::cout << "objective function ZNSSD" << std::endl;
 	}
 
 	Point vox_box_min(0.0, 0.0, 0.0);
@@ -97,21 +95,21 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 	for (int i=0; i<srch_data->neigh[n].size(); i++)
 		neigh_res.push_back(srch_data->results[t][srch_data->neigh[n][i]]);
 
+	// this sets par_min to the starting point estimate through starting_param call
 	search_pt_setup(srch_pt, neigh_res);
 
-
 	// coarse search step
+	// this is probably going to phase out, except perhaps for global start
+	// also useful for objective function mapping
 	trgrid_global(rc->disp_max, rc->basin_radius, n);
 	//	random_global(rc->disp_max, rc->basin_radius);
 
-
-	// testing direct LM calculations
-	// currently uses a fixed number of pure QN steps
+	// L-M optimization, currently using pure QN steps (no lambda tuning)
+	// not yet reporting on convg or range failures
 	int ndof = par_min.size();
 	std::vector<double> jump(ndof, 0.0);
-	jump = min_Lev_Mar(par_min, 0.000001);
-	for (int i=0; i<ndof; i++)
-	{
+	jump = min_Lev_Mar(par_min, 0.000001, 0.01);
+	for (int i=0; i<ndof; i++) {
 		par_min[i] = jump[i];
 	}
 	//
@@ -159,7 +157,9 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 	throw Point_Good();
 }
 /******************************************************************************/
-std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const double conv_tol)
+std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol)
+// obj_tol compares with change in the objective function at each iteration
+// mag_tol compares with displacement magnitude change at each iteration
 {
 	int npts = subv_num;
 	int ndof = start.size();
@@ -171,50 +171,42 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const 
 	Eigen::VectorXd JTe = Eigen::VectorXd(ndof);
 	Eigen::VectorXd update = Eigen::VectorXd(ndof);
 
-	for (int i=0; i<ndof; i++)
-	{
+	for (int i=0; i<ndof; i++) {
 			jump[i] = start[i];
 	}
 
-	//	 std::cout << "\n" << std::setprecision(12);
-	// convergence loop, test with fixed nits
-	//
-	//
+//	std::cout << "\n" << std::setprecision(12);
+//	std::cout << "p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
+
 	double obj_old = 0.0;
+	int maxit = 20;
 	int nits = 0;
-	for (int i=0; i<20; i++) {
+
+	for (int i=0; i<maxit; i++) {
 		double obj = LM_prep_at(jump, e, J);
 
-		if (fabs(obj - obj_old) < conv_tol) {
-			nits = i+1;
-			break;
+		if (i>0) {
+			double del_obj = fabs(obj - obj_old);
+			double del_mag = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
+//			std::cout << "n: " << i << "\t obj_del = " << del_obj << "\t del_dis = " << del_mag << "\t p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
+			if ((del_obj < obj_tol) || (del_mag < mag_tol)) {
+				nits = i;
+				break;
+			}
 		}
-	//	std::cout << "\n obj = " << obj << "tol = " << conv_tol << "del = " << (obj-obj_old) << "\n";
 
 		JTJ = J.transpose()*J;
 		JTe = J.transpose()*e;
 		update = JTJ.colPivHouseholderQr().solve(-JTe);
 
-		for (int i=0; i<ndof; i++)
-		{
+		for (int i=0; i<ndof; i++) {
 				jump[i] += update(i);
 		}
 
 		obj_old = obj;
 	}
-	//
-	//
-	//
-	// std::cout << "\n nits = " << nits << "\n" << std::setprecision(6);
 
-/*
-	std::cout << "\n";
-	for (int i=0; i<ndof; i++)
-	{
-			std::cout << jump[i] << "\t";
-	}
-	std::cout << "\n";
-*/
+//	std::cout << std::setprecision(6);
 
 	return jump;
 }

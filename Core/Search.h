@@ -103,7 +103,7 @@ public:
 	void random_global(double displ_max, double basin_rad);
 
 	std::vector<double> min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol);
-	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double conv_tol);
+	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol);
 
 //	struct Min_Ftor_new;	// leave declared for now, not working
 private:

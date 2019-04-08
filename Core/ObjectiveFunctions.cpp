@@ -13,12 +13,37 @@ double obj_SAD(const std::vector<double> &ref_subvol, const std::vector<double> 
 	return obj;
 }
 /******************************************************************************/
+double obj_SAD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
+{
+	double obj = 0.0;
+	for (unsigned int i=0; i<ref_subvol.size(); i++) {
+		double diff = tar_subvol[i] - ref_subvol[i];
+		residual[i] = diff;
+		obj += fabs(diff);
+	}
+
+	return obj;
+}
+/******************************************************************************/
 double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
 // Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
 {
 	double obj = 0.0;
 	for (unsigned int i=0; i<ref_subvol.size(); i++) {
 		double diff = tar_subvol[i] - ref_subvol[i];
+		obj += diff*diff;
+	}
+
+	return obj;
+}
+/******************************************************************************/
+double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
+// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
+{
+	double obj = 0.0;
+	for (unsigned int i=0; i<ref_subvol.size(); i++) {
+		double diff = tar_subvol[i] - ref_subvol[i];
+		residual[i] = diff;
 		obj += diff*diff;
 	}
 
@@ -45,6 +70,33 @@ double obj_ZSSD(const std::vector<double> &ref_subvol, const std::vector<double>
 
 	for (unsigned int i=0; i<n; i++) {
 		diff = (tar_subvol[i]-avg_tar) - (ref_subvol[i]-avg_ref);
+		obj += diff*diff;
+	}
+
+	return obj;
+}
+/******************************************************************************/
+double obj_ZSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
+// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
+{
+	double obj = 0.0;
+	double diff = 0.0;
+	double avg_ref = 0.0;
+	double avg_tar = 0.0;
+
+	int n = ref_subvol.size();
+
+	for (unsigned int i=0; i<n; i++) {
+		avg_ref += ref_subvol[i];
+		avg_tar += tar_subvol[i];
+	}
+
+	avg_ref = avg_ref/n;
+	avg_tar = avg_tar/n;
+
+	for (unsigned int i=0; i<n; i++) {
+		diff = (tar_subvol[i]-avg_tar) - (ref_subvol[i]-avg_ref);
+		residual[i] = diff;
 		obj += diff*diff;
 	}
 

@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	std::string help("help");
 	std::string example("example");
 	std::string manual("manual");
-	
+
 	bool first_point = true;
 
 	// command entered with no arguments
@@ -90,24 +90,24 @@ int main(int argc, char *argv[])
 
 	std::string fname(argv[1]);
 	if(!in.input_file_accessible(fname)) return 0;
-	
+
 	// instantiate storage for run control parameters within Utility
-	
+
 	RunControl run;
 
 	// parse and check the input file
 
-	if(!in.input_file_read(&run)) return 0;	
-		
+	if(!in.input_file_read(&run)) return 0;
+
 	// instantiate a DataCloud
-	
+
 	DataCloud data;
-	
+
 	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
 
 	data.organize_cloud(&run);
-	
-	
+
+
 	// *** begin run
 
 	time_t start_time_date = time(NULL);
@@ -166,13 +166,17 @@ int main(int argc, char *argv[])
 	std::cout << std::endl << std::endl << "*************************" << std::endl;
 	std::cout << "Search: ( " << std::endl << optimize << std::endl << ") " << std::endl << std::endl;
 #endif
-	
+
 	// main search loop
 
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
 
 	clock_t start_tick = clock();
+
+	time_t start_time;
+	time(&start_time);
+
 
 	int count = 0;
 	int count_good = 0;
@@ -182,9 +186,9 @@ int main(int argc, char *argv[])
 
 	std::vector<double> blank_par_min = optimize.par_min;
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
-	
+
 	for (unsigned int i=0; i<data.points.size(); i++) {
-		
+
 		// this is the index of the point being processed
 		int n = data.order[i];
 
@@ -211,10 +215,10 @@ int main(int argc, char *argv[])
 			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
 			std::cout << std::setw(12) << "dy= " << optimize.par_min[1];
 			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
-			
+
 			// put results into record for this point
-			data.results[trg][n].status = point_good;	
-			data.results[trg][n].obj_min = optimize.obj_min;	
+			data.results[trg][n].status = point_good;
+			data.results[trg][n].obj_min = optimize.obj_min;
 			for (int j=0; j<run.num_srch_dof; j++)
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
 		}
@@ -223,16 +227,16 @@ int main(int argc, char *argv[])
 			count_range += 1;
 			in.append_result(run.res_fname, data.labels[n], data.points[n], range_fail, optimize.obj_min, blank_par_min);
 			std::cout << "Range_Fail";
-			
-			data.results[trg][n].status = range_fail;				
+
+			data.results[trg][n].status = range_fail;
 		}
 		catch (Convg_Fail)
 		{
 			count_convg += 1;
 			in.append_result(run.res_fname, data.labels[n], data.points[n], convg_fail, optimize.obj_min, blank_par_min);
 			std::cout << "Convg_Fail";
-			
-			data.results[trg][n].status = convg_fail;				
+
+			data.results[trg][n].status = convg_fail;
 		}
 
 		std::cout << "\n";
@@ -249,7 +253,7 @@ int main(int argc, char *argv[])
 	}
 
 	// *** all points processed, clean-up
-	
+
 	// re-write output in point cloud order, from stored results
 	in.result_header(run.res_fname, optimize.par_min.size());
 	for (unsigned int i=0; i<data.points.size(); i++)
@@ -261,6 +265,12 @@ int main(int argc, char *argv[])
 	char* dtf = ctime(&finish_time_date);
 	in.append_time_date(run.sta_fname, "Run finish: ", dtf);
 
+	time_t end_time;
+	time(&end_time);
+
+	double run_sec = difftime(end_time, start_time);
+//	std::cout << "\n run_sec = " << run_sec << "\n";
+
 	// add overall run stats here
 
 	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
@@ -268,7 +278,9 @@ int main(int argc, char *argv[])
 	double run_time = ((double)run_tick)/CLOCKS_PER_SEC;
 	sta_file << std::setprecision(3) << std::fixed;
 	sta_file << count << " points processed in " << run_time << " seconds\n";
+//	sta_file << count << " points processed in " << run_sec << " seconds\n";
 	sta_file << run_time/count << " sec/pt average\n";
+//	sta_file << run_sec/count << " sec/pt average\n";
 	sta_file << "\n";
 	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
