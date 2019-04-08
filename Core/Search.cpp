@@ -104,6 +104,7 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 	trgrid_global(rc->disp_max, rc->basin_radius, n);
 	//	random_global(rc->disp_max, rc->basin_radius);
 
+/*
 	// L-M optimization, currently using pure QN steps (no lambda tuning)
 	// not yet reporting on convg or range failures
 	int ndof = par_min.size();
@@ -114,8 +115,10 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 	}
 	//
 	//
+*/
 
-/*
+
+
 	// basic N-M process
 	//
 	//
@@ -146,7 +149,7 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 	//
 	//
 	//
-*/
+
 
 
 	// update status of Search members
