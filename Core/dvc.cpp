@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
 	if(!in.input_file_read(&run)) return 0;
 
 	// instantiate a DataCloud
+	// organize_cloud can be lengthy, does (# points)*(# points) sorting
 
 	DataCloud data;
 
@@ -112,7 +113,6 @@ int main(int argc, char *argv[])
 
 	time_t start_time_date = time(NULL);
 	char* dts = ctime(&start_time_date);
-
 	in.echo_input(&run);
 	in.append_time_date(run.sta_fname, "Run start: ", dts);
 
@@ -172,11 +172,9 @@ int main(int argc, char *argv[])
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
 
-	clock_t start_tick = clock();
-
+	// beging timing for point processing, to 1 sec resolution
 	time_t start_time;
 	time(&start_time);
-
 
 	int count = 0;
 	int count_good = 0;
@@ -243,9 +241,10 @@ int main(int argc, char *argv[])
 
 		if ((i>9) && (i%10 == 0)) {
 			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
-			clock_t run_tick = clock() - start_tick;
-			double run_time = ((double)run_tick)/CLOCKS_PER_SEC;
-			sta_file << i  << " points of " << data.points.size() << " at " << run_time/i << " sec/pt\n";
+			time_t status_time;
+			time(&status_time);
+			double status_sec = difftime(status_time, start_time);
+			sta_file << i  << " points of " << data.points.size() << " at " << status_sec/i << " sec/pt\n";
 		}
 
 		count += 1;
@@ -265,22 +264,17 @@ int main(int argc, char *argv[])
 	char* dtf = ctime(&finish_time_date);
 	in.append_time_date(run.sta_fname, "Run finish: ", dtf);
 
+	// stop point processing timer
 	time_t end_time;
 	time(&end_time);
-
 	double run_sec = difftime(end_time, start_time);
-//	std::cout << "\n run_sec = " << run_sec << "\n";
 
-	// add overall run stats here
-
+	// overall run stats here
 	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
-	clock_t run_tick = clock() - start_tick;
-	double run_time = ((double)run_tick)/CLOCKS_PER_SEC;
+	sta_file << std::setprecision(0) << std::fixed;
+	sta_file << count << " points processed in " << run_sec << " seconds\n";
 	sta_file << std::setprecision(3) << std::fixed;
-	sta_file << count << " points processed in " << run_time << " seconds\n";
-//	sta_file << count << " points processed in " << run_sec << " seconds\n";
-	sta_file << run_time/count << " sec/pt average\n";
-//	sta_file << run_sec/count << " sec/pt average\n";
+	sta_file << run_sec/count << " sec/pt average\n";
 	sta_file << "\n";
 	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
