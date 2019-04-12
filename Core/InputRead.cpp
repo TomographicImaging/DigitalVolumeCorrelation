@@ -558,7 +558,7 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
 
 	// check image volumes
-	unsigned long expected_vol_file_size = run->vol_hdr_lngth + (unsigned long)run->vol_wide*run->vol_high*run->vol_tall*(run->vol_bit_depth/8);
+	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth + (unsigned long) run->vol_wide *  (unsigned long) run->vol_high * (unsigned long) run->vol_tall * (unsigned long) (run->vol_bit_depth / 8);
 
 	if (ref_file_length != expected_vol_file_size)
 	{
