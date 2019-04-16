@@ -1,5 +1,8 @@
 
 #include "dvc.h"
+#include <omp.h>
+#include <thread>
+#include <chrono>
 
 /******************************************************************************/
 void echo_vect_upto(std::vector<double> vect, unsigned int n)
@@ -14,6 +17,27 @@ void echo_vect_upto(std::vector<double> vect, unsigned int n)
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
+	int nThreads_req = 1;
+
+	std::cout << "number of threads requested: ";
+	std::cin >> nThreads_req;
+
+	if (nThreads_req < omp_get_max_threads())
+	{
+		omp_set_num_threads(nThreads_req);
+	}
+	else
+	{
+		omp_set_num_threads(omp_get_max_threads());
+	}
+
+#pragma omp parallel
+	{
+		if (omp_get_thread_num() == 0)
+		{
+			cout << "Running with threads = " << omp_get_num_threads() << endl;
+		}
+	}
 
 	InputRead in;
 
@@ -110,6 +134,8 @@ int main(int argc, char *argv[])
 
 
 	// *** begin run
+
+	auto start_time_test = std::chrono::system_clock::now();
 
 	time_t start_time_date = time(NULL);
 	char* dts = ctime(&start_time_date);
@@ -265,20 +291,25 @@ int main(int argc, char *argv[])
 	in.append_time_date(run.sta_fname, "Run finish: ", dtf);
 
 	// stop point processing timer
-	time_t end_time;
-	time(&end_time);
-	double run_sec = difftime(end_time, start_time);
+	auto end_time_test = std::chrono::system_clock::now();
+
+
+	std::chrono::duration<double> elapsed_seconds = end_time_test - start_time_test;
+	std::cout << elapsed_seconds.count() / count << " sec/pt average\n";
 
 	// overall run stats here
 	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
 	sta_file << std::setprecision(0) << std::fixed;
-	sta_file << count << " points processed in " << run_sec << " seconds\n";
+	sta_file << count << " points processed in " << elapsed_seconds.count() << " seconds\n";
 	sta_file << std::setprecision(3) << std::fixed;
-	sta_file << run_sec/count << " sec/pt average\n";
+	sta_file << elapsed_seconds.count() /count << " sec/pt average\n";
 	sta_file << "\n";
 	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)\n";
+
+	std::cin.get();
+	std::cin.get();
 
 	return 0;
 }
