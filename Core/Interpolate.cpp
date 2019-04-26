@@ -354,6 +354,9 @@ void Interpolate::kernels_Lekien_all()
 /******************************************************************************/
 void Interpolate::kernels_Lekien_one(int ic, int ir, int is)
 {
+	// don't calculate again if same cell is entered, just retrieve
+	kern_4d->set_Lc_avail(ic, ir, is, true);
+
 	Eigen::VectorXd va(64);	// the coveted Lekien coefficients!
 	Eigen::VectorXd vb(64);	// interp cube corner values
 
@@ -374,8 +377,6 @@ void Interpolate::kernels_Lekien_one(int ic, int ir, int is)
 	for (int n = 0; n < 64; n++)
 		kern_4d->set_c0_k(c0, n + 8, va(n));
 
-	// don't calculate again if same cell is entered, just retrieve
-	kern_4d->set_Lc_avail(ic, ir, is, true);
 }
 /******************************************************************************/
 void Interpolate::nearest(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
@@ -458,32 +459,33 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 	}
 
 
-
-	for (int n = 0; n < pts.size(); n++)
-	{
-
-		int cx = pts[n].ix() - est_box->min().ix();
-		int cy = pts[n].iy() - est_box->min().iy();
-		int cz = pts[n].iz() - est_box->min().iz();
-
-		if (!kern_4d->get_Lc_avail(cx, cy, cz))	// calc if needed
-		{
-			kernels_Lekien_one(cx, cy, cz);	// at the point
-		}
-	}
-
 	int a = kern_4d->Lek_offset();
+
+	double pow_rx[4];
+	double pow_ry[4];
+	double pow_rz[4];
+
+	pow_rx[0] = 1.0;
+	pow_ry[0] = 1.0;
+	pow_rz[0] = 1.0;
 
 #pragma omp parallel
 	{
 
-		double pow_rx[4];
-		double pow_ry[4];
-		double pow_rz[4];
 
-		pow_rx[0] = 1.0;
-		pow_ry[0] = 1.0;
-		pow_rz[0] = 1.0;
+#pragma omp for
+		for (int n = 0; n < pts.size(); n++)
+		{
+
+			int cx = pts[n].ix() - est_box->min().ix();
+			int cy = pts[n].iy() - est_box->min().iy();
+			int cz = pts[n].iz() - est_box->min().iz();
+
+			if (!kern_4d->get_Lc_avail(cx, cy, cz))	// calc if needed
+			{
+				kernels_Lekien_one(cx, cy, cz);	// at the point
+			}
+		}
 
 #pragma omp for
 		for (int n = 0; n < pts.size(); n++)
@@ -521,15 +523,15 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 					aijk = ai + 4 * j;
 					alpha = kern_4d->get(cx, cy, cz, aijk);
 					val += alpha * pow_rxi_ryj;
-					
+
 					aijk += 16;
 					alpha = kern_4d->get(cx, cy, cz, aijk);
 					val += alpha * pow_rxi_ryj * pow_rz[1];
-					
+
 					aijk += 16;
 					alpha = kern_4d->get(cx, cy, cz, aijk);
 					val += alpha * pow_rxi_ryj * pow_rz[2];
-					
+
 					aijk += 16;
 					alpha = kern_4d->get(cx, cy, cz, aijk);
 					val += alpha * pow_rxi_ryj * pow_rz[3];
