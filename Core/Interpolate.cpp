@@ -461,14 +461,6 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 
 	int a = kern_4d->Lek_offset();
 
-	double pow_rx[4];
-	double pow_ry[4];
-	double pow_rz[4];
-
-	pow_rx[0] = 1.0;
-	pow_ry[0] = 1.0;
-	pow_rz[0] = 1.0;
-
 #pragma omp parallel
 	{
 
@@ -486,6 +478,15 @@ void Interpolate::tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbo
 				kernels_Lekien_one(cx, cy, cz);	// at the point
 			}
 		}
+
+
+		double pow_rx[4];
+		double pow_ry[4];
+		double pow_rz[4];
+
+		pow_rx[0] = 1.0;
+		pow_ry[0] = 1.0;
+		pow_rz[0] = 1.0;
 
 #pragma omp for
 		for (int n = 0; n < pts.size(); n++)
