@@ -9,18 +9,19 @@ void echo_vect_upto(std::vector<double> vect, unsigned int n)
 {
 	std::cout << std::setprecision(6) << std::fixed;
 
-	for (unsigned int i=0; i<vect.size(); i++)
-		if (i<n) std::cout << vect[i] << "\t";
+	for (unsigned int i = 0; i < vect.size(); i++)
+		if (i < n) std::cout << vect[i] << "\t";
 
 }
 
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
-	int nThreads_req;
+	std::cout << "TEST MODE" << std::endl;
+	int nThreads_req = 1;
 
-	std::cout << "number of threads requested: ";
-	std::cin >> nThreads_req;
+	//std::cout << "number of threads requested: ";
+	//std::cin >> nThreads_req;
 
 	if (nThreads_req < omp_get_max_threads())
 	{
@@ -113,7 +114,7 @@ int main(int argc, char *argv[])
 	// check to see if the command line argument is an accessible file
 
 	std::string fname(argv[1]);
-	if(!in.input_file_accessible(fname)) return 0;
+	if (!in.input_file_accessible(fname)) return 0;
 
 	// instantiate storage for run control parameters within Utility
 
@@ -121,21 +122,21 @@ int main(int argc, char *argv[])
 
 	// parse and check the input file
 
-	if(!in.input_file_read(&run)) return 0;
+	if (!in.input_file_read(&run)) return 0;
 
 	// instantiate a DataCloud
 	// organize_cloud can be lengthy, does (# points)*(# points) sorting
 
 	DataCloud data;
 
-	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
+	if (!in.read_point_cloud(&run, data.points, data.labels)) return 0;
 
 	data.organize_cloud(&run);
 
 
 	// *** begin run
 
-	auto start_time_test = std::chrono::system_clock::now();
+
 
 	time_t start_time_date = time(NULL);
 	char* dts = ctime(&start_time_date);
@@ -149,23 +150,28 @@ int main(int argc, char *argv[])
 	// *** print configuration to screen
 	//std::cout << optimize << std::endl;
 	std::string objfun;
-	if (run.obj_fcn == SAD) {
+	if (run.obj_fcn == SAD)
+	{
 		//obj_fcn = &obj_SAD;
 		objfun = std::string("objective function SAD");
 	}
-	if (run.obj_fcn == SSD) {
+	if (run.obj_fcn == SSD)
+	{
 		//obj_fcn = &obj_SSD;
 		objfun = std::string("objective function SSD");
 	}
-	if (run.obj_fcn == ZSSD) {
+	if (run.obj_fcn == ZSSD)
+	{
 		//obj_fcn = &obj_ZSSD;
 		objfun = std::string("objective function ZSSD");
 	}
-	if (run.obj_fcn == NSSD) {
+	if (run.obj_fcn == NSSD)
+	{
 		//obj_fcn = &obj_NSSD;
 		objfun = std::string("objective function NSSD");
 	}
-	if (run.obj_fcn == ZNSSD) {
+	if (run.obj_fcn == ZNSSD)
+	{
 		//obj_fcn = &obj_ZNSSD;
 		objfun = std::string("objective function ZNSSD");
 	}
@@ -209,14 +215,21 @@ int main(int argc, char *argv[])
 	int trg = 0;
 
 	std::vector<double> blank_par_min = optimize.par_min;
-	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
+	
 
-	for (unsigned int i=0; i<data.points.size(); i++) {
+	auto start_time_test = std::chrono::system_clock::now();
+	for (int iter = 0; iter < 10; iter++)
+	{
+		for (int j = 0; j < blank_par_min.size(); j++)
+		{
+			blank_par_min[j] = 0;
+		}
 
+		int i = 0;
 		// this is the index of the point being processed
 		int n = data.order[i];
 
-		std::cout << i << "/" << data.points.size() << " " ;
+		std::cout << i << "/" << data.points.size() << " ";
 		std::cout << data.labels[n] << "\t";
 		std::cout << std::setprecision(3) << std::fixed;
 		std::cout << data.points[n].x() << " ";
@@ -226,7 +239,7 @@ int main(int argc, char *argv[])
 
 		try
 		{
-			optimize.process_point(trg, n, &data);
+			optimize.process_point(trg, n, &data,1);
 		}
 		catch (Point_Good)
 		{
@@ -241,10 +254,10 @@ int main(int argc, char *argv[])
 			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
 
 			// put results into record for this point
-			data.results[trg][n].status = point_good;
-			data.results[trg][n].obj_min = optimize.obj_min;
-			for (int j=0; j<run.num_srch_dof; j++)
-				data.results[trg][n].par_min[j] = optimize.par_min[j];
+			//data.results[trg][n].status = point_good;
+			//data.results[trg][n].obj_min = optimize.obj_min;
+			//for (int j = 0; j < run.num_srch_dof; j++)
+			//	data.results[trg][n].par_min[j] = optimize.par_min[j];
 		}
 		catch (Range_Fail)
 		{
@@ -265,23 +278,28 @@ int main(int argc, char *argv[])
 
 		std::cout << "\n";
 
-		if ((i>9) && (i%10 == 0)) {
-			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
+
+		if ((i > 9) && (i % 10 == 0))
+		{
+			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app);
 			time_t status_time;
 			time(&status_time);
 			double status_sec = difftime(status_time, start_time);
-			sta_file << i  << " points of " << data.points.size() << " at " << status_sec/i << " sec/pt\n";
+			sta_file << i << " points of " << data.points.size() << " at " << status_sec / i << " sec/pt\n";
 		}
 
 		count += 1;
 		first_point = false;
 	}
+	// stop point processing timer
+	auto end_time_test = std::chrono::system_clock::now();
+
 
 	// *** all points processed, clean-up
 
 	// re-write output in point cloud order, from stored results
 	in.result_header(run.res_fname, optimize.par_min.size());
-	for (unsigned int i=0; i<data.points.size(); i++)
+	for (unsigned int i = 0; i < data.points.size(); i++)
 		in.append_result(run.res_fname, data.labels[i], data.points[i], data.results[trg][i].status, data.results[trg][i].obj_min, data.results[trg][i].par_min);
 
 	in.echo_input(&run);
@@ -290,26 +308,21 @@ int main(int argc, char *argv[])
 	char* dtf = ctime(&finish_time_date);
 	in.append_time_date(run.sta_fname, "Run finish: ", dtf);
 
-	// stop point processing timer
-	auto end_time_test = std::chrono::system_clock::now();
-
+	
 
 	std::chrono::duration<double> elapsed_seconds = end_time_test - start_time_test;
 	std::cout << elapsed_seconds.count() / count << " sec/pt average\n";
 
 	// overall run stats here
-	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
+	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app);
 	sta_file << std::setprecision(0) << std::fixed;
 	sta_file << count << " points processed in " << elapsed_seconds.count() << " seconds\n";
 	sta_file << std::setprecision(3) << std::fixed;
-	sta_file << elapsed_seconds.count() /count << " sec/pt average\n";
+	sta_file << elapsed_seconds.count() / count << " sec/pt average\n";
 	sta_file << "\n";
-	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
-	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
-	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)\n";
-
-	std::cin.get();
-	std::cin.get();
+	sta_file << "number successful = " << count_good << "\t(" << 100 * ((double)count_good / (double)count) << "%)\n";
+	sta_file << "number range fail = " << count_range << "\t(" << 100 * ((double)count_range / (double)count) << "%)\n";
+	sta_file << "number convg fail = " << count_convg << "\t(" << 100 * ((double)count_convg / (double)count) << "%)\n";
 
 	return 0;
 }
