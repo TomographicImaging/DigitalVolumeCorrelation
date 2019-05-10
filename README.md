@@ -24,6 +24,7 @@ Flags used during configuration
 | `PYTHON_DEST_DIR` | path | python modules install directory (default `${CMAKE_INSTALL_PREFIX}/python`) |
 | `CONDA_BUILD`| bool | `ON\|OFF` whether it is installed with `setup.py install`|
 |`PYTHON_EXECUTABLE` | path | /path/to/python/executable|
+|`BUILD_TEST` | bool | `ON\|OFF` whether to build the test mode|
 
 Here an example of build on Linux:
 
