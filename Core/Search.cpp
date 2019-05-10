@@ -73,13 +73,22 @@ Search::~Search()
 
 }
 /******************************************************************************/
-void Search::process_point(int t, int n, DataCloud *srch_data)
+void Search::process_point(int t, int n, DataCloud *srch_data, int test)
 {
 	// n is the index of the current search point
 	Point srch_pt = srch_data->points[n];
 
 	if (rc->sub_geo == sphere)
-		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
+	{
+		if (test)
+		{
+			fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2], 1); //seed consistent
+		}
+		else
+		{
+			fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
+		}
+	}
 
 	if (rc->sub_geo == cube) {
 		Point sub_min = srch_pt;
@@ -154,6 +163,8 @@ void Search::process_point(int t, int n, DataCloud *srch_data)
 
 
 	// update status of Search members
+
+
 	try {obj_min = obj_val_at(par_min);}
 	catch (Range_Fail) {throw Range_Fail();}
 
