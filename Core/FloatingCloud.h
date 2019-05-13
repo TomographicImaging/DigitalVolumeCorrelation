@@ -32,7 +32,6 @@
 #include <iostream>
 #include <time.h>
 #include <random>
-#include <chrono>
 
 // adjust Makefile if changes here
 #include "Point.h"
@@ -48,8 +47,8 @@ public:
 	FloatingCloud(double ref_x, double ref_y, double ref_z);
 	
 	/* Create num random points in a sphere of radius rad at center. */
-	FloatingCloud(Point cen, double rad, int num, double aspect_x, double aspect_y, double aspect_z, unsigned int seed = std::chrono::system_clock::now().time_since_epoch().count());
-
+	FloatingCloud(Point cen, double rad, int num, double aspect_x, double aspect_y, double aspect_z);
+	
 	/* Create with (nx,ny,nz) points spanning box_min..box_max. */
 	FloatingCloud(Point box_min, Point box_max, int nx, int ny, int nz);
 	
@@ -62,7 +61,7 @@ public:
 	
 	Point *stable_refpt;
 	Point *moving_refpt;
-
+	
 	/* Use FloatingCloud::AddPoint to make sure both stable and float clouds are
 	 initially populated with the same points */
 	int AddPoint(Point new_point);

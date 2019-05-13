@@ -17,7 +17,7 @@ void echo_vect_upto(std::vector<double> vect, unsigned int n)
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
-	int nThreads_req;
+	int nThreads_req = 1;
 
 	std::cout << "number of threads requested: ";
 	std::cin >> nThreads_req;

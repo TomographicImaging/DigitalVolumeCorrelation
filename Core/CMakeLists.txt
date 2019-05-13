@@ -59,14 +59,6 @@ target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR} )
 
-if(BUILD_TEST)
-  add_executable (tests ${CMAKE_CURRENT_SOURCE_DIR}/tests.cpp )
-  #TARGET_LINK_LIBRARIES (tests cilDVC Eigen3::Eigen)
-  target_link_libraries (tests cildvc_static)
-  include_directories(tests PUBLIC
-  	${CMAKE_CURRENT_SOURCE_DIR} )
-endif()
-
 # BKB: commenting out next 2 lines for make of Core to work
 # add_executable(parse_header ${CMAKE_CURRENT_SOURCE_DIR}/npy/parse.cpp)
 # set_property(TARGET parse_header PROPERTY CXX_STANDARD 11)
@@ -87,13 +79,6 @@ set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include)
 install(TARGETS dvc
 	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
        )
-
-if(BUILD_TEST)
-  install(TARGETS tests
-  RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-  )
-endif()
-
 install(TARGETS cildvc_shared
 	LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
 	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
