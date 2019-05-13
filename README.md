@@ -1,10 +1,9 @@
 # CCPi-DVC
 Digital Volume Correlation
 
-
-| Master | Development |
-|--------|-------------|
-| [![Build Status](https://anvil.softeng-support.ac.uk/jenkins/buildStatus/icon?job=CILsingle/CCPi-DVC)](https://anvil.softeng-support.ac.uk/jenkins/job/CILsingle/job/CCPi-DVC/) | [![Build Status](https://anvil.softeng-support.ac.uk/jenkins/buildStatus/icon?job=CILsingle/CCPi-DVC-dev)](https://anvil.softeng-support.ac.uk/jenkins/job/CILsingle/job/CCPi-DVC-dev/) |
+| Master | Development | Anaconda binaries |
+|--------|-------------|-------------------|
+| [![Build Status](https://anvil.softeng-support.ac.uk/jenkins/buildStatus/icon?job=CILsingle/CCPi-DVC)](https://anvil.softeng-support.ac.uk/jenkins/job/CILsingle/job/CCPi-DVC/) | [![Build Status](https://anvil.softeng-support.ac.uk/jenkins/buildStatus/icon?job=CILsingle/CCPi-DVC-dev)](https://anvil.softeng-support.ac.uk/jenkins/job/CILsingle/job/CCPi-DVC-dev/) | ![conda version](https://anaconda.org/ccpi/ccpi-dvc/badges/version.svg) ![conda last release](https://anaconda.org/ccpi/ccpi-dvc/badges/latest_release_date.svg) [![conda platforms](https://anaconda.org/ccpi/ccpi-dvc/badges/platforms.svg) ![conda dowloads](https://anaconda.org/ccpi/ccpi-dvc/badges/downloads.svg)](https://anaconda.org/ccpi/ccpi-dvc) |
 
 ## Build
 
