@@ -1,8 +1,4 @@
-
 #include "dvc.h"
-#include <omp.h>
-#include <thread>
-#include <chrono>
 
 /******************************************************************************/
 void echo_vect_upto(std::vector<double> vect, unsigned int n)
@@ -137,8 +133,7 @@ int main(int argc, char *argv[])
 
 	auto start_time_test = std::chrono::system_clock::now();
 
-	time_t start_time_date = time(NULL);
-	char* dts = ctime(&start_time_date);
+	auto dts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	in.echo_input(&run);
 	in.append_time_date(run.sta_fname, "Run start: ", dts);
 
@@ -198,9 +193,6 @@ int main(int argc, char *argv[])
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
 
-	// beging timing for point processing, to 1 sec resolution
-	time_t start_time;
-	time(&start_time);
 
 	int count = 0;
 	int count_good = 0;
@@ -210,6 +202,8 @@ int main(int argc, char *argv[])
 
 	std::vector<double> blank_par_min = optimize.par_min;
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
+
+	auto point_time_start = std::chrono::high_resolution_clock::now();
 
 	for (unsigned int i=0; i<data.points.size(); i++) {
 
@@ -265,19 +259,33 @@ int main(int argc, char *argv[])
 
 		std::cout << "\n";
 
-		if ((i>9) && (i%10 == 0)) {
-			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
-			time_t status_time;
-			time(&status_time);
-			double status_sec = difftime(status_time, start_time);
-			sta_file << i  << " points of " << data.points.size() << " at " << status_sec/i << " sec/pt\n";
-		}
-
 		count += 1;
 		first_point = false;
+
+		if (count % 10 == 0)
+		{
+			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app);
+
+			auto point_time_status = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double, std::milli> status = point_time_status - point_time_start;
+			double status_sec = status.count() / 1000.0;
+
+			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec\n";
+		}
+
+
+
 	}
 
 	// *** all points processed, clean-up
+		// stop point processing timer
+	auto point_time_end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> elapsed_milliseconds = point_time_end - point_time_start;
+	double elapsed_seconds = elapsed_milliseconds.count() / 1000.0;
+	std::cout << count / elapsed_seconds << " pt/sec average\n";
+
+	auto dtf = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
 
 	// re-write output in point cloud order, from stored results
 	in.result_header(run.res_fname, optimize.par_min.size());
@@ -285,24 +293,17 @@ int main(int argc, char *argv[])
 		in.append_result(run.res_fname, data.labels[i], data.points[i], data.results[trg][i].status, data.results[trg][i].obj_min, data.results[trg][i].par_min);
 
 	in.echo_input(&run);
-	in.append_time_date(run.sta_fname, "Run start: ", dts);
-	time_t finish_time_date = time(NULL);
-	char* dtf = ctime(&finish_time_date);
-	in.append_time_date(run.sta_fname, "Run finish: ", dtf);
-
-	// stop point processing timer
-	auto end_time_test = std::chrono::system_clock::now();
-
-
-	std::chrono::duration<double> elapsed_seconds = end_time_test - start_time_test;
-	std::cout << elapsed_seconds.count() / count << " sec/pt average\n";
+	in.append_time_date(run.sta_fname, "Run start:\t", dts);
+	in.append_time_date(run.sta_fname, "Run finish:\t", dtf);
 
 	// overall run stats here
 	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
 	sta_file << std::setprecision(0) << std::fixed;
-	sta_file << count << " points processed in " << elapsed_seconds.count() << " seconds\n";
+	sta_file << count << " points processed in " << elapsed_seconds << " seconds\n";
 	sta_file << std::setprecision(3) << std::fixed;
-	sta_file << elapsed_seconds.count() /count << " sec/pt average\n";
+	sta_file << elapsed_seconds /count << " sec/pt\n";
+	sta_file << count/ elapsed_seconds << " pt/sec\n";
+
 	sta_file << "\n";
 	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
