@@ -912,6 +912,17 @@ int InputRead::append_time_date(std::string fname, std::string label, char* dt)
 
 	return 1;
 }
+int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
+{
+	std::ofstream sta_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
+
+	std::stringstream ss;
+	ss << std::put_time(std::localtime(&dt), "%Y-%m-%d %X");
+
+	sta_file << label << ss.str() << "\n";
+
+	return 1;
+}
 /******************************************************************************/
 int InputRead::result_header(std::string fname, int num_params)
 {
