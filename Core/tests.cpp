@@ -14,24 +14,8 @@ void echo_vect_upto(std::vector<double> vect, unsigned int n)
 int main(int argc, char *argv[])
 {
 	std::cout << "TEST MODE" << std::endl;
-	int nThreads = 8;
-	int nThreads_max = omp_get_max_threads();
-	//std::cout << "number of threads requested: ";
-	//std::cin >> nThreads_req;
 
-	if (nThreads > nThreads_max)
-	{
-		nThreads = nThreads_max;
-	}
-	//	omp_set_num_threads(omp_get_max_threads());
-	//
-	//#pragma omp parallel
-	//	{
-	//		if (omp_get_thread_num() == 0)
-	//		{
-	//			cout << "Running with threads = " << omp_get_num_threads() << endl;
-	//		}
-	//	}
+	int nThreads = omp_get_max_threads();
 
 	InputRead in;
 
