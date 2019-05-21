@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 		{
 			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app);
 
-			auto point_time_status = std::chrono::high_resolution_clock::now();
+			auto point_time_status = std::chrono::steady_clock::now();
 			std::chrono::duration<double, std::milli> status = point_time_status - point_time_start;
 			double status_sec = status.count() / 1000.0;
 
