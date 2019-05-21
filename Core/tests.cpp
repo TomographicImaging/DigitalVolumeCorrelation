@@ -14,6 +14,13 @@ void echo_vect_upto(std::vector<double> vect, unsigned int n)
 int main(int argc, char *argv[])
 {
 	std::cout << "TEST MODE" << std::endl;
+	
+	int nProcessors = omp_get_num_procs();
+
+	if (omp_get_max_threads() > nProcessors)
+	{
+		omp_set_num_threads(nProcessors);
+	}
 
 	int nThreads = omp_get_max_threads();
 
