@@ -13,6 +13,11 @@
 #   limitations under the License.
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
+    message(FATAL_ERROR "Require at least gcc-4.7")
+endif()
+
 find_package(OpenMP)
 
 if (OPENMP_FOUND)
