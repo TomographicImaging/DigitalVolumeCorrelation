@@ -13,18 +13,11 @@ void echo_vect_upto(std::vector<double> vect, unsigned int n)
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
-	int nThreads_req;
+	int nProcessors = omp_get_num_procs();
 
-	std::cout << "number of threads requested: ";
-	std::cin >> nThreads_req;
-
-	if (nThreads_req < omp_get_max_threads())
+	if (omp_get_max_threads() > nProcessors)
 	{
-		omp_set_num_threads(nThreads_req);
-	}
-	else
-	{
-		omp_set_num_threads(omp_get_max_threads());
+		omp_set_num_threads(nProcessors - 1);
 	}
 
 #pragma omp parallel
