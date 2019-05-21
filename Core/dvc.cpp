@@ -15,9 +15,11 @@ int main(int argc, char *argv[])
 {
 	int nProcessors = omp_get_num_procs();
 
-	if (omp_get_max_threads() > nProcessors)
+	int OMP_NUM_THREADS = omp_get_max_threads();
+
+	if (omp_get_max_threads() > nProcessors || !OMP_NUM_THREADS)
 	{
-		omp_set_num_threads(nProcessors - 1);
+		omp_set_num_threads(nProcessors);
 	}
 
 #pragma omp parallel
