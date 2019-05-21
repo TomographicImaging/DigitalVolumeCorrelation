@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 	std::vector<double> blank_par_min = optimize.par_min;
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
 
-	auto point_time_start = std::chrono::high_resolution_clock::now();
+	auto point_time_start = std::chrono::steady_clock::now();
 
 	for (unsigned int i=0; i<data.points.size(); i++) {
 
@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
 
 	// *** all points processed, clean-up
 		// stop point processing timer
-	auto point_time_end = std::chrono::high_resolution_clock::now();
+	auto point_time_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> elapsed_milliseconds = point_time_end - point_time_start;
 	double elapsed_seconds = elapsed_milliseconds.count() / 1000.0;
 	std::cout << count / elapsed_seconds << " pt/sec average\n";
