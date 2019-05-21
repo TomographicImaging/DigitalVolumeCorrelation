@@ -189,6 +189,7 @@ public:
 	int print_input_example(std::ofstream &file, std::string pool);
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
+	int append_time_date(std::string fname, std::string label, time_t dt);
 
 	int result_header(std::string fname, int num_params);
 	int append_result(std::string fname, int n, Point pt, const int status, double obj_min, std::vector<double> result);

@@ -24,6 +24,7 @@ Flags used during configuration
 | `PYTHON_DEST_DIR` | path | python modules install directory (default `${CMAKE_INSTALL_PREFIX}/python`) |
 | `CONDA_BUILD`| bool | `ON\|OFF` whether it is installed with `setup.py install`|
 |`PYTHON_EXECUTABLE` | path | /path/to/python/executable|
+|`BUILD_TEST` | bool | `ON\|OFF` whether to build the test mode|
 
 Here an example of build on Linux:
 
@@ -55,3 +56,8 @@ If passed `CONDA_BUILD=ON` the software will be installed by issuing `python set
 If passed `CONDA_BUILD=OFF` the software will be installed in the directory pointed by `${PYTHON_DEST_DIR}` which defaults to `${CMAKE_INSTALL_PREFIX}/python`. Therefore this directory should be added to the `PYTHONPATH`.
 
 If Python is not picked by CMake you can provide the additional flag to CMake `-DPYTHON_EXECUTABLE=/path/to/python/executable`.
+
+## Open MP
+
+### Setting the Number of Threads Using an OpenMP Environment Variable
+You can set the number of threads using the environment variable `OMP_NUM_THREADS`. If this is higher than the number of processors it will instead use the number of processors available.

@@ -12,9 +12,14 @@ FloatingCloud::FloatingCloud (double ref_x, double ref_y, double ref_z)
 	stable_refpt = new Point(ref_x, ref_y, ref_z);
 	moving_refpt = new Point(ref_x, ref_y, ref_z);
 }
+/*
+public:
+  Foo(char x, int y) {}
+  Foo(int y) : Foo('a', y) {} // Foo(int) delegates to Foo(char,int)
+};
+*/
 /******************************************************************************/
-FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z)
-// sphere
+FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z, unsigned int seed)
 {
 	stable = new Cloud();
 	moving = new Cloud();
@@ -25,8 +30,8 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 	moving_refpt = new Point(cen.x(), cen.y(), cen.z());
 
 	//using random.h now
-	std::mt19937 mt(time(NULL));
-	//std::mt19937 mt(1);
+	std::mt19937 mt(seed);
+
 	std::uniform_real_distribution<double> dist(-rad_max, rad_max);
 
 // subvolo echo
@@ -103,7 +108,7 @@ FloatingCloud::FloatingCloud (Point box_min, Point box_max, int nx, int ny, int 
 	}
 // float_cloud_num += 1;							// subvol echo
 }
-/******************************************************************************/
+/****b**************************************************************************/
 FloatingCloud::~FloatingCloud()
 {
 	delete stable;
