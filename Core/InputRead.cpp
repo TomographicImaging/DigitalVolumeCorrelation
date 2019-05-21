@@ -916,10 +916,14 @@ int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
 {
 	std::ofstream sta_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
 
-	std::stringstream ss;
-	ss << std::put_time(std::localtime(&dt), "%Y-%m-%d %X");
+	//doesn't compile in gcc version < 5
+	//std::stringstream ss;
+	//ss << std::put_time(std::localtime(&dt), "%Y-%m-%d %X");
+	//sta_file << label << ss.str() << "\n";
 
-	sta_file << label << ss.str() << "\n";
+	char ss[30];
+	std::strftime(ss, 30*sizeof(char), "%Y-%m-%d %H:%M:%S", std::localtime(&dt));
+	sta_file << label << ss << "\n";
 
 	return 1;
 }
