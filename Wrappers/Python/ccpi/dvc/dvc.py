@@ -95,7 +95,7 @@ class DVC(object):
                     else:
                         #tb = sys.exc_info()[2]
                         raise ValueError(
-                           'DVC: Unsupported subvol_geom: {0}'.format(
+                           'DVC: Unsupported subvol_thresh: {0}'.format(
                                    v
                                    ))
                         
@@ -221,7 +221,7 @@ class DVC(object):
             self.run.Endian_Type = dvcw.Endian_Type.big
         # kind (whether (un)signed integer or float )    
         if not (npyheader['descr'][1] == 'i' or npyheader['descr'][1] == 'u'):
-            raise TypeError('Input other than unsigned char or unsigned short are not supperted')
+            raise TypeError('Input other than unsigned char or unsigned short are not supported')
         # bit depth only 8 or 16 accepted
         if npyheader['descr'][2] == '1':
             self.run.vol_bit_depth = 8
@@ -293,6 +293,51 @@ class DVC(object):
                        ))
         self.run.subvol_geom = geometry.lower()
         self.run.sub_geo = sg
+    
+    @property
+    def subvol_thresh(self):
+        return 
+    
+    @subvol_thresh.setter
+    def subvol_thresh(self, v):
+        m = self.run.vol_bit_depth
+        v = config['subvol_thresh']
+        
+        if v.lower() == 'on':
+            #m = config['vol_bit_depth']
+            tm = 0
+            tM = numpy.power(2,m, dtype=numpy.float64)
+            v = config['gray_thresh_min']
+            if v >= tm and v < tM:
+                self.run.gray_thresh_min = v
+            else:
+                raise ValueError('Input value {0} out of bounds {1} {2}'
+                                 .format(v, tm, tM))
+            v = config['gray_thresh_max']
+            tm = self.run.gray_thresh_min
+            
+            if v >= tm and v < tM:
+                self.run.gray_thresh_max = v
+            else:
+                raise ValueError('Input value {0} out of bounds {1} {2}'
+                                 .format(v, tm, tM))
+            v = config['min_vol_fract']
+            tm = 0.
+            tM = 1.
+            if v >= tm and v < tM:
+                self.run.min_vol_fract = v
+            else:
+                raise ValueError('Input value {0} out of bounds {1} {2}'
+                                 .format(v, tm, tM))
+        elif v.lower() == 'off':
+            #m = config['vol_bit_depth']
+            self.run.gray_thresh_min = 0
+            self.run.gray_thresh_max = numpy.power(2,m, dtype=numpy.float64)
+            self.run.min_vol_fract = 0 
+        else:
+            #tb = sys.exc_info()[2]
+            raise ValueError('DVC: Unsupported subvol_thresh: {0}'.format( v ))
+                        
         
         
                     
@@ -379,4 +424,4 @@ if __name__ == "__main__":
     print ("received hd" , hd)
     details = eval(hd[0])
     
-    controller.run.run_dvc_cmd(pc)
+    # controller.run.run_dvc_cmd(pc)
