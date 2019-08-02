@@ -1,6 +1,6 @@
 package:
   name: ccpi-dvc
-  version: {{CIL_VERSION}}
+  version: {{ environ['CIL_VERSION'] }}
 
 
 build:
