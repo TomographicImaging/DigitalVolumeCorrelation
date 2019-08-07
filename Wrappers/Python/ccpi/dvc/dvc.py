@@ -32,7 +32,7 @@ class DVC(object):
                     self.run.ref_fname = config['reference_filename']
                     self.run.cor_fname = config['correlate_filename']
                     
-                    self.check_input_files()
+                    #self.check_input_files()
                     
                     v = config['output_filename']
                     self.run.out_fname = v 
@@ -119,7 +119,7 @@ class DVC(object):
                            'DVC: Unsupported obj_function: {0}'.format(
                                    v
                                    ))
-                    self.run.obj_function = v.lower()
+                    #self.run.obj_function = v.lower()
                     self.run.obj_fcn = sg
                     
                     v = config[ 'interp_type']
@@ -135,7 +135,6 @@ class DVC(object):
                            'DVC: Unsupported obj_function: {0}'.format(
                                    v
                                    ))
-                    self.run.interp_type = v.lower()
                     self.run.int_typ = sg
                     
                     self.run.disp_max = config[ 'disp_max']
