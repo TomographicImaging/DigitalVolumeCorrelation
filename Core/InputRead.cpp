@@ -5,13 +5,13 @@
 std::vector<std::string> InputRead::line_to_vect(std::string line)
 {
 	std::vector<std::string> vect;
-	
+
 	std::istringstream io_line;
 	std::string str;
 
 	io_line.str(line);
-	for (;;) {		
-		if (io_line.eof()) break;				
+	for (;;) {
+		if (io_line.eof()) break;
 		io_line >> str;
 		vect.push_back(str);
 	}
@@ -20,7 +20,7 @@ std::vector<std::string> InputRead::line_to_vect(std::string line)
 }
 /******************************************************************************/
 InputRead::InputRead()
-{	
+{
 	Point min_pt(0,0,0);
 	Point max_pt(0,0,0);
 	search_box = new BoundBox(min_pt, max_pt);
@@ -36,7 +36,7 @@ InputRead::InputRead()
 	kwh_vol_bit_depth.good = limits_to_string(ok_vol_bit_depth);
 
 	// keyword vol_endian
-	ok_vol_endian = line_to_vect(ok_endian_line);	
+	ok_vol_endian = line_to_vect(ok_endian_line);
 	kwh_vol_endian.good = limits_to_string(ok_vol_endian);
 
 	vol_hdr_min = 0;
@@ -56,7 +56,7 @@ InputRead::InputRead()
 	kwh_subvol_size.good.assign("1 <= int <= smallest dimension of the image volumes");
 
 	subvol_npts_min = 1;
-	subvol_npts_max = 10000;
+	subvol_npts_max = 50000;
 	kwh_subvol_npts.good = limits_to_string(subvol_npts_min, subvol_npts_max);
 
 	// keyword subvol_thresh
@@ -76,7 +76,7 @@ InputRead::InputRead()
 	ok_num_srch_dof.push_back(6);
 	ok_num_srch_dof.push_back(12);
 	kwh_num_srch_dof.good = limits_to_string(ok_num_srch_dof);
-	
+
 	// keyword obj_function
 	ok_obj_function = line_to_vect(ok_obj_fcn_line);
 	kwh_obj_function.good = limits_to_string(ok_obj_function);
@@ -247,11 +247,11 @@ InputRead::InputRead()
 	manual.push_back(kwh_subvol_size);
 
 	kwh_subvol_npts.word.assign("subvol_npts");
-	kwh_subvol_npts.exam.assign("2700");
+	kwh_subvol_npts.exam.assign("5000");
 	kwh_subvol_npts.reqd.assign("yes");
 	kwh_subvol_npts.pool.assign("sub_vols");
 	kwh_subvol_npts.hint.assign("### number of points to distribute within the subvol");
-	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume.\n");
+	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume (max is 50000).\n");
 	kwh_subvol_npts.help.append("   In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n");
 	kwh_subvol_npts.help.append("   Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n");
 	kwh_subvol_npts.help.append("   For cubes a uniform grid of approximately subvol_npts is generated.\n");
@@ -353,7 +353,7 @@ InputRead::InputRead()
 	kwh_obj_function.help.append("      1. The normalized quantities nssd and znssd are preferred, as quality of match can be assessed.\n");
 	kwh_obj_function.help.append("      2. The natural range of nssd is [0.0 to 2.0], and of znssd is [0.0 to 4.0].\n");
 	kwh_obj_function.help.append("      3. Both are scaled for output into the [0.0 to 1.0] range for ease of comparison.\n");
-	
+
 	kwh_obj_function.help.append("\n");
 	manual.push_back(kwh_obj_function);
 
@@ -391,7 +391,7 @@ InputRead::InputRead()
 	kwh_basin_radius.reqd.assign("no");
 	kwh_basin_radius.pool.assign("opt_tune");
 	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = disp_max");
-	
+
 	kwh_basin_radius.help.assign("   The default process uses cloud points sorted from a global start to establish initial disp values.\n");
 	kwh_basin_radius.help.append("   To conduct a coarse search in addition (gridded translation), set basin_radius to a non-zero value.\n");
 	kwh_basin_radius.help.append("   The basin_radius value sets the coarse-search resolution (grid step size).\n");
@@ -475,7 +475,7 @@ int InputRead::check_eol(std::ifstream &file, char &eol, std::string &term)
 		eol = '\r';
 		term = "\n";
 	}
-	
+
 	return 1;
 }
 /******************************************************************************/
@@ -508,7 +508,7 @@ int InputRead::input_file_read(RunControl *run)
 	if(run->vol_bit_depth != 8)
 	{
 		if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
-	}	
+	}
 
 	if(parse_line_min_max(kwh_vol_hdr_lngth, 0, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_vol_wide, 0, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
@@ -520,8 +520,8 @@ int InputRead::input_file_read(RunControl *run)
 	if (run->vol_tall < subvol_size_max) subvol_size_max = run->vol_tall;
 
 	if(parse_line_vec_val(kwh_subvol_geom, ok_subvol_geom, run->subvol_geom, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_subvol_geom.size(); i++) 
-		if (run->subvol_geom == ok_subvol_geom[i]) run->sub_geo = (Subvol_Type)i;	
+	for (int i=0; i<ok_subvol_geom.size(); i++)
+		if (run->subvol_geom == ok_subvol_geom[i]) run->sub_geo = (Subvol_Type)i;
 	if(parse_line_min_max(kwh_subvol_size, 0, subvol_size_max, run->subvol_size, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_subvol_npts, 0, subvol_npts_max, run->subvol_npts, true) != input_line_ok ) return 0;
 	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
@@ -536,11 +536,11 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_min_max(kwh_disp_max, 0, subvol_size_max, run->disp_max, true) != input_line_ok ) return 0;
 	if(parse_line_vec_val(kwh_num_srch_dof, ok_num_srch_dof, run->num_srch_dof, true) != input_line_ok ) return 0;
 	if(parse_line_vec_val(kwh_obj_function, ok_obj_function, run->obj_function, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_obj_function.size(); i++) 
-		if (run->obj_function == ok_obj_function[i]) run->obj_fcn = (Objfcn_Type)i;	
+	for (int i=0; i<ok_obj_function.size(); i++)
+		if (run->obj_function == ok_obj_function[i]) run->obj_fcn = (Objfcn_Type)i;
 	if(parse_line_vec_val(kwh_interp_type, ok_interp_type, run->interp_type, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_interp_type.size(); i++) 
-		if (run->interp_type == ok_interp_type[i]) run->int_typ = (Interp_Type)i;	
+	for (int i=0; i<ok_interp_type.size(); i++)
+		if (run->interp_type == ok_interp_type[i]) run->int_typ = (Interp_Type)i;
 
 	// optional parameters
 
@@ -584,14 +584,14 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 {
 	// add check for point outside of voxel volume
 	// make changes in DataCloud version as well
-	
+
 	std::ifstream ifs(run->pts_fname.c_str(), std::ifstream::in);
 
 	char eol;
 	std::string term;
-	
+
 	check_eol(ifs, eol, term);
-	
+
 	ifs.clear();
 	ifs.seekg(0, std::ios::beg);
 
@@ -684,7 +684,7 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "Revised:  " << DAY_REV << " " << MONTH_REV << " " << YEAR_REV << "\n";
 	file << "version:  " << VERSION << "\n";
 	file << "\n";
-	
+
 	file << "The dvc code is written in c++ with portability and simple compilation in mind.\n";
 	file << "At present only an single external library (eigen) is used for sparse matrix interpolation calculations.\n";
 	file << "Compilation is Makefile controlled. To do a complete rebuild:\n";
@@ -776,9 +776,9 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "      - Convg_Fail = maximum iterations exceeded; consider increasing subvol_size &/or npts.\n";
 	file << "\n";
 	file << "   - The magnitude of the objective function value at the end of the search is listed as obj=.\n";
-	file << "      - For obj_function = sad, ssd, and zssd the value is relative, depending on subvolume size and pixel values.\n";	
+	file << "      - For obj_function = sad, ssd, and zssd the value is relative, depending on subvolume size and pixel values.\n";
 	file << "      - For obj_function = nssd and znssd the value is scaled between 0 and 2, with zero a perfect match.\n";
-	
+
 	file << "   - The point [x,y,z] displacement is listed next for successful searches.\n";
 	file << "\n";
 	file << "Following program execution:\n\n";
@@ -803,7 +803,7 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "      - MATLAB functions griddata, meshgrid, and gradient are useful for strain calculation.\n";
 	file << "      - Displacement data imported into finite element analysis codes is also useful for strain calculation.\n";
 	file << "\n";
-	
+
 
 	return 1;
 }
@@ -909,6 +909,21 @@ int InputRead::append_time_date(std::string fname, std::string label, char* dt)
 	std::ofstream sta_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
 
 	sta_file << label << dt << "\n";
+
+	return 1;
+}
+int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
+{
+	std::ofstream sta_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
+
+	//doesn't compile in gcc version < 5
+	//std::stringstream ss;
+	//ss << std::put_time(std::localtime(&dt), "%Y-%m-%d %X");
+	//sta_file << label << ss.str() << "\n";
+
+	char ss[30];
+	std::strftime(ss, 30*sizeof(char), "%Y-%m-%d %H:%M:%S", std::localtime(&dt));
+	sta_file << label << ss << "\n";
 
 	return 1;
 }
@@ -1272,17 +1287,17 @@ int InputRead::parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim
 	std::vector<double> vect(vect_val.size());
 
 	io_keyline.str(keyline);
-	
+
 	io_keyline >> word;
-	
+
 	int ok = 0;
 	for (int i=0; i<vect.size(); i++) {
 		io_keyline >> vect[i];
-		if (fabs(vect[i])>fabs(vect_lim[i])) break;	
+		if (fabs(vect[i])>fabs(vect_lim[i])) break;
 		vect_val[i] = vect[i];
 		ok += 1;
 	}
-	
+
 	if (ok == vect.size()) return 1;
 
 	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
@@ -1303,17 +1318,17 @@ int InputRead::parse_line_dvect(key_word_help kwh, double min, double max, std::
 	std::vector<double> vect(vect_val.size());
 
 	io_keyline.str(keyline);
-	
+
 	io_keyline >> word;
-	
+
 	int ok = 0;
 	for (int i=0; i<vect.size(); i++) {
 		io_keyline >> vect[i];
-		if ((vect[i]<min)||(vect[i]>max)) break;	
+		if ((vect[i]<min)||(vect[i]>max)) break;
 		vect_val[i] = vect[i];
 		ok += 1;
 	}
-	
+
 	if (ok == vect.size()) return 1;
 
 	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
@@ -1322,4 +1337,3 @@ int InputRead::parse_line_dvect(key_word_help kwh, double min, double max, std::
 	return param_invalid;
 }
 /******************************************************************************/
-

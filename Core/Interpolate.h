@@ -27,6 +27,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <omp.h>
 
 // Adjust Makefile if changes made here
 #include "Point.h"
@@ -42,7 +43,7 @@
 #include "CCPiDefines.h"
 
 // using both or either creates 10x speedup with -O3 comp, haven't tracked down the specifics
-using namespace Eigen;	
+using namespace Eigen;
 using namespace std;
 
 /******************************************************************************/
