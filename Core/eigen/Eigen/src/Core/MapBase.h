@@ -230,6 +230,7 @@ template<typename Derived> class MapBase<Derived, WriteAccessors>
 
     Derived& operator=(const MapBase& other)
     {
+      typedef Base Base_;
       Base::Base::operator=(other);
       return derived();
     }
