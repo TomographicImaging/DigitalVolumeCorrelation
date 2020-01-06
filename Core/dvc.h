@@ -36,9 +36,11 @@
 #include <vector>
 #include <limits>
 #include <cstdlib>
-#include <ctime>
+#include <chrono>
 #include <cmath>
 #include <stdint.h>
+#include <omp.h>
+#include <thread>
 
 // adjust Makefile if changes made here
 #include "InputRead.h"
