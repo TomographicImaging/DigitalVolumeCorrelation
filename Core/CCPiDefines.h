@@ -31,7 +31,7 @@
   #else
     #define  CCPI_EXPORT __declspec(dllimport)
     #define EXPIMP_TEMPLATE extern
-  #endif  CCPi_EXPORTS 
+  #endif 
 #elif defined(linux) || defined(__linux) || defined(__APPLE__)
  #define CCPI_EXPORT
 #endif
