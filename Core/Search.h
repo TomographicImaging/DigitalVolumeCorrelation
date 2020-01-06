@@ -62,12 +62,13 @@ public:
 	FloatingCloud *fcld;
 	Interpolate *interp;
 
-	// pointer to the objective function set in RunControl
+	// pointers to the objective function set in RunControl, versions w/ and w/o return of residual vector
 	double (*obj_fcn)(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol);
-	
+	double (*obj_fcn_res)(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual);
+
 	int bytes_per;		// keep for now, derived
 	double subv_rad;	// keep for now, derived
-	int subv_num;		// keep for now, derived	
+	int subv_num;		// keep for now, derived
 
 	BoundBox *vox_box;	// image volume dimensions
 	BoundBox *est_box_nom;	// for allocating an interpolator kernel
@@ -78,7 +79,7 @@ public:
 	std::vector<double> par_min;	// parameter vector at optimum
 	double obj_min;			// objective function value at optimum
 
-	void process_point(int t, int n, DataCloud *srch_data);
+	void process_point(int t, int n, DataCloud *srch_data, int test = 0);
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
@@ -87,14 +88,22 @@ public:
 	void look_with(Search_Type method, int ndof, double ftol);
 
 	double obj_val_at(const std::vector<double> x);	// this version uses nominals set at Search construct
+	double obj_val_at(const std::vector<double> x, std::vector<double> &residual); // with residuals returned as well
+
+	void Jacobian_at (const std::vector<double> a, std::vector< std::vector<double> > &J); // by forward diferences: [npts][ndof]
+	double LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J); // key bits needed by LM using eigen library types
+
+	std::vector<double> obj_grad_at(const std::vector<double> x); // simple finite diff if E, overall obj value
+	std::vector< std::vector<double> > obj_Hess_at(const std::vector<double> x);
 
 	// translation grid style global search
-	void trgrid_global(double displ_max, double basin_rad);
-	
+	void trgrid_global(double displ_max, double basin_rad, int n);
+
 	// randomized points style global search
 	void random_global(double displ_max, double basin_rad);
 
 	std::vector<double> min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol);
+	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol);
 
 //	struct Min_Ftor_new;	// leave declared for now, not working
 private:
@@ -120,13 +129,12 @@ private:
 	Objfcn_Type lobj_typ;
 	Interp_Type lint_typ;
 
-	
+
 	Min_Ftor_new(const Interp_Type int_typ, const Objfcn_Type obj_typ, const int ndof, FloatingCloud *fcld, Interpolate *interp, const std::vector<double> &ref_subvol);
-	
+
 	double operator() (const std::vector<double> x);
 
 };*/
 /******************************************************************************/
 
 #endif
-
