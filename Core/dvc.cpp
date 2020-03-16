@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 			data.results[trg][n].status = convg_fail;
 		}
 
-		std::cout << "\n";
+		std::cout << endl;
 
 		count += 1;
 		first_point = false;
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 			std::chrono::duration<double, std::milli> status = point_time_status - point_time_start;
 			double status_sec = status.count() / 1000.0;
 
-			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec\n";
+			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec" << std::endl;
 		}
 
 
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
 	auto point_time_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> elapsed_milliseconds = point_time_end - point_time_start;
 	double elapsed_seconds = elapsed_milliseconds.count() / 1000.0;
-	std::cout << count / elapsed_seconds << " pt/sec average\n";
+	std::cout << count / elapsed_seconds << " pt/sec average" << std::endl;
 
 	auto dtf = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
@@ -299,13 +299,12 @@ int main(int argc, char *argv[])
 	sta_file << elapsed_seconds /count << " sec/pt\n";
 	sta_file << count/ elapsed_seconds << " pt/sec\n";
 
-	sta_file << "\n";
+	sta_file << std::endl;
 	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)\n";
+	sta_file << std::endl;
 
-	std::cin.get();
-	std::cin.get();
 
 	return 0;
 }
