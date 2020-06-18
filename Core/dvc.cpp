@@ -304,9 +304,6 @@ int main(int argc, char *argv[])
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)\n";
 
-	std::cin.get();
-	std::cin.get();
-
 	return 0;
 }
 /******************************************************************************/
