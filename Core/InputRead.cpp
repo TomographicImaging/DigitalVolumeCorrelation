@@ -1075,7 +1075,8 @@ int InputRead::parse_line_old_file(key_word_help kwh, std::string &arg1, unsigne
 
 	io_keyline.str(keyline);
 
-	io_keyline >> word >> str1;
+	getline(io_keyline, word, '\t');
+	getline(io_keyline, str1, '\t');
 
 	std::ifstream old_file(str1.c_str());
 
