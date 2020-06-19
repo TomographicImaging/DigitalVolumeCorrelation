@@ -305,7 +305,6 @@ int main(int argc, char *argv[])
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)" << endl;
 	sta_file << std::endl;
 
-
 	return 0;
 }
 /******************************************************************************/
