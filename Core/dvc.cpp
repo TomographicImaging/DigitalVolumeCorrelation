@@ -41,38 +41,38 @@ int main(int argc, char *argv[])
 	// command entered with no arguments
 	if (argc == 1)
 	{
-		std::cout << "\n";
-		std::cout << "Options:\n";
-		std::cout << "dvc dvc_in\t\t// execute dvc code with dvc_in controlling the run\n";
-		std::cout << "dvc help\t\t// provide additional detail about running the dvc code\n";
-		std::cout << "dvc example\t\t// print dvc_in_example with brief keyword descriptions\n";
-		std::cout << "dvc manual\t\t// print dvc_manual with more detailed information\n";
-		std::cout << "\n";
+		std::cout << endl;
+		std::cout << "Options:" << endl;
+		std::cout << "dvc dvc_in\t\t// execute dvc code with dvc_in controlling the run" << endl;
+		std::cout << "dvc help\t\t// provide additional detail about running the dvc code" << endl;
+		std::cout << "dvc example\t\t// print dvc_in_example with brief keyword descriptions" << endl;
+		std::cout << "dvc manual\t\t// print dvc_manual with more detailed information" << endl;
+		std::cout << endl;
 		return 0;
 	}
 
 	// trap help on the command line
 	if (argv[1] == help)
 	{
-		std::cout << "\n";
-		std::cout << "Program execution is controlled by a key_word based input file.\n";
-		std::cout << "Please refer to an example input file for content and format.\n";
-		std::cout << "To run the code type dvc followed by the name of the input file.\n";
-		std::cout << "The input file is evaluated and, if all is good, the run starts.\n";
-		std::cout << "Common problems are incorrect file paths, missing keywords, and invalid parameters.\n";
-		std::cout << "A message is sent to the console window if an input file problem is encountered.\n";
-		std::cout << "Progrm execution can be lengthy, on the order of hours for large point clouds.\n";
-		std::cout << "Results are written to output_filename.disp during execution.\n";
-		std::cout << "Information about the run is written to output_filename.stat during execution.\n";
-		std::cout << "Both files are simple text, and can be opened and viewed at any time.\n";
-		std::cout << "\n";
+		std::cout << endl;
+		std::cout << "Program execution is controlled by a key_word based input file." << endl;
+		std::cout << "Please refer to an example input file for content and format." << endl;
+		std::cout << "To run the code type dvc followed by the name of the input file." << endl;
+		std::cout << "The input file is evaluated and, if all is good, the run starts." << endl;
+		std::cout << "Common problems are incorrect file paths, missing keywords, and invalid parameters." << endl;
+		std::cout << "A message is sent to the console window if an input file problem is encountered." << endl;
+		std::cout << "Progrm execution can be lengthy, on the order of hours for large point clouds." << endl;
+		std::cout << "Results are written to output_filename.disp during execution." << endl;
+		std::cout << "Information about the run is written to output_filename.stat during execution." << endl;
+		std::cout << "Both files are simple text, and can be opened and viewed at any time." << endl;
+		std::cout << endl;
 		return 0;
 	}
 
 	// trap example on the command line
 	if (argv[1] == example)
 	{
-		std::cout << "\ndvc_in_example printed in the current working directory\n\n";
+		std::cout << "\ndvc_in_example printed in the current working directory" << endl << endl;
 		std::ofstream dvc_inp("dvc_in_example");
 		in.print_input_example(dvc_inp, "fio_name");
 		in.print_input_example(dvc_inp, "vox_data");
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	// trap manual on the command line
 	if (argv[1] == manual)
 	{
-		std::cout << "\ndvc_manual printed in the current working directory\n\n";
+		std::cout << "\ndvc_manual printed in the current working directory" << endl << endl;
 		std::ofstream dvc_man("dvc_manual");
 		in.print_manual_intro(dvc_man);
 		in.print_manual_section(dvc_man, "fio_name");
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 			data.results[trg][n].status = convg_fail;
 		}
 
-		std::cout << "\n";
+		std::cout << endl;
 
 		count += 1;
 		first_point = false;
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 			std::chrono::duration<double, std::milli> status = point_time_status - point_time_start;
 			double status_sec = status.count() / 1000.0;
 
-			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec\n";
+			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec" << std::endl;
 		}
 
 
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
 	auto point_time_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> elapsed_milliseconds = point_time_end - point_time_start;
 	double elapsed_seconds = elapsed_milliseconds.count() / 1000.0;
-	std::cout << count / elapsed_seconds << " pt/sec average\n";
+	std::cout << count / elapsed_seconds << " pt/sec average" << std::endl;
 
 	auto dtf = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
@@ -294,15 +294,16 @@ int main(int argc, char *argv[])
 	// overall run stats here
 	std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app );
 	sta_file << std::setprecision(0) << std::fixed;
-	sta_file << count << " points processed in " << elapsed_seconds << " seconds\n";
+	sta_file << count << " points processed in " << elapsed_seconds << " seconds" << endl;
 	sta_file << std::setprecision(3) << std::fixed;
-	sta_file << elapsed_seconds /count << " sec/pt\n";
-	sta_file << count/ elapsed_seconds << " pt/sec\n";
+	sta_file << elapsed_seconds /count << " sec/pt" << endl;
+	sta_file << count/ elapsed_seconds << " pt/sec" << endl;
 
-	sta_file << "\n";
-	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)\n";
-	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)\n";
-	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)\n";
+	sta_file << std::endl;
+	sta_file << "number successful = " << count_good << "\t(" << 100*((double)count_good/(double)count) << "%)" << endl;
+	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)" << endl;
+	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)" << endl;
+	sta_file << std::endl;
 
 	return 0;
 }
