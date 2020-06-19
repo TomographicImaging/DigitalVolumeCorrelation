@@ -49,15 +49,15 @@ SET (DVC_SRCS ${DVC_SRCS}
 	)
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
-add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
-#TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
+# add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
+# TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
 target_include_directories(cildvc_static PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
 	)
 
-target_include_directories(cildvc_shared PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
-	)
+#target_include_directories(cildvc_shared PUBLIC
+#	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
+#	)
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
 target_link_libraries (dvc cildvc_static)
@@ -99,11 +99,12 @@ if(BUILD_TEST)
   )
 endif()
 
-install(TARGETS cildvc_shared
-	LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
-	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-	)
+#install(TARGETS cildvc_shared
+#	LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+#	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
+#	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+#	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+#	)
+
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/Core/wip
 	DESTINATION ${INSTALL_BIN_DIR})
