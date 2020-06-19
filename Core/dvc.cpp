@@ -227,8 +227,7 @@ int main(int argc, char *argv[])
 			std::cout << "obj= " << optimize.obj_min;
 			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
 			std::cout << std::setw(12) << "dy= " << optimize.par_min[1];
-			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
-			std::cout << endl;
+			std::cout << std::setw(12) << "dz= " << optimize.par_min[2]  << endl;
 
 			// put results into record for this point
 			data.results[trg][n].status = point_good;
