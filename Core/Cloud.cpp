@@ -56,15 +56,15 @@ void Cloud::reset_box(Point minpt, Point maxpt)
 /******************************************************************************/
 void Cloud::echo_summary()
 {
-	std::cout << "num pts = " << ptvect.size() << "\n";;
+	std::cout << "num pts = " << ptvect.size() << std::endl;
 
 	std::cout << "box = ";
 	std::cout << box->min().x() << " ";
 	std::cout << box->min().y() << " ";
-	std::cout << box->min().z() << "\n";
+	std::cout << box->min().z() << std::endl;
 	std::cout << box->max().x() << " ";
 	std::cout << box->max().y() << " ";
-	std::cout << box->max().z() << "\n";
+	std::cout << box->max().z() << std::endl;
 }
 /******************************************************************************/
 void Cloud::echo_content()
