@@ -38,7 +38,7 @@ void DataCloud::organize_cloud(RunControl *run)
 	neigh_dst_par = 15.0;	// a placeholder, scale to subvol size?
 	
 	// just a quick check to avoid problems with really small test clouds
-	if (points.size() < neigh_num_par) neigh_num_par = points.size();
+	if (points.size() < neigh_num_par) neigh_num_par = (int)points.size();
 	
 	start_point_label = 1;	// default 1, add as optional input parameter
 //	start_point_label = 7;	// just a test ...
@@ -102,7 +102,7 @@ void DataCloud::organize_cloud(RunControl *run)
 //			if (indx_dist[j].value <= neigh_dst_par) neigh[i].push_back(indx_dist[j].index);
 	
 	}
-	std::cout << "sorting finished, prepping for search ...\n";
+	std::cout << "sorting finished, prepping for search ..." << std::endl;
 	
 //	for (int i=0; i<neigh.size(); i++) {
 //		for (int j=0; j<neigh[i].size(); j++)
