@@ -402,12 +402,14 @@ class MainWindow(QMainWindow):
         self.help_text.append("Click 'Select point 0' to select a point and region for registering the image, and then modify the registration box size.\n Then click 'Start Registration'. You can move the two images relative to eachother using the keys: j, n, b and m and switch orientation using 'x, y, z'. \n Once you are satisfied with the registration, make sure the point 0 \
 you have selected is the point you want the DVC to start from.")
         
-        self.help_text.append("Enable trace mode by clicking on the 2D viewer, then pressing 't'. Then you may draw a region freehand. \n \
+        self.help_text.append("Enable trace mode by clicking on the 2D viewer, then pressing 't'. Then you may draw a region freehand. \n\
 When you are happy with your region click 'Create Mask'.")
 
-        self.help_text.append("If the point 0 you selected in image registration falls inside the mask, then the pointcloud will be created with the first point at the location of point 0. \
-\n If you load a pointcloud from a file, you must still specify the pointcloud radius on this panel, which will later be doubled to get the pointcloud size \
-and then input to the DVC code.")
+        self.help_text.append("Dense point clouds that accurately reflect sample geometry and reflect measurement objectives yield the best results.\n\
+The first point in the cloud is significant, as it is used as a global starting point and reference for the rigid translation between the two images. \n\
+If the point 0 you selected in image registration falls inside the mask, then the pointcloud will be created with the first point at the location of point 0.\n\
+If you load a pointcloud from a file, you must still specify the pointcloud radius on this panel, which will later be doubled to get the pointcloud size \n\
+and then input to the DVC code. It will be the first point in the file that is used as the reference point.")
 
         self.help_text.append("Once the code is run it is recommended that you save or export your session, to back up your results. You can access these options under 'File'.")
 
@@ -2211,14 +2213,7 @@ It is used as a global starting point and a translation reference."
 
         pc = {}
         self.pointcloud_parameters = pc
-
-        #Pointcloud points label
-        # self.pc_points_label = QLabel("Points in current Pointcloud:")
-        # self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.pc_points_label)
-        # self.pc_points_value = QLabel("0")
-        # self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.pc_points_value)
-        # widgetno += 1
-        
+     
         # Add ISO Value field
         self.isoValueLabel = QLabel(self.graphParamsGroupBox)
         self.isoValueLabel.setText("Subvolume radius")
@@ -2468,6 +2463,16 @@ A 3D pointcloud is created within the full extent of the mask.")
 
         pc['roi_browse'] = QPushButton(self.graphParamsGroupBox)
         pc['roi_browse'].setText("Load Pointcloud from File")
+        pc['roi_browse'].setToolTip("Specify the file containing data for all measurement points in the Region of Interest (ROI).\n\
+The ROI is defined as a cloud of points that fill a geometric region within the reference volume.\n\
+Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n\
+Dense point clouds that accurately reflect sample geometry and reflect measurement objectives yield the best results.\n\
+Each line in the tab delimited file contains an integer point label followed by the x,y,z point location, e.g. \n\
+1   300   750.2  208\n\
+2   300   750.2  209\n\
+etc.\n\
+Non-integer voxel locations are admitted, with reference volume interpolation used as needed.\n\
+The first point is significant, as it is used as a global starting point and reference for the rigid_trans variable.")
         pc['roi_browse'].clicked.connect(self.select_pointcloud)
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['roi_browse'])
         widgetno += 1
@@ -2483,6 +2488,14 @@ A 3D pointcloud is created within the full extent of the mask.")
         pc['subvolumes_check'].setChecked(True)
         pc['subvolumes_check'].stateChanged.connect( self.showSubvolumeRegions )
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['subvolumes_check'])
+        widgetno += 1
+
+        #Pointcloud points label
+        pc['pc_points_label'] = QLabel("Points in current pointcloud:")
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, pc['pc_points_label'])
+        pc['pc_points_value'] = QLabel("0")
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['pc_points_value'])
+        
 
     def updatePointCloudPanel(self):
         #updates which settings can be changed when orientation/dimensions of image changed
@@ -2916,6 +2929,11 @@ A 3D pointcloud is created within the full extent of the mask.")
         # self.rotateZValueEntry.setText(str("{:.2f}".format(self.pointCloud_rotation[2])))
         # print("Set the values")
 
+    def DisplayNumberOfPointcloudPoints(self):
+        self.pointcloud_parameters['pc_points_value'].setText(str(self.pc_no_points))
+        self.result_widgets['pc_points_value'].setText(str(self.pc_no_points))
+        self.rdvc_widgets['run_points_spinbox'].setValue(self.pc_no_points)
+
     def DisplayLoadedPointCloud(self):
         self.setup2DPointCloudPipeline()
         self.setup3DPointCloudPipeline()
@@ -2929,7 +2947,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.loading_session = False 
         self.pointCloudLoaded = True
         self.pointCloud_details["latest_pointcloud.roi"] = [self.pointCloud_radius, self.pointCloud_overlap, self.pointCloud_rotation, self.pointCloud_shape]
-        
+        self.DisplayNumberOfPointcloudPoints()
         
     def DisplayPointCloud(self):
         if self.pointCloud.GetNumberOfPoints() == 0:
@@ -2991,15 +3009,16 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
 
         self.warningDialog(window_title="Success", message="Point cloud created." )
         self.pointCloud_details["latest_pointcloud.roi"] = [self.pointCloud_radius, self.pointCloud_overlap, self.pointCloud_rotation, self.pointCloud_shape]
+        self.DisplayNumberOfPointcloudPoints()
 
     def clearPointCloud(self):
         self.clearPointCloud2D()
         self.clearPointCloud3D()
+        self.pointcloud_parameters['pc_points_value'].setText("0")
 
     def clearPointCloud2D(self):
         v2D = self.vis_widget_2D.frame.viewer
         
-
         if v2D.GetActor('pc_actor'):
             v2D.GetActor('pc_actor').VisibilityOff()
 
@@ -3015,14 +3034,14 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
         if v2D.GetActor('arrow_shaft_actor'):
             v2D.GetActor('arrow_shaft_actor').VisibilityOff()
 
-    
-        self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc_points')
-        self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc_volumes')
-        self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc2_points')
-        self.vis_widget_2D.PlaneClipper.RemoveDataToClip('arrow_shafts')
-        self.vis_widget_2D.PlaneClipper.RemoveDataToClip('arrowheads')
+        if hasattr(self.vis_widget_2D, 'PlaneClipper'):
+            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc_points')
+            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc_volumes')
+            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc2_points')
+            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('arrow_shafts')
+            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('arrowheads')
 
-        v2D.GetRenderWindow().Render()
+            v2D.GetRenderWindow().Render()
 
         self.pointCloudLoaded = False
         self.pointCloudCreated = False
@@ -3073,6 +3092,9 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
         self.disp_file = disp_file
         
         displ = self.loadDisplacementFile(disp_file, disp_wrt_point0 = self.result_widgets['vec_entry'].currentIndex() == 2)
+
+        self.pc_no_points = np.shape(displ)[0]
+        self.DisplayNumberOfPointcloudPoints()
 
         self.createVectors2D(displ, self.vis_widget_2D)
         self.createVectors3D(displ, self.vis_widget_3D, self.actors_3D)
@@ -3999,6 +4021,12 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         result_widgets['load_button'].clicked.connect(self.LoadResultsOnViewer)
 
         result_widgets['graphs_button'].clicked.connect(self.CreateGraphsWindow)
+
+        #Pointcloud points label
+        result_widgets['pc_points_label'] = QLabel("Points in current pointcloud:")
+        formLayout.setWidget(widgetno, QFormLayout.LabelRole, result_widgets['pc_points_label'])
+        result_widgets['pc_points_value'] = QLabel("0")
+        formLayout.setWidget(widgetno, QFormLayout.FieldRole, result_widgets['pc_points_value'])
 
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidget)
         self.result_widgets = result_widgets
