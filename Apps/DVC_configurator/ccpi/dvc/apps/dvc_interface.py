@@ -639,9 +639,18 @@ It will be the first point in the file that is used as the reference point.")
             self.registration_parameters['registration_box_size_entry'].setMaximum(round((self.target_image_size**(1/3))*1024/3*int(self.vol_bit_depth)/8))
             self.registration_parameters['registration_box_size_entry'].setValue(round((self.target_image_size**(1/3))*1024/3*int(self.vol_bit_depth)/8))
         
+        
         #Update mask slices above/below to be max extent of downsampled image
         self.mask_parameters['mask_extend_above_entry'].setMaximum(np.max(self.ref_image_data.GetDimensions()))
         self.mask_parameters['mask_extend_below_entry'].setMaximum(np.max(self.ref_image_data.GetDimensions()))
+
+        #Update max subvolume size to be min dimension of image
+        #TODO: fix so that this works
+        validatorint = QtGui.QIntValidator()
+        validatorint.setTop(np.min(self.ref_image_data.GetDimensions()))
+        self.rdvc_widgets['subvol_size_range_max_value'].setValidator(validatorint)
+        self.rdvc_widgets['subvol_size_range_min_value'].setValidator(validatorint)
+        self.isoValueEntry.setValidator(validatorint)
 
         if 'header_length' in self.image_info:
             self.vol_hdr_lngth = self.image_info['header_length']
@@ -824,7 +833,7 @@ It will be the first point in the file that is used as the reference point.")
         sphere_source = vtk.vtkSphereSource()
         # # save reference
         self.sphere_source = sphere_source
-        sphere_source.SetRadius(self.pointCloud_subvol_size) # * v.img3D.GetSpacing()[0])
+        sphere_source.SetRadius(self.pointCloud_subvol_size/2) # * v.img3D.GetSpacing()[0])
         sphere_source.SetThetaResolution(12)
         sphere_source.SetPhiResolution(12)
 
@@ -2225,10 +2234,17 @@ It is used as a global starting point and a translation reference."
         self.isoValueEntry.setValidator(validatorint)
         self.isoValueEntry.setText('30')
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.isoValueEntry)
-        self.treeWidgetUpdateElements.append(self.isoValueEntry)
-        self.treeWidgetUpdateElements.append(self.isoValueLabel)
+        self.isoValueEntry.textChanged.connect(self.displaySubvolumePreview)
+
         widgetno += 1
         pc['pointcloud_size_entry'] = self.isoValueEntry
+
+        pc['subvolume_preview_check'] = QCheckBox(self.graphParamsGroupBox)
+        pc['subvolume_preview_check'].setText("Display Subvolume Preview")
+        pc['subvolume_preview_check'].setChecked(True)
+        pc['subvolume_preview_check'].stateChanged.connect( partial(self.showHideActor,actor_name='subvol_preview_actor') )
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['subvolume_preview_check'])
+        widgetno += 1
 
         # Add collapse priority field
         self.subvolumeShapeLabel = QLabel(self.graphParamsGroupBox)
@@ -2240,6 +2256,7 @@ It is used as a global starting point and a translation reference."
         # self.subvolumeShapeValue.addItem("Box")
         # self.subvolumeShapeValue.addItem("Circle")
         self.subvolumeShapeValue.setCurrentIndex(0)
+        self.subvolumeShapeValue.currentTextChanged.connect(self.displaySubvolumePreview)
 
         self.treeWidgetUpdateElements.append(self.subvolumeShapeValue)
         self.treeWidgetUpdateElements.append(self.subvolumeShapeLabel)
@@ -2277,13 +2294,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.dimensionalityValue = QComboBox(self.graphParamsGroupBox)
         self.dimensionalityValue.addItems(["3D","2D"])
         self.dimensionalityValue.setCurrentIndex(1)
-        # self.dimensionalityValue.currentIndexChanged.connect(lambda: \
-        #             self.overlapZValueEntry.setEnabled(True) \
-        #             if self.dimensionalityValue.currentIndex() == 0 else \
-        #                 self.overlapZValueEntry.setEnabled(False))
         self.dimensionalityValue.currentIndexChanged.connect(self.updatePointCloudPanel)
-        self.treeWidgetUpdateElements.append(self.dimensionalityValue)
-        self.treeWidgetUpdateElements.append(self.dimensionalityValue)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.dimensionalityValue)
         widgetno += 1
@@ -2304,10 +2315,9 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapXValueEntry.setMaximum(0.99)
         self.overlapXValueEntry.setMinimum(0.00)
         self.overlapXValueEntry.setSingleStep(0.01)
+        self.overlapXValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         if orientation == 0:
             self.overlapXValueEntry.setEnabled(False)
-        self.treeWidgetUpdateElements.append(self.overlapXValueEntry)
-        self.treeWidgetUpdateElements.append(self.overlapXLabel)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.overlapXValueEntry)
         widgetno += 1
@@ -2322,6 +2332,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapYValueEntry.setMaximum(0.99)
         self.overlapYValueEntry.setMinimum(0.00)
         self.overlapYValueEntry.setSingleStep(0.01)
+        self.overlapYValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         if orientation == 1:
             self.overlapYValueEntry.setEnabled(False)
         self.treeWidgetUpdateElements.append(self.overlapYValueEntry)
@@ -2340,6 +2351,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapZValueEntry.setMaximum(0.99)
         self.overlapZValueEntry.setMinimum(0.00)
         self.overlapZValueEntry.setSingleStep(0.01)
+        self.overlapZValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         if orientation == 2:
             self.overlapZValueEntry.setEnabled(False)
         self.treeWidgetUpdateElements.append(self.overlapZValueEntry)
@@ -2359,6 +2371,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateXValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateXValueEntry.setValidator(validator)
         self.rotateXValueEntry.setText("0.00")
+        self.rotateXValueEntry.textChanged.connect(self.displaySubvolumePreview)
         self.treeWidgetUpdateElements.append(self.rotateXValueEntry)
         self.treeWidgetUpdateElements.append(self.rotateXLabel)
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateXValueEntry)
@@ -2373,6 +2386,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateYValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateYValueEntry.setValidator(validator)
         self.rotateYValueEntry.setText("0.00")
+        self.rotateYValueEntry.textChanged.connect(self.displaySubvolumePreview)
         self.treeWidgetUpdateElements.append(self.rotateYValueEntry)
         self.treeWidgetUpdateElements.append(self.rotateYLabel)
 
@@ -2388,6 +2402,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateZValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateZValueEntry.setValidator(validator)
         self.rotateZValueEntry.setText("0.00")
+        self.rotateZValueEntry.textChanged.connect(self.displaySubvolumePreview)
         self.treeWidgetUpdateElements.append(self.rotateZValueEntry)
         self.treeWidgetUpdateElements.append(self.rotateZLabel)
 
@@ -2504,6 +2519,119 @@ The first point is significant, as it is used as a global starting point and ref
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, pc['pc_points_label'])
         pc['pc_points_value'] = QLabel("0")
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['pc_points_value'])
+
+    def displaySubvolumePreview(self):
+        if self.pointcloud_parameters['subvolume_preview_check'].isChecked():
+            #add actor to 2D viewer that previews size and shape of subvolume region
+            if self.isoValueEntry.text() == '' or self.rotateXValueEntry.text() ==''\
+                or self.rotateYValueEntry.text() =='' or self.rotateZValueEntry.text() =='':
+                return
+            subvol_size = int(self.isoValueEntry.text())
+            shapes = [cilRegularPointCloudToPolyData.CUBE, cilRegularPointCloudToPolyData.SPHERE]  
+            self.pointCloud_shape =shapes[self.subvolumeShapeValue.currentIndex()]
+            rotate = [
+                    float(self.rotateXValueEntry.text()),
+                    float(self.rotateYValueEntry.text()),
+                    float(self.rotateZValueEntry.text())
+            ]
+            print(subvol_size, self.pointCloud_shape)
+
+            if hasattr(self, 'point0_world_coords'):
+                point0 = self.getPoint0WorldCoords()
+            else:
+                return
+
+            if hasattr(self, 'ref_image_data'):
+                if self.pointCloud_shape == cilRegularPointCloudToPolyData.CUBE:
+                    subvol_source = vtk.vtkCubeSource()
+                    subvol_source.SetXLength(subvol_size)
+                    subvol_source.SetYLength(subvol_size)
+                    subvol_source.SetZLength(subvol_size)
+                    subvol_source.SetCenter(point0)
+                    subvol_source.Update()
+                    transform = vtk.vtkTransform()
+
+                    v = self.vis_widget_2D.frame.viewer
+                    orientation = v.GetSliceOrientation()
+                    spacing = v.img3D.GetSpacing()
+                    dimensions = v.img3D.GetDimensions()
+                    origin = v.img3D.GetOrigin()
+
+                    #translate to origin, rotate, then translate back
+
+                    translation = [-origin[0]+point0[0],-origin[1]+point0[1], -origin[2]+point0[2]]
+                    transform.Translate(translation[0], translation[1], translation[2])
+ 
+                    # rotation angles
+                    transform.RotateX(rotate[0])
+                    transform.RotateY(rotate[1])
+                    transform.RotateZ(rotate[2])
+
+                    transform.Translate(-translation[0], -translation[1], -translation[2])
+
+                    t_filter = vtk.vtkTransformPolyDataFilter()
+                    t_filter.SetInputConnection(subvol_source.GetOutputPort())
+                    t_filter.SetTransform(transform)
+                    t_filter.Update()
+                    data_to_clip = t_filter
+                else:
+                    subvol_source = vtk.vtkSphereSource()
+                    subvol_source.SetRadius(subvol_size/2)
+                    subvol_source.SetThetaResolution(12)
+                    subvol_source.SetPhiResolution(12)
+                    subvol_source.SetCenter(point0)
+                    subvol_source.Update()
+                    data_to_clip = subvol_source
+
+                data_to_clip.Update()
+
+                viewer_widgets = [self.vis_widget_2D, self.vis_widget_3D]
+
+                for viewer_widget in viewer_widgets:
+                    subvol_preview_mapper = vtk.vtkPolyDataMapper()
+                    if viewer_widget.viewer == viewer2D:
+                        print("Clipping")
+                        viewer_widget.PlaneClipper.AddDataToClip('subvol_preview_actor', data_to_clip.GetOutputPort())
+                        subvol_preview_mapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('subvol_preview_actor').GetOutputPort())
+                        if not 'subvol_preview_actor' in viewer_widget.frame.viewer.actors:
+                            subvol_actor = vtk.vtkLODActor()
+                        else:
+                            subvol_actor = self.vis_widget_2D.frame.viewer.actors['subvol_preview_actor']
+
+                    else:
+                        subvol_preview_mapper.SetInputConnection(data_to_clip.GetOutputPort())
+                        if not hasattr(self, 'actors_3D'):
+                            self.actors_3D = {}
+                        if not 'subvol_preview_actor' in self.actors_3D:
+                            subvol_actor = vtk.vtkLODActor()
+                        else:
+                            subvol_actor = self.actors_3D['subvol_preview_actor']
+
+                    subvol_preview_mapper.Update()
+
+                    subvol_actor.SetMapper(subvol_preview_mapper)   
+                    subvol_actor.VisibilityOn()
+                    subvol_actor.GetProperty().SetColor(0.,.5,.5)
+                    subvol_actor.GetProperty().SetLineWidth(2.0)
+                    subvol_actor.GetProperty().SetEdgeColor(0.,.5,.5)
+
+                    if viewer_widget.viewer == viewer2D:
+                        subvol_actor.GetProperty().SetOpacity(0.5)
+                        subvol_actor.GetProperty().SetLineWidth(4.0)
+                        subvol_actor.GetProperty().SetEdgeVisibility(True)
+                        subvol_actor.GetProperty().SetEdgeColor(1, .2, .2)
+                        if not 'subvol_preview_actor' in viewer_widget.frame.viewer.actors:
+                            viewer_widget.frame.viewer.AddActor(subvol_actor, 'subvol_preview_actor')
+                    else:
+                        subvol_actor.GetProperty().SetRepresentationToWireframe()
+                        subvol_actor.GetProperty().SetColor(1, 0, 0)
+                        subvol_actor.GetProperty().SetOpacity(1)
+                        subvol_actor.GetProperty().SetLineWidth(3.0)
+                        if not 'subvol_preview_actor' in self.actors_3D:
+                            viewer_widget.frame.viewer.getRenderer().AddActor(subvol_actor)
+                        self.actors_3D ['subvol_preview_actor'] = subvol_actor
+                    viewer_widget.frame.viewer.style.UpdatePipeline()
+                print("Added preview")
         
 
     def updatePointCloudPanel(self):
@@ -2924,6 +3052,7 @@ The first point is significant, as it is used as a global starting point and ref
         self.DisplayNumberOfPointcloudPoints()
         
     def DisplayPointCloud(self):
+        self.pointcloud_parameters['subvolume_preview_check'].setChecked(False)
         if self.pointCloud.GetNumberOfPoints() == 0:
             self.progress_window.setValue(100) 
             self.warningDialog(window_title="Error", 
@@ -3040,6 +3169,7 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
 
     def displayVectors(self,disp_file, vector_dim):
         self.clearPointCloud()
+        self.pointcloud_parameters['subvolume_preview_check'].setChecked(False)
         self.disp_file = disp_file
         
         displ = self.loadDisplacementFile(disp_file, disp_wrt_point0 = self.result_widgets['vec_entry'].currentIndex() == 2)
