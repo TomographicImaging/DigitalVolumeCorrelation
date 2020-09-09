@@ -408,8 +408,8 @@ When you are happy with your region click 'Create Mask'.")
         self.help_text.append("Dense point clouds that accurately reflect sample geometry and reflect measurement objectives yield the best results.\n\
 The first point in the cloud is significant, as it is used as a global starting point and reference for the rigid translation between the two images. \n\
 If the point 0 you selected in image registration falls inside the mask, then the pointcloud will be created with the first point at the location of point 0.\n\
-If you load a pointcloud from a file, you must still specify the pointcloud radius on this panel, which will later be doubled to get the pointcloud size \n\
-and then input to the DVC code. It will be the first point in the file that is used as the reference point.")
+If you load a pointcloud from a file, you must still specify the subvolume size on this panel, which will later be input to the DVC code. \n\
+It will be the first point in the file that is used as the reference point.")
 
         self.help_text.append("Once the code is run it is recommended that you save or export your session, to back up your results. You can access these options under 'File'.")
 
@@ -817,24 +817,22 @@ and then input to the DVC code. It will be the first point in the file that is u
 
 
         # pointCloud = self.pointCloud
-        radius = self.pointCloud_radius
-
-        #radius=1
+        subvol_size = self.pointCloud_subvol_size
 
         # # Spheres may be a bit complex to visualise if the spacing of the image is not homogeneous
         sphere_source = vtk.vtkSphereSource()
         # # save reference
         self.sphere_source = sphere_source
-        sphere_source.SetRadius(self.pointCloud_radius) # * v.img3D.GetSpacing()[0])
+        sphere_source.SetRadius(self.pointCloud_subvol_size) # * v.img3D.GetSpacing()[0])
         sphere_source.SetThetaResolution(12)
         sphere_source.SetPhiResolution(12)
 
         # # Cube source
         cube_source = vtk.vtkCubeSource()
         # print("IMAGE SPACING", v.img3D.GetSpacing())
-        cube_source.SetXLength(self.pointCloud_radius)
-        cube_source.SetYLength(self.pointCloud_radius)
-        cube_source.SetZLength(self.pointCloud_radius)
+        cube_source.SetXLength(self.pointCloud_subvol_size)
+        cube_source.SetYLength(self.pointCloud_subvol_size)
+        cube_source.SetZLength(self.pointCloud_subvol_size)
         self.cube_source = cube_source
         rotate= self.pointCloud_rotation
         # print("Rotate", self.pointCloud_rotation)
@@ -2216,17 +2214,17 @@ It is used as a global starting point and a translation reference."
      
         # Add ISO Value field
         self.isoValueLabel = QLabel(self.graphParamsGroupBox)
-        self.isoValueLabel.setText("Subvolume radius")
-        self.isoValueLabel.setToolTip("Defines the radius of the subvolumes created around each search point. This is in units of voxels on the original image.")
+        self.isoValueLabel.setText("Subvolume size")
+        self.isoValueLabel.setToolTip("Defines the diameter or side length of the subvolumes created around each search point. This is in units of voxels on the original image.")
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.isoValueLabel)
         self.isoValueEntry= QLineEdit(self.graphParamsGroupBox)
         self.isoValueEntry.setValidator(validatorint)
-        self.isoValueEntry.setText('80')
+        self.isoValueEntry.setText('30')
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.isoValueEntry)
         self.treeWidgetUpdateElements.append(self.isoValueEntry)
         self.treeWidgetUpdateElements.append(self.isoValueLabel)
         widgetno += 1
-        pc['pointcloud_radius_entry'] = self.isoValueEntry
+        pc['pointcloud_size_entry'] = self.isoValueEntry
 
         # Add collapse priority field
         self.subvolumeShapeLabel = QLabel(self.graphParamsGroupBox)
@@ -2291,7 +2289,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         orientation = v.GetSliceOrientation()
 
         # Add Log Tree field
-        overlap_tooltip_text = "Overlap as a fraction of the subvolume radius."
+        overlap_tooltip_text = "Overlap as a fraction of the subvolume size."
         # Add Overlap X
         self.overlapXLabel = QLabel(self.graphParamsGroupBox)
         self.overlapXLabel.setText("Overlap X")
@@ -2583,7 +2581,7 @@ The first point is significant, as it is used as a global starting point and ref
             else:
                 self.PointCloudWorker("create")
 
-    def createPointCloud(self, filename = "latest_pointcloud.roi", progress_callback=None, radius = None):
+    def createPointCloud(self, filename = "latest_pointcloud.roi", progress_callback=None, subvol_size = None):
         ## Create the PointCloud
         #print("Create point cloud")
 
@@ -2593,11 +2591,10 @@ The first point is significant, as it is used as a global starting point and ref
         reader.AddObserver("ErrorEvent", self.e)
         reader.SetFileName(os.path.join(tmpdir,"Masks\\latest_selection.mha"))
         reader.Update()
+
         origin = reader.GetOutput().GetOrigin()
         spacing = reader.GetOutput().GetSpacing()
-        dimensions = reader.GetOutput().GetDimensions()
-
-        #print("Dimensions ", dimensions)          
+        dimensions = reader.GetOutput().GetDimensions()  
         
         if not self.pointCloudCreated:
             #print("Not created")
@@ -2620,31 +2617,26 @@ The first point is significant, as it is used as a global starting point and ref
                 )
 
         self.pointCloud_shape =  shapes[self.subvolumeShapeValue.currentIndex()]
-        #print(self.pointCloud_shape)
         
         #slice is read from the viewer
         pointCloud.SetSlice(v.GetActiveSlice())
-
-        #print(v.GetActiveSlice())
         
         pointCloud.SetInputConnection(0, reader.GetOutputPort())
 
-        #print("Overlap: ", [self.overlapXValueEntry.text(), self.overlapYValueEntry.text(), self.overlapZValueEntry.text()])
-
-        if radius is None:
-            radius = int(self.isoValueEntry.text())
+        if subvol_size is None:
+            subvol_size = int(self.isoValueEntry.text())
 
         if self.pointCloud_shape == cilRegularPointCloudToPolyData.CUBE:
-            radius = radius * 2 #in cube case, radius is side length 
+            pointCloud.SetSubVolumeRadiusInVoxel(subvol_size) #in cube case, radius is side length
+        else:
+            pointCloud.SetSubVolumeRadiusInVoxel(subvol_size/2)
 
         pointCloud.SetOverlap(0,float(self.overlapXValueEntry.text()))
         pointCloud.SetOverlap(1,float(self.overlapYValueEntry.text()))
         pointCloud.SetOverlap(2,float(self.overlapZValueEntry.text()))
-
-        #print("Radius: ", radius)
-        pointCloud.SetSubVolumeRadiusInVoxel(radius)
+        
         pointCloud.Update()
-        self.pointCloud_radius = radius
+        self.pointCloud_subvol_size = subvol_size
         self.pointCloud_overlap = [float(self.overlapXValueEntry.text()), float(self.overlapYValueEntry.text()), float(self.overlapZValueEntry.text())]
         
         #print ("pointCloud number of points", pointCloud.GetNumberOfPoints())
@@ -2652,8 +2644,7 @@ The first point is significant, as it is used as a global starting point and ref
         if pointCloud.GetNumberOfPoints() == 0: 
             return         
 
-        # Erode the transformed mask of SubVolumeRadius because we don't want to have subvolumes 
-        # outside the mask
+        # Erode the transformed mask because we don't want to have subvolumes outside the mask
         if not self.pointCloudCreated:
             erode = vtk.vtkImageDilateErode3D()
             erode.SetErodeValue(1)
@@ -2701,7 +2692,6 @@ The first point is significant, as it is used as a global starting point and ref
             if not self.eroded_mask:
                 self.erode_pars['ks'] =  ks[:]        
                 run_erode = True
-                #run_erode = False
             else:
                 run_erode = False
                 # test if mask is different from last one by checking the modification
@@ -2712,7 +2702,7 @@ The first point is significant, as it is used as a global starting point and ref
                     run_erode = True
                 if ks != self.erode_pars['ks']:
                     run_erode = True
-                    #print("radius has changed")
+                    #print("subvolume size has changed")
                     self.erode_pars['ks'] = ks[:]
                                 
             if run_erode:
@@ -2767,15 +2757,12 @@ The first point is significant, as it is used as a global starting point and ref
             transform.Translate(dimensions[0]/2*spacing[0], 0,dimensions[2]/2*spacing[2])
         elif orientation == SLICE_ORIENTATION_YZ:
             transform.Translate(0, dimensions[1]/2*spacing[1],dimensions[2]/2*spacing[2])
-        #WAS:
-        #transform.Translate(dimensions[0]/2*spacing[0], dimensions[1]/2*spacing[1],0)
+
         # rotation angles
         transform.RotateX(rotate[0])
         transform.RotateY(rotate[1])
         transform.RotateZ(rotate[2])
 
-        #WAS:
-        #transform.Translate(-dimensions[0]/2*spacing[0], -dimensions[1]/2*spacing[1],0)
         if orientation == SLICE_ORIENTATION_XY:
             transform.Translate(-dimensions[0]/2*spacing[0], -dimensions[1]/2*spacing[1],0)
         elif orientation == SLICE_ORIENTATION_XZ:
@@ -2783,13 +2770,10 @@ The first point is significant, as it is used as a global starting point and ref
         elif orientation == SLICE_ORIENTATION_YZ:
             transform.Translate(0, -dimensions[1]/2*spacing[1],-dimensions[2]/2*spacing[2])
 
-
-        #print(type(mask_data))
         mm = mask_data.GetScalarComponentAsDouble(int(self.point0_sampled_image_coords[0]),int(self.point0_sampled_image_coords[1]), int(self.point0_sampled_image_coords[2]), 0)
 
         if int(mm) == 1: #if point0 is in the mask
             #print("POINT 0 IN MASK")
-
             #Translate pointcloud so that point 0 is in the cloud
             if hasattr(self, 'point0'):
                 pointCloud_points = []
@@ -2808,7 +2792,6 @@ The first point is significant, as it is used as a global starting point and ref
 
                 #print("Translation from it is:", pointCloud_Translation)
 
-                #transform = vtk.vtkTransform()
                 transform.Translate(pointCloud_Translation)
         #else:
             #print("POINT 0 NOT IN MASK")
@@ -2830,39 +2813,24 @@ The first point is significant, as it is used as a global starting point and ref
         # polydata_masker.Modified()
         
         polydata_masker.Update()
-        # print ("polydata_masker type", type(polydata_masker.GetOutputDataObject(0)))
 
         #print("Points in mask now: ", polydata_masker)
-
-        #print("Updated polydata_masker")
         
         self.reader = reader
         self.pointcloud = pointCloud
 
-# self.polydata_masker.Modified()
-#            self.cubesphere_actor3D.VisibilityOff()
-#            self.pointactor.VisibilityOff()
-#            self.cubesphere_actor.VisibilityOff()
-#        print ("should be already changed")
-#            self.cubesphere_actor3D.VisibilityOn()
-#            self.pointactor.VisibilityOn()
-#            self.cubesphere_actor.VisibilityOn()
-
-        #pointcloud= self.pointCloud.GetOutputDataObject(0) #this saved the whole array of points not cut to the mask shape
         pointcloud = self.polydata_masker.GetOutputDataObject(0)
-        #array = np.zeros((pointcloud.GetNumberOfPoints(), 4))
         array = []
-        #print("Points:", pointcloud.GetNumberOfPoints())
         self.pc_no_points = pointcloud.GetNumberOfPoints()
         if(pointcloud.GetNumberOfPoints() == 0):
             self.pointCloud = pointcloud
             return (False)
         
-
         if int(mm) == 1: #if point0 is in the mask
             count = 2
         else:
             count = 1
+
         for i in range(pointcloud.GetNumberOfPoints()):
             pp = pointcloud.GetPoint(i)
             distance = (pp[0]-self.point0_world_coords[0])**2 + (pp[1]-self.point0_world_coords[1])**2 + (pp[2]-self.point0_world_coords[2])**2
@@ -2874,11 +2842,8 @@ The first point is significant, as it is used as a global starting point and ref
                 array.append((count, *pp))
                 count += 1
 
-        #print(array[0])
         np.savetxt(tempfile.tempdir + "/" + filename, array, '%d\t%.3f\t%.3f\t%.3f', delimiter=';')
         self.roi = os.path.abspath(os.path.join(tempfile.tempdir, filename))
-        #print(self.roi)
-        #print("finished making the cloud")
         return(True)
             
 
@@ -2903,13 +2868,13 @@ The first point is significant, as it is used as a global starting point and ref
         #print(pointcloud_file)
 
         if pointcloud_file in self.pointCloud_details:
-            self.pointCloud_radius = self.pointCloud_details[pointcloud_file][0]
+            self.pointCloud_subvol_size = self.pointCloud_details[pointcloud_file][0]
             self.pointCloud_overlap = self.pointCloud_details[pointcloud_file][1]
             self.pointCloud_rotation = self.pointCloud_details[pointcloud_file][2]
             self.pointCloud_shape = self.pointCloud_details[pointcloud_file][3]
             #print("Set properties")
         else:
-            self.pointCloud_radius = 0
+            self.pointCloud_subvol_size = 0
             self.pointCloud_overlap = [0.00,0.00,0.00]
             self.pointCloud_rotation = [0.00,0.00,0.00]
             self.pointCloud_shape = cilRegularPointCloudToPolyData.CUBE
@@ -2920,9 +2885,9 @@ The first point is significant, as it is used as a global starting point and ref
         # self.overlapYValueEntry.setValue(float(self.pointCloud_overlap[1]))
         # self.overlapZValueEntry.setValue(float(self.pointCloud_overlap[2]))
         # print("Set xyz")
-        # print(self.pointCloud_radius)
-        # print(str(self.pointCloud_radius))
-        # self.isoValueEntry.setText(str(self.pointCloud_radius))
+        # print(self.pointCloud_subvol_size)
+        # print(str(self.pointCloud_subvol_size))
+        # self.isoValueEntry.setText(str(self.pointCloud_subvol_size))
         # print(str("{:.2f}".format(self.pointCloud_rotation[0])))
         # self.rotateXValueEntry.setText(str("{:.2f}".format(self.pointCloud_rotation[0])))
         # self.rotateYValueEntry.setText(str("{:.2f}".format(self.pointCloud_rotation[1])))
@@ -2946,7 +2911,7 @@ The first point is significant, as it is used as a global starting point and ref
             self.warningDialog(window_title="Success", message="Point cloud loaded.")
         self.loading_session = False 
         self.pointCloudLoaded = True
-        self.pointCloud_details["latest_pointcloud.roi"] = [self.pointCloud_radius, self.pointCloud_overlap, self.pointCloud_rotation, self.pointCloud_shape]
+        self.pointCloud_details["latest_pointcloud.roi"] = [self.pointCloud_subvol_size, self.pointCloud_overlap, self.pointCloud_rotation, self.pointCloud_shape]
         self.DisplayNumberOfPointcloudPoints()
         
     def DisplayPointCloud(self):
@@ -2955,7 +2920,7 @@ The first point is significant, as it is used as a global starting point and ref
             self.warningDialog(window_title="Error", 
                     message="Failed to create point cloud.",
                     detailed_text='A pointcloud could not be created because there were no points in the selected region. \
-Try modifying the subvolume radius before creating a new pointcloud, and make sure it is smaller than the extent of the mask.' )
+Try modifying the subvolume size before creating a new pointcloud, and make sure it is smaller than the extent of the mask.' )
             self.pointCloudCreated = False
             self.eroded_mask = False
             self.pointCloudLoaded = False
@@ -2973,18 +2938,15 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
 
         else:
             spacing = v.img3D.GetSpacing()
-            radius = self.pointCloud_radius
+            subvol_size = self.pointCloud_subvol_size
             rotate = self.pointCloud_rotation
-            # print("Spacing ",spacing)
-            # print("Radius ",radius)
-            # print("Rotation", rotate)
 
             if self.pointCloud_shape == cilRegularPointCloudToPolyData.CUBE:
             #cube
                 #self.glyph_source = self.cube_source
-                self.cube_source.SetXLength(radius)
-                self.cube_source.SetYLength(radius)
-                self.cube_source.SetZLength(radius)
+                self.cube_source.SetXLength(subvol_size)
+                self.cube_source.SetYLength(subvol_size)
+                self.cube_source.SetZLength(subvol_size)
                 self.cube_source.Update()
                 self.transform.RotateX(rotate[0])
                 self.transform.RotateY(rotate[1])
@@ -2993,7 +2955,7 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
                 self.cubesphere.SetSourceConnection(self.cube_transform_filter.GetOutputPort())
             else:
                 #self.glyph_source = self.sphere_source
-                self.sphere_source.SetRadius(radius)
+                self.sphere_source.SetRadius(subvol_size/2)
                 self.cubesphere.SetSourceConnection(self.sphere_source.GetOutputPort())
             
             self.cubesphere.Update()
@@ -3008,7 +2970,7 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
         self.progress_window.setValue(100)
 
         self.warningDialog(window_title="Success", message="Point cloud created." )
-        self.pointCloud_details["latest_pointcloud.roi"] = [self.pointCloud_radius, self.pointCloud_overlap, self.pointCloud_rotation, self.pointCloud_shape]
+        self.pointCloud_details["latest_pointcloud.roi"] = [self.pointCloud_subvol_size, self.pointCloud_overlap, self.pointCloud_rotation, self.pointCloud_shape]
         self.DisplayNumberOfPointcloudPoints()
 
     def clearPointCloud(self):
@@ -3448,7 +3410,7 @@ It is best to reduce large rigid body displacements through image volume manipul
 Future code development will introduce methods for better management of large displacements.")
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['run_max_displacement_label'])
         rdvc_widgets['run_max_displacement_entry'] = QSpinBox(groupBox)
-        rdvc_widgets['run_max_displacement_entry'].setValue(10)
+        rdvc_widgets['run_max_displacement_entry'].setValue(15)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['run_max_displacement_entry'])
         widgetno += 1
 
@@ -3561,38 +3523,38 @@ This parameter has a strong effect on computation time, so be careful.")
 
         widgetno = 0
 
-        rdvc_widgets['radius_range_min_label'] = QLabel(bulkRun_groupBox)
-        rdvc_widgets['radius_range_min_label'].setText("Radius min ")
-        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['radius_range_min_label'])
-        rdvc_widgets['radius_range_min_value'] = QLineEdit(bulkRun_groupBox)
-        rdvc_widgets['radius_range_min_value'].setValidator(validatorint)
+        rdvc_widgets['subvol_size_range_min_label'] = QLabel(bulkRun_groupBox)
+        rdvc_widgets['subvol_size_range_min_label'].setText("Minimum Subvolume Size ")
+        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['subvol_size_range_min_label'])
+        rdvc_widgets['subvol_size_range_min_value'] = QLineEdit(bulkRun_groupBox)
+        rdvc_widgets['subvol_size_range_min_value'].setValidator(validatorint)
         
-        current_radius = self.isoValueEntry.text()
+        current_subv_size = self.isoValueEntry.text()
         
-        rdvc_widgets['radius_range_min_value'].setText(current_radius)
-        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['radius_range_min_value'])
+        rdvc_widgets['subvol_size_range_min_value'].setText(current_subv_size)
+        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_size_range_min_value'])
         #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
         #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
-        # radius range max
-        rdvc_widgets['radius_range_max_label'] = QLabel(bulkRun_groupBox)
-        rdvc_widgets['radius_range_max_label'].setText("Radius max ")
-        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['radius_range_max_label'])
-        rdvc_widgets['radius_range_max_value'] = QLineEdit(bulkRun_groupBox)
-        rdvc_widgets['radius_range_max_value'].setValidator(validatorint)
-        rdvc_widgets['radius_range_max_value'].setText("100")
-        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['radius_range_max_value'])
+
+        rdvc_widgets['subvol_size_range_max_label'] = QLabel(bulkRun_groupBox)
+        rdvc_widgets['subvol_size_range_max_label'].setText("Maximum Subvolume Size ")
+        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['subvol_size_range_max_label'])
+        rdvc_widgets['subvol_size_range_max_value'] = QLineEdit(bulkRun_groupBox)
+        rdvc_widgets['subvol_size_range_max_value'].setValidator(validatorint)
+        rdvc_widgets['subvol_size_range_max_value'].setText("100")
+        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_size_range_max_value'])
         #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
         #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
-        # radius range step
-        rdvc_widgets['radius_range_step_label'] = QLabel(bulkRun_groupBox)
-        rdvc_widgets['radius_range_step_label'].setText("Radius step ")
-        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['radius_range_step_label'])
-        rdvc_widgets['radius_range_step_value'] = QLineEdit(bulkRun_groupBox)
-        rdvc_widgets['radius_range_step_value'].setValidator(validatorint)
-        rdvc_widgets['radius_range_step_value'].setText("0")
-        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['radius_range_step_value'])
+
+        rdvc_widgets['subvol_size_range_step_label'] = QLabel(bulkRun_groupBox)
+        rdvc_widgets['subvol_size_range_step_label'].setText("Step in Subvolume Size ")
+        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['subvol_size_range_step_label'])
+        rdvc_widgets['subvol_size_range_step_value'] = QLineEdit(bulkRun_groupBox)
+        rdvc_widgets['subvol_size_range_step_value'].setValidator(validatorint)
+        rdvc_widgets['subvol_size_range_step_value'].setText("0")
+        bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_size_range_step_value'])
         #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
         #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
@@ -3759,9 +3721,9 @@ This parameter has a strong effect on computation time, so be careful.")
 
             if setting == "single":
                 self.subvolume_points = [self.rdvc_widgets['subvol_points_spinbox'].value()]
-                self.radii = [self.pointcloud_parameters['pointcloud_radius_entry'].text()]
+                self.subvol_sizes = [self.pointcloud_parameters['pointcloud_size_entry'].text()]
                 self.roi_files = [self.roi]
-                pointcloud_new_file = results_folder + "/" + folder_name +  "/_" + str(self.pointcloud_parameters['pointcloud_radius_entry'].text() + ".roi")
+                pointcloud_new_file = results_folder + "/" + folder_name +  "/_" + str(self.pointcloud_parameters['pointcloud_size_entry'].text() + ".roi")
                 shutil.copyfile(self.roi, pointcloud_new_file)
                 
             else:
@@ -3779,32 +3741,32 @@ This parameter has a strong effect on computation time, so be careful.")
                 else:
                     self.subvolume_points = [xmin]
 
-                xmin = int(self.rdvc_widgets['radius_range_min_value'].text())
-                xmax = int(self.rdvc_widgets['radius_range_max_value'].text())
-                xstep = int(self.rdvc_widgets['radius_range_step_value'].text())
+                xmin = int(self.rdvc_widgets['subvol_size_range_min_value'].text())
+                xmax = int(self.rdvc_widgets['subvol_size_range_max_value'].text())
+                xstep = int(self.rdvc_widgets['subvol_size_range_step_value'].text())
                 if xstep != 0:
                     if xmax > xmin:
                         N = (xmax-xmin)//xstep + 1
-                        self.radii = [xmin + i * xstep for i in range(N)]
+                        self.subvol_sizes = [xmin + i * xstep for i in range(N)]
                     else:
-                        #print("radius error")
-                        return ("radius error")
+                        #print("subvolume size error")
+                        return ("subvolume size error")
                 else:
-                    self.radii = [xmin]
+                    self.subvol_sizes = [xmin]
 
                 self.roi_files = []
-                #print(self.radii)
-                radius_count = 0
-                for radius in self.radii:
-                    #print(radius)
-                    radius_count+=1
-                    filename = "Results/" + folder_name + "/_" + str(radius) + ".roi"
+                #print(self.subvol_sizes)
+                subvol_size_count = 0
+                for subvol_size in self.subvol_sizes:
+                    #print(subvol_size)
+                    subvol_size_count+=1
+                    filename = "Results/" + folder_name + "/_" + str(subvol_size) + ".roi"
                     #print(filename)
-                    if not self.createPointCloud(filename, radius):
+                    if not self.createPointCloud(filename, subvol_size=int(subvol_size)):
                         return ("pointcloud error")
                     self.roi_files.append(os.path.join(tempfile.tempdir, filename))
-                    #print("completed radius")
-                    progress_callback.emit(radius_count/len(self.radii)*90)
+                    #print("completed subvol_size")
+                    progress_callback.emit(subvol_size_count/len(self.subvol_sizes)*90)
                 #print("finished making pointclouds")
 
                 #print(self.roi_files)
@@ -3820,7 +3782,7 @@ This parameter has a strong effect on computation time, so be careful.")
             run_config = {}
             run_config['points'] = self.points
             run_config['subvolume_points'] = self.subvolume_points
-            run_config['cloud_radii'] = self.radii
+            run_config['subvolume_sizes'] = self.subvol_sizes
             run_config['reference_file'] = self.reference_file
             run_config['correlate_file'] = self.correlate_file
             run_config['roi_files']= self.roi_files
@@ -3877,13 +3839,13 @@ This parameter has a strong effect on computation time, so be careful.")
             self.warningDialog(window_title="Error", 
                     message="Failed to create a point cloud.",
                     detailed_text='A pointcloud could not be created because there were no points in the selected region. \
-Try modifying the subvolume radius before creating a new pointcloud, and make sure it is smaller than the extent of the mask.\
+Try modifying the subvolume size before creating a new pointcloud, and make sure it is smaller than the extent of the mask.\
 The dimensionality of the pointcloud can also be changed in the Point Cloud panel.' )
             self.cancelled = True
             return
-        elif error == "radius error":
+        elif error == "subvolume size error":
             self.progress_window.setValue(100) 
-            self.warningDialog("Minimum radius value higher than maximum", window_title="Value Error")
+            self.warningDialog("Minimum subvolume size value higher than maximum", window_title="Value Error")
             self.cancelled = True
             return
             
@@ -3989,7 +3951,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         widgetno += 1  
 
         result_widgets['pc_label'] = QLabel(groupBox)
-        result_widgets['pc_label'].setText("Pointcloud Radius:")
+        result_widgets['pc_label'].setText("Subvolume Size:")
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, result_widgets['pc_label'])
         result_widgets['pc_entry'] = QComboBox(groupBox)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, result_widgets['pc_entry'])
@@ -4056,7 +4018,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                     #print(result.subvol_points)
                     if str(result.subvol_points) not in points_list:
                         points_list.append(str(result.subvol_points))
-                        #self.result_widgets['pc_entry'].addItem(str(result.subvol_radius))
+                        #self.result_widgets['pc_entry'].addItem(str(result.subvol_size))
 
         
         self.result_widgets['subvol_entry'].addItems(points_list)
@@ -4069,14 +4031,14 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         if hasattr(self, 'result_list'):
             # print(len(self.result_list))
             try:
-                radius = int(self.result_widgets['pc_entry'].currentText())
+                subvol_size = int(self.result_widgets['pc_entry'].currentText())
             except ValueError as ve:
-                self.warningDialog("Invalid input at Pointcloud Radius", "Error")
+                self.warningDialog("Invalid input at Subvolume Size", "Error")
                 return
             try:
                 subvol_points = int(self.result_widgets['subvol_entry'].currentText())
             except ValueError as ve:
-                self.warningDialog("Invalid input at Pointcloud Radius", "Error")
+                self.warningDialog("Invalid input at Subvolume Size", "Error")
                 return
 
             if(subvol_points == ""):
@@ -4084,7 +4046,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
             else:
                 results_folder = os.path.join(tempfile.tempdir, "Results/_" + self.result_widgets['run_entry'].currentText())
-                self.roi = results_folder + "\\_" + str(radius) + ".roi"
+                self.roi = results_folder + "\\_" + str(subvol_size) + ".roi"
                 #print("New roi is", self.roi)
                 self.results_folder = results_folder
 
@@ -4094,9 +4056,9 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                 else: 
 
                     for result in self.result_list:
-                        #print(radius, result.subvol_radius)
-                        if result.subvol_radius == radius:
-                            #print("Radius match", result.subvol_points, subvol_points)
+                        #print(subvol_size, result.subvol_size)
+                        if result.subvol_size == subvol_size:
+                            #print("Subvolume size match", result.subvol_points, subvol_points)
                             if result.subvol_points == subvol_points:
                                 #print("Subv points match")
                                 run_file = result.disp_file
@@ -4240,7 +4202,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         pc = self.pointcloud_parameters
 
         #Pointcloud panel:
-        self.config['pc_subvol_rad'] = pc['pointcloud_radius_entry'].text()
+        self.config['pc_subvol_rad'] = pc['pointcloud_size_entry'].text()
         self.config['pc_subvol_shape'] = pc['pointcloud_volume_shape_entry'].currentIndex()
         self.config['pc_dim'] = pc['pointcloud_dimensionality_entry'].currentIndex()
         self.config['pc_overlapx'] = pc['pointcloud_overlap_x_entry'].value()
@@ -4814,7 +4776,7 @@ Please move the file back to this location and reload the session, select a diff
 
         if 'pc_subvol_rad' in  self.config:
 
-            pc['pointcloud_radius_entry'].setText(self.config['pc_subvol_rad'])
+            pc['pointcloud_size_entry'].setText(self.config['pc_subvol_rad'])
             pc['pointcloud_volume_shape_entry'].setCurrentIndex(self.config['pc_subvol_shape'])
             pc['pointcloud_dimensionality_entry'].setCurrentIndex(self.config['pc_dim'])
             pc['pointcloud_overlap_x_entry'].setValue(self.config['pc_overlapx'])
@@ -5479,24 +5441,24 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
 
 
         self.combo1 = QComboBox(self)
-        self.param_list = ["All","Points in Subvolume", "Radius"]
+        self.param_list = ["All","Points in Subvolume", "Subvolume Size"]
         self.combo1.addItems(self.param_list)
 
-        self.subvolPoints=[]
-        self.radii=[]
+        self.subvol_points=[]
+        self.subvol_sizes=[]
 
         for result in result_list:
-            if result.subvol_points not in self.subvolPoints:
-                self.subvolPoints.append(result.subvol_points)
-            if result.subvol_radius not in self.radii:
-                self.radii.append(result.subvol_radius)
-        self.subvolPoints.sort()
-        self.radii.sort()
+            if result.subvol_points not in self.subvol_points:
+                self.subvol_points.append(result.subvol_points)
+            if result.subvol_size not in self.subvol_sizes:
+                self.subvol_sizes.append(result.subvol_size)
+        self.subvol_points.sort()
+        self.subvol_sizes.sort()
 
         self.secondParamLabel = QLabel(self)
-        self.secondParamLabel.setText("Radius:")
+        self.secondParamLabel.setText("Subvolume size:")
         self.secondParamCombo = QComboBox(self)
-        self.secondParamList = [str(i) for i in self.radii]
+        self.secondParamList = [str(i) for i in self.subvol_sizes]
         self.secondParamCombo.addItems(self.secondParamList)
         self.combo1.currentIndexChanged.connect(self.showSecondParam)
         self.secondParamLabel.hide()
@@ -5531,9 +5493,9 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
         elif index == 1:
             self.secondParamLabel.show()
             self.secondParamCombo.show()
-            self.secondParamLabel.setText("Radius:")
+            self.secondParamLabel.setText("Subvolume Size:")
             self.secondParamCombo.clear()
-            self.secondParamCombo.addItems([str(i) for i in self.radii])
+            self.secondParamCombo.addItems([str(i) for i in self.subvol_sizes])
 
         elif index == 2:
             self.secondParamLabel.show()
@@ -5541,7 +5503,7 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
             self.secondParamLabel.setText("Points in Subvolume:")
             self.secondParamCombo.clear()
             newList = []
-            self.secondParamCombo.addItems([str(i) for i in self.subvolPoints])   
+            self.secondParamCombo.addItems([str(i) for i in self.subvol_points])   
         
     
     def CreateHistogram(self, result_list, displ_wrt_point0):
@@ -5580,7 +5542,7 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
                 resultsToPlot.append(result)
             
             if index == 1: # Points in subvolume is compared
-                if result.subvol_radius == float(self.secondParamCombo.currentText()):
+                if result.subvol_size == float(self.secondParamCombo.currentText()):
                     resultsToPlot.append(result)
 
             elif index ==2:
@@ -5590,14 +5552,14 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
         points_list.sort()
 
         if index ==0:
-            numRows = len(self.subvolPoints)
-            numColumns = len(self.radii)
+            numRows = len(self.subvol_points)
+            numColumns = len(self.subvol_sizes)
 
         else:
             # if index ==1:
-            #     numRows = len(self.subvolPoints)
+            #     numRows = len(self.subvol_points)
             # elif index ==2:
-            #     numRows = len(self.radii)
+            #     numRows = len(self.subvol_sizes)
             # numColumns = len(points)
             if len(resultsToPlot) <= 3:
                 numRows = 1
@@ -5608,22 +5570,22 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
         plotNum = 0
         for result in resultsToPlot:
             if index ==0:
-                row = self.subvolPoints.index(result.subvol_points) + 1
-                column= self.radii.index(result.subvol_radius) + 1
+                row = self.subvol_points.index(result.subvol_points) + 1
+                column= self.subvol_sizes.index(result.subvol_size) + 1
                 plotNum = (row-1)*numColumns + column
                 ax = self.figure.add_subplot(numRows, numColumns, plotNum)
                 
                 if row ==1:
-                    ax.set_title("Radius:" + str(result.subvol_radius) )
+                    ax.set_title("Subvolume Size:" + str(result.subvol_size) )
                 if column == 1:
                     text = str(result.subvol_points) 
                     ax.set_ylabel(text + " " + "Points in subvol")
 
             else:
                 # if index ==1:
-                #     row = self.subvolPoints.index(result.subvol_points) + 1
+                #     row = self.subvol_points.index(result.subvol_points) + 1
                 # if index ==2:
-                #     row= self.radii.index(result.subvol_radius) + 1
+                #     row= self.subvol_sizes.index(result.subvol_size) + 1
 
 
                 plotNum = plotNum + 1
@@ -5643,7 +5605,7 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
                 if index ==1:
                     text = str(result.subvol_points) 
                 if index ==2:
-                    text = str(result.subvol_radius) 
+                    text = str(result.subvol_size) 
                 ax.set_ylabel(text + " " + self.combo1.currentText())
 
             #get variable to display graphs for:
@@ -5685,7 +5647,7 @@ class RunResults():
                     offset = 1
 
             if count ==15 + offset:
-                self.subvol_radius = round(int(line.split('\t')[1])/2)
+                self.subvol_size = round(int(line.split('\t')[1]))
             if count ==16 +offset:
                 self.subvol_points = int(line.split('\t')[1])
             if count == 25 + offset:
@@ -5696,7 +5658,7 @@ class RunResults():
 
         #self.rigid_trans.append(0)
 
-        self.title =  str(self.subvol_points) + " Points in Subvolume," + " Radius: " + str(self.subvol_radius)
+        self.title =  str(self.subvol_points) + " Points in Subvolume," + " Subvolume Size: " + str(self.subvol_size)
 
 def generateUIDockParameters(self, title): #copied from dvc_configurator.py
     '''creates a dockable widget with a form layout group to add things to
