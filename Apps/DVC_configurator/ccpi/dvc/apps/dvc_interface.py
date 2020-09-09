@@ -785,13 +785,13 @@ It will be the first point in the file that is used as the reference point.")
 
     def setup2DPointCloudPipeline(self):
 
-        self.vis_widget_2D.PlaneClipper.AddDataToClip('pc_points', self.polydata_masker.GetOutputPort())
+        self.vis_widget_2D.PlaneClipper.AddDataToClip('pc_actor', self.polydata_masker.GetOutputPort())
 
         mapper = vtk.vtkPolyDataMapper()
         # save reference
         self.pointmapper = mapper
 
-        mapper.SetInputConnection(self.vis_widget_2D.PlaneClipper.GetClippedData('pc_points').GetOutputPort())         
+        mapper.SetInputConnection(self.vis_widget_2D.PlaneClipper.GetClippedData('pc_actor').GetOutputPort())         
 
         # create an actor for the points as point
         actor = vtk.vtkLODActor()
@@ -873,8 +873,8 @@ It will be the first point in the file that is used as the reference point.")
         
         #self.cubesphere.SetSourceConnection( self.glyph_source.GetOutputPort() )
         self.cubesphere.Update()
-        self.vis_widget_2D.PlaneClipper.AddDataToClip('pc_volumes', self.cubesphere.GetOutputPort())
-        sphere_mapper.SetInputConnection( self.vis_widget_2D.PlaneClipper.GetClippedData('pc_volumes').GetOutputPort())
+        self.vis_widget_2D.PlaneClipper.AddDataToClip('subvol_actor', self.cubesphere.GetOutputPort())
+        sphere_mapper.SetInputConnection( self.vis_widget_2D.PlaneClipper.GetClippedData('subvol_actor').GetOutputPort())
         self.cubesphere.Update()
         self.cubesphere.SetVectorModeToUseNormal()
 
@@ -892,7 +892,7 @@ It will be the first point in the file that is used as the reference point.")
         sphere_actor.GetProperty().SetEdgeColor(1, .2, .2)
 
         self.vis_widget_2D.frame.viewer.AddActor(actor, 'pc_actor')
-        self.vis_widget_2D.frame.viewer.AddActor(sphere_actor, 'subvolume_actor')
+        self.vis_widget_2D.frame.viewer.AddActor(sphere_actor, 'subvol_actor')
         self.cubesphere.Update()
         
 
@@ -950,8 +950,8 @@ It will be the first point in the file that is used as the reference point.")
         if not hasattr(self, 'actors3D'):
             self.actors_3D = {}
         
-        self.actors_3D['pointcloud'] = actor
-        self.actors_3D ['pointcloud_frame'] = sphere_actor
+        self.actors_3D['pc_actor'] = actor
+        self.actors_3D ['subvol_actor'] = sphere_actor
 
 #Registration Panel:
     def CreateRegistrationPanel(self):
@@ -1292,7 +1292,7 @@ It is used as a global starting point and a translation reference."
             #print ("displayRegistrationSelection")
             rp = self.registration_parameters
             v = self.vis_widget_reg.frame.viewer
-            rbdisplay = 'RegistrationBox' in v.actors
+            rbdisplay = 'registration_box_actor' in v.actors
         else:
             return
 
@@ -1316,8 +1316,8 @@ It is used as a global starting point and a translation reference."
                 for viewer_widget in viewer_widgets:
                     RegistrationBoxMapper = vtk.vtkPolyDataMapper()
                     if viewer_widget.viewer == viewer2D:
-                        viewer_widget.PlaneClipper.AddDataToClip('RegistrationBox', cube_source.GetOutputPort())
-                        RegistrationBoxMapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('RegistrationBox').GetOutputPort())
+                        viewer_widget.PlaneClipper.AddDataToClip('registration_box_actor', cube_source.GetOutputPort())
+                        RegistrationBoxMapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('registration_box_actor').GetOutputPort())
                     else:
                         RegistrationBoxMapper.SetInputConnection(cube_source.GetOutputPort())
                 
@@ -1331,10 +1331,13 @@ It is used as a global starting point and a translation reference."
                         RegistrationBoxActor.GetProperty().SetOpacity(0.5)
                         RegistrationBoxActor.GetProperty().SetLineWidth(4.0)
                         RegistrationBoxActor.GetProperty().SetEdgeVisibility(True)
-                        viewer_widget.frame.viewer.AddActor(RegistrationBoxActor, 'RegistrationBox')
+                        viewer_widget.frame.viewer.AddActor(RegistrationBoxActor, 'registration_box_actor')
                     else:
                         RegistrationBoxActor.GetProperty().SetRepresentationToWireframe()
                         viewer_widget.frame.viewer.getRenderer().AddActor(RegistrationBoxActor)
+                        if not hasattr(self, 'actors_3D'):
+                            self.actors_3D = {}
+                        self.actors_3D ['registration_box_actor'] = RegistrationBoxActor
                     
                     self.registration_box.append({'source': cube_source , 'mapper': RegistrationBoxMapper,
                                             'actor': RegistrationBoxActor , 'viewer': viewer_widget.frame.viewer})
@@ -2485,8 +2488,15 @@ The first point is significant, as it is used as a global starting point and ref
         pc['subvolumes_check'] = QCheckBox(self.graphParamsGroupBox)
         pc['subvolumes_check'].setText("Display Subvolume Regions")
         pc['subvolumes_check'].setChecked(True)
-        pc['subvolumes_check'].stateChanged.connect( self.showSubvolumeRegions )
+        pc['subvolumes_check'].stateChanged.connect( partial(self.showHideActor,actor_name='subvol_actor') )
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['subvolumes_check'])
+        widgetno += 1
+
+        pc['reg_box_check'] = QCheckBox(self.graphParamsGroupBox)
+        pc['reg_box_check'].setText("Display Registration Region")
+        pc['reg_box_check'].setChecked(True)
+        pc['reg_box_check'].stateChanged.connect( partial(self.showHideActor,actor_name='registration_box_actor') )
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['reg_box_check'])
         widgetno += 1
 
         #Pointcloud points label
@@ -2863,10 +2873,8 @@ The first point is significant, as it is used as a global starting point and ref
         self.polydata_masker.Update()
         progress_callback.emit(80)
 
-        #print(pointcloud_file)
         pointcloud_file = os.path.basename(pointcloud_file)
-        #print(self.pointCloud_details)
-        #print(pointcloud_file)
+
 
         if pointcloud_file in self.pointCloud_details:
             self.pointCloud_subvol_size = self.pointCloud_details[pointcloud_file][0]
@@ -2975,34 +2983,21 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
         self.DisplayNumberOfPointcloudPoints()
 
     def clearPointCloud(self):
+        
         self.clearPointCloud2D()
         self.clearPointCloud3D()
         self.pointcloud_parameters['pc_points_value'].setText("0")
 
     def clearPointCloud2D(self):
+        actor_names = ['pc_actor', 'subvol_actor', 'arrow_pc_actor', 'arrowhead_actor', 'arrow_shaft_actor']
         v2D = self.vis_widget_2D.frame.viewer
+
+        for actor_name in actor_names:
+            if v2D.GetActor(actor_name):
+               v2D.GetActor(actor_name).VisibilityOff() 
         
-        if v2D.GetActor('pc_actor'):
-            v2D.GetActor('pc_actor').VisibilityOff()
-
-        if v2D.GetActor('subvolume_actor'):
-            v2D.GetActor('subvolume_actor').VisibilityOff()
-        
-        if v2D.GetActor('arrow_pc_actor'):
-            v2D.GetActor('arrow_pc_actor').VisibilityOff()
-
-        if v2D.GetActor('arrowhead_actor'):
-            v2D.GetActor('arrowhead_actor').VisibilityOff()
-
-        if v2D.GetActor('arrow_shaft_actor'):
-            v2D.GetActor('arrow_shaft_actor').VisibilityOff()
-
-        if hasattr(self.vis_widget_2D, 'PlaneClipper'):
-            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc_points')
-            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc_volumes')
-            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('pc2_points')
-            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('arrow_shafts')
-            self.vis_widget_2D.PlaneClipper.RemoveDataToClip('arrowheads')
+            if hasattr(self.vis_widget_2D, 'PlaneClipper'):
+                self.vis_widget_2D.PlaneClipper.RemoveDataToClip(actor_name)
 
             v2D.GetRenderWindow().Render()
 
@@ -3012,40 +3007,33 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
 
     def clearPointCloud3D(self):
         if hasattr(self, 'actors_3D'):
-            if 'pointcloud' in self.actors_3D:
-                self.actors_3D ['pointcloud_frame'].VisibilityOff()
-                self.actors_3D['pointcloud'].VisibilityOff()
-
-            if 'pactor' in self.actors_3D:
-                self.actors_3D ['pactor'].VisibilityOff()
-                self.actors_3D['arrow_actor'].VisibilityOff()
+            actor_names = ['pc_actor', 'subvol_actor', 'arrow_pc_actor', 'arrows_actor']
+            for actor_name in actor_names:
+                if actor_name in self.actors_3D:
+                    self.actors_3D[actor_name].VisibilityOff()
 
         v3D = self.vis_widget_3D.frame.viewer
 
         v3D.getRenderWindow().Render()
 
-        #print("Cleared pc")
-
-
-    def showSubvolumeRegions(self, show):
+    def showHideActor(self, show, actor_name):
         v2D = self.vis_widget_2D.frame.viewer
         if hasattr(v2D, 'img3D'):
-            if show:
-                if v2D.GetActor('subvolume_actor'):
-                    v2D.GetActor('subvolume_actor').VisibilityOn()
-
-            else:
-                if v2D.GetActor('subvolume_actor'):
-                    v2D.GetActor('subvolume_actor').VisibilityOff()
+            if v2D.GetActor(actor_name):
+                if show:
+                    v2D.GetActor(actor_name).VisibilityOn()
+                else:
+                    v2D.GetActor(actor_name).VisibilityOff()
 
             if hasattr(self, 'actors_3D'):
-                if 'pointcloud' in self.actors_3D:
+                if actor_name in self.actors_3D:
                     if show:
-                        self.actors_3D ['pointcloud_frame'].VisibilityOn()
+                        self.actors_3D [actor_name].VisibilityOn()
                     else:
-                        self.actors_3D ['pointcloud_frame'].VisibilityOff()
+                        self.actors_3D [actor_name].VisibilityOff()
 
             self.vis_widget_2D.frame.viewer.ren.Render()
+            self.vis_widget_3D.frame.viewer.getRenderWindow().Render()
             if hasattr(self.vis_widget_2D, 'PlaneClipper'):
                 self.vis_widget_2D.PlaneClipper.UpdateClippingPlanes()
 
@@ -3159,11 +3147,11 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
             pointPolyData.GetPointData().SetVectors(arrow_vectors) #(u,v,w) vector in 2D
             pointPolyData.GetPointData().SetScalars(acolor)
 
-            viewer_widget.PlaneClipper.AddDataToClip('pc_points2', pointPolyData)
+            viewer_widget.PlaneClipper.AddDataToClip('arrow_pc_actor', pointPolyData)
 
             pmapper = vtk.vtkPolyDataMapper()
             pmapper.SetInputData(pointPolyData)
-            pmapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('pc_points2').GetOutputPort())
+            pmapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('arrow_pc_actor').GetOutputPort())
             pmapper.SetScalarRange(acolor.GetRange())
             pmapper.SetLookupTable(lut)
 
@@ -3189,11 +3177,11 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
             line_glyph.OrientOn()
             line_glyph.Update()
 
-            viewer_widget.PlaneClipper.AddDataToClip('arrow_shafts', line_glyph.GetOutputPort())
+            viewer_widget.PlaneClipper.AddDataToClip('arrow_shaft_actor', line_glyph.GetOutputPort())
 
             line_mapper = vtk.vtkPolyDataMapper()
             #line_mapper.SetInputConnection(line_glyph.GetOutputPort())
-            line_mapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('arrow_shafts').GetOutputPort())
+            line_mapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('arrow_shaft_actor').GetOutputPort())
             line_mapper.SetScalarModeToUsePointFieldData()
             line_mapper.SelectColorArray(0)
             line_mapper.SetScalarRange(acolor.GetRange())
@@ -3234,11 +3222,11 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
             arrowhead_glyph.OrientOn()
             arrowhead_glyph.Update()
 
-            viewer_widget.PlaneClipper.AddDataToClip('arrowheads', arrowhead_glyph.GetOutputPort())
+            viewer_widget.PlaneClipper.AddDataToClip('arrowhead_actor', arrowhead_glyph.GetOutputPort())
 
             arrowhead_mapper = vtk.vtkPolyDataMapper()
             #arrowhead_mapper.SetInputConnection(arrowhead_glyph.GetOutputPort())
-            arrowhead_mapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('arrowheads').GetOutputPort())
+            arrowhead_mapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('arrowhead_actor').GetOutputPort())
             arrowhead_mapper.SetScalarModeToUsePointFieldData()
             arrowhead_mapper.SelectColorArray(0)
             arrowhead_mapper.SetScalarRange(acolor.GetRange())
@@ -3349,8 +3337,8 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
             
             v.ren.AddActor(pactor)
             v.ren.AddActor(arrow_actor)
-            actor_list['pactor'] = pactor
-            actor_list['arrow_actor'] = arrow_actor
+            actor_list['arrow_pc_actor'] = pactor
+            actor_list['arrows_actor'] = arrow_actor
             v.updatePipeline()
 
 
