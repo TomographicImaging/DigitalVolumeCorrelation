@@ -177,8 +177,6 @@ class MainWindow(QMainWindow):
         
 #Setting up the session:
     def CreateWorkingTempFolder(self):
-        # directories = [os.path.abspath(x) for x in next(os.walk(working_directory))[1]]
-
         temp_folder = os.path.join(working_directory,'DVC_Sessions')
         
         if not os.path.isdir(temp_folder):
@@ -202,7 +200,6 @@ class MainWindow(QMainWindow):
         self.roi = None
         self.run_folder = [None]
         self.results_folder = [None]
-        #self.loaded_session = False
         self.pointCloudCreated = False
         self.eroded_mask = False
         self.pointCloudLoaded = False
@@ -232,7 +229,6 @@ class MainWindow(QMainWindow):
         self.vis_widget_2D = VisualisationWidget(self, viewer=viewer2D, interactorStyle=vlink.Linked2DInteractorStyle)#interactorStyle= CILInteractorStyle2D) #previously unliked for testing
         self.vis_widget_3D = VisualisationWidget(self, viewer=viewer3D, interactorStyle=vlink.Linked3DInteractorStyle) #interactorStyle= CILInteractorStyle3D)#previously unlinked for testing
 
- 
         self.CreateViewerSettingsPanel()
         self.CreateHelpPanel()
 
@@ -243,7 +239,6 @@ class MainWindow(QMainWindow):
         self.CreateRunDVCPanel()
         self.CreateViewDVCResultsPanel()
 
-        
         #Tabifies dockwidgets in LeftDockWidgetArea:
         prev = None
         first_dock = None
@@ -258,7 +253,6 @@ class MainWindow(QMainWindow):
                 docks.append(current_dock)
                 
         first_dock.raise_() # makes first panel the one that is open by default.
-
 
         self.VisualisationWindow = VisualisationWindow(self)
 
@@ -289,7 +283,6 @@ class MainWindow(QMainWindow):
         self.viewer_settings_dock = dockWidget
 
         vs_widgets = {}
-
 
         widgetno = 0
 
@@ -323,18 +316,6 @@ class MainWindow(QMainWindow):
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, vs_widgets['displayed_image_dims_value'])
 
         widgetno+=1
-
-        # vs_widgets['sample_level_label'] = QLabel(groupBox)
-        # vs_widgets['sample_level_label'].setText("Level of downsampling:")
-        # #vs_widgets['sample_level_label'].setVisible(False)
-        # formLayout.setWidget(widgetno, QFormLayout.LabelRole, vs_widgets['sample_level_label'])
-
-        # vs_widgets['sample_level_value'] = QLabel(groupBox)
-        # vs_widgets['sample_level_value'].setText("None")
-        # #vs_widgets['sample_level_value'].setVisible(False)
-        # formLayout.setWidget(widgetno, QFormLayout.FieldRole, vs_widgets['sample_level_value'])
-
-        # widgetno += 1
 
         vs_widgets['coords_label'] = QLabel(groupBox)
         vs_widgets['coords_label'].setText("Display viewer coordinates in: ")
@@ -895,7 +876,6 @@ It will be the first point in the file that is used as the reference point.")
         sphere_actor.GetProperty().SetColor(1, 0, 0)
         #sphere_actor.GetProperty().SetColor(1, .2, .2)
         sphere_actor.GetProperty().SetOpacity(0.5)
-        #sphere_actor.GetProperty().SetRepresentationToWireframe()
         sphere_actor.GetProperty().SetLineWidth(2.0)
         sphere_actor.GetProperty().SetEdgeVisibility(True)
         sphere_actor.GetProperty().SetEdgeColor(1, .2, .2)
@@ -950,8 +930,6 @@ It will be the first point in the file that is used as the reference point.")
         sphere_actor.GetProperty().SetOpacity(1)
         sphere_actor.GetProperty().SetRepresentationToWireframe() #wireframe
         sphere_actor.GetProperty().SetLineWidth(3.0)
-        # sphere_actor.GetProperty().SetEdgeVisibility(True)
-        # sphere_actor.GetProperty().SetEdgeColor(0,0,0)
 
         self.vis_widget_3D.frame.viewer.getRenderer().AddActor(actor)
         self.vis_widget_3D.frame.viewer.getRenderer().AddActor(sphere_actor)
@@ -965,9 +943,6 @@ It will be the first point in the file that is used as the reference point.")
 #Registration Panel:
     def CreateRegistrationPanel(self):
         '''Create the Registration Dockable Widget'''
-
-        #self.treeWidgetInitialElements = []
-        #self.treeWidgetUpdateElements = []
 
         self.registration_panel = generateUIDockParameters(self, '2 - Manual Registration')
         dockWidget = self.registration_panel[0]
@@ -1030,11 +1005,6 @@ It is used as a global starting point and a translation reference."
         rp['registration_box_size_label'] = QLabel(groupBox)
         rp['registration_box_size_label'].setText("Registration Box Size")
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, rp['registration_box_size_label'])
-        # rp['registration_box_size_entry']= QLineEdit(groupBox)
-        # rp['registration_box_size_entry'].setValidator(validatorint)
-        # rp['registration_box_size_entry'].setText("10")
-        # rp['registration_box_size_entry'].setEnabled(False)
-        # rp['registration_box_size_entry'].returnPressed.connect(self.displayRegistrationSelection)
         rp['registration_box_size_entry'] = QSpinBox(groupBox)
         rp['registration_box_size_entry'].setSingleStep(1)
         rp['registration_box_size_entry'].setValue(200)
@@ -1194,10 +1164,7 @@ It is used as a global starting point and a translation reference."
         
         if shift and rp['select_point_zero'].isChecked():
             position = interactor.GetEventPosition()
-            #print(position)
-            #print("Image coord p0l: ", v.style.display2imageCoordinate(position)[:-1])
-            p0l = v.style.image2world(v.style.display2imageCoordinate(position)[:-1])
-            #print("p0l, ", p0l)               
+            p0l = v.style.image2world(v.style.display2imageCoordinate(position)[:-1])             
             self.createPoint0(p0l)
 
     def updatePoint0Display(self):
@@ -1393,7 +1360,6 @@ It is used as a global starting point and a translation reference."
     def getPoint0ImageCoords(self):
         # The 2D viewer has image coordinates of the sampled image
         # Its world coordinates are the world coordinates of the unsampled image.
-        # The point 0 text is in the image coords of the 2D viewer (sampled image coords).
         # Before registration, the coord system of the reg_viewer is identical to the 2D viewer.
         # During registration the reg_viewer has the coord system of the unsampled image. The image coords take into account any spacing
         # The world coordinates of the reg_viewer are the same before and during registration and are the same as the 2D viewer's
@@ -1751,16 +1717,8 @@ It is used as a global starting point and a translation reference."
         self.translate.Update()
         self.subtract.Update()
         #print ("Translation", trans)
-        
-        # v.setInputData(subtract.GetOutput())
-        # print ("OnKeyPressEventForRegistration", v.img3D.GetDimensions(), subtract.GetOutput().GetDimensions())
-        # v.style.UpdatePipeline()
-        # trigger visualisation by programmatically click 'z'
-        # interactor = v.getInteractor()
-        # interactor.SetKeyCode("z")
-        # v.style.OnKeyPress(interactor, 'KeyPressEvent')
-            
 
+            
 
 #Mask Panel:
     def CreateMaskPanel(self):
@@ -1775,10 +1733,6 @@ It is used as a global starting point and a translation reference."
         validator = QtGui.QDoubleValidator()
         validator.setDecimals(2)
         validatorint = QtGui.QIntValidator()
-
-        #Need to move this to when loading session bc here the sesh hasn't been loaded.
-
-        #So create empty dropdwon in this section
 
         dockWidget.visibilityChanged.connect(partial(self.displayHelp, panel_no = 2))
 
@@ -1879,9 +1833,7 @@ It is used as a global starting point and a translation reference."
             if v.image2 and self.mask_parameters['submitButton'].text() != "Extend Mask" and self.mask_reader:
                 self.ShowSaveMaskWindow(save_only = False)
                 return
-                #while hasattr(self, "SaveWindow"):
-                    #print("waiting")
-                    #time.sleep(0.5)
+
             else:
                 self.mask_worker = Worker(self.extendMask)
                 self.mask_worker.signals.finished.connect(self.DisplayMask)
@@ -1934,11 +1886,7 @@ It is used as a global starting point and a translation reference."
         lasso.SetSliceOrientation(orientation)
         lasso.SetInformationInput(image_data)
 
-        #print([orientation,sliceno])
-
         self.mask_details['current'] = [orientation, sliceno]
-
-        #print(self.mask_details)
 
         #Appropriate modification to Point Cloud Panel
         #self.updatePointCloudPanel()
@@ -2173,8 +2121,7 @@ It is used as a global starting point and a translation reference."
 
         if(type == "load session"):
             if(self.roi):
-                #print("ROI true")
-                #print(self.roi)
+                #print("ROI: ", self.roi)
                 self.PointCloudWorker("load pointcloud file")
                 self.pointCloudLoaded = True
         
@@ -2182,9 +2129,6 @@ It is used as a global starting point and a translation reference."
 # Point Cloud Panel:
 
     def CreatePointCloudPanel(self):
-        self.treeWidgetInitialElements = []
-        self.treeWidgetUpdateElements = []
-
 
         self.pointCloudDockWidget = QDockWidget(self)
         self.pointCloudDockWidget.setWindowTitle('4 - Point Cloud')
@@ -2253,24 +2197,13 @@ It is used as a global starting point and a translation reference."
         self.subvolumeShapeValue = QComboBox(self.graphParamsGroupBox)
         self.subvolumeShapeValue.addItem("Cube")
         self.subvolumeShapeValue.addItem("Sphere")
-        # self.subvolumeShapeValue.addItem("Box")
-        # self.subvolumeShapeValue.addItem("Circle")
         self.subvolumeShapeValue.setCurrentIndex(0)
         self.subvolumeShapeValue.currentTextChanged.connect(self.displaySubvolumePreview)
 
-        self.treeWidgetUpdateElements.append(self.subvolumeShapeValue)
-        self.treeWidgetUpdateElements.append(self.subvolumeShapeLabel)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.subvolumeShapeValue)
         widgetno += 1
         pc['pointcloud_volume_shape_entry'] = self.subvolumeShapeValue
-    #        # Add local/global checkbox
-    #        self.isGlobalCheck = QCheckBox(self.graphParamsGroupBox)
-    #        self.isGlobalCheck.setText("Global Iso")
-    #        self.isGlobalCheck.setChecked(True)
-    #        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.isGlobalCheck)
-    #        self.treeWidgetUpdateElements.append(self.isGlobalCheck)
-    #        widgetno += 1
 
         # Add horizonal seperator
         self.seperator = QFrame(self.graphParamsGroupBox)
@@ -2278,12 +2211,6 @@ It is used as a global starting point and a translation reference."
         self.seperator.setFrameShadow(QFrame.Raised)
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.SpanningRole, self.seperator)
         widgetno += 1
-    #        # Add colour surfaces checkbox
-    #        self.surfaceColourCheck = QCheckBox(self.graphParamsGroupBox)
-    #        self.surfaceColourCheck.setText("Colour Surfaces")
-    #        self.graphWidgetFL.setWidget(widgetno,QFormLayout.FieldRole, self.surfaceColourCheck)
-    #        self.treeWidgetUpdateElements.append(self.surfaceColourCheck)
-    #        widgetno += 1
 
         # Add collapse priority field
         self.dimensionalityLabel = QLabel(self.graphParamsGroupBox)
@@ -2335,8 +2262,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapYValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         if orientation == 1:
             self.overlapYValueEntry.setEnabled(False)
-        self.treeWidgetUpdateElements.append(self.overlapYValueEntry)
-        self.treeWidgetUpdateElements.append(self.overlapYLabel)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.overlapYValueEntry)
         widgetno += 1
@@ -2354,8 +2279,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapZValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         if orientation == 2:
             self.overlapZValueEntry.setEnabled(False)
-        self.treeWidgetUpdateElements.append(self.overlapZValueEntry)
-        self.treeWidgetUpdateElements.append(self.overlapZLabel)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.overlapZValueEntry)
         widgetno += 1
@@ -2372,8 +2295,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateXValueEntry.setValidator(validator)
         self.rotateXValueEntry.setText("0.00")
         self.rotateXValueEntry.textChanged.connect(self.displaySubvolumePreview)
-        self.treeWidgetUpdateElements.append(self.rotateXValueEntry)
-        self.treeWidgetUpdateElements.append(self.rotateXLabel)
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateXValueEntry)
         widgetno += 1
         pc['pointcloud_rotation_x_entry'] = self.rotateXValueEntry
@@ -2387,8 +2308,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateYValueEntry.setValidator(validator)
         self.rotateYValueEntry.setText("0.00")
         self.rotateYValueEntry.textChanged.connect(self.displaySubvolumePreview)
-        self.treeWidgetUpdateElements.append(self.rotateYValueEntry)
-        self.treeWidgetUpdateElements.append(self.rotateYLabel)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateYValueEntry)
         widgetno += 1
@@ -2403,8 +2322,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateZValueEntry.setValidator(validator)
         self.rotateZValueEntry.setText("0.00")
         self.rotateZValueEntry.textChanged.connect(self.displaySubvolumePreview)
-        self.treeWidgetUpdateElements.append(self.rotateZValueEntry)
-        self.treeWidgetUpdateElements.append(self.rotateZLabel)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateZValueEntry)
         widgetno += 1
@@ -2448,7 +2365,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.graphParamsSubmitButton.setText("Generate Point Cloud")
         self.graphParamsSubmitButton.clicked.connect(lambda: self.createSavePointCloudWindow(save_only=False))
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.graphParamsSubmitButton)
-        self.treeWidgetUpdateElements.append(self.graphParamsSubmitButton)
         widgetno += 1
         # Add elements to layout
         self.graphWidgetVL.addWidget(self.graphParamsGroupBox)
@@ -2456,15 +2372,6 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.pointCloudDockWidget.setWidget(self.pointCloudDockWidgetContents)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.pointCloudDockWidget)
         widgetno += 1
-
-        # Set update elements to disabled when first opening the window
-        #if self.segmentor.dimensions is None:
-        #    for element in self.treeWidgetUpdateElements:
-        #        element.setEnabled(False)
-
-        #self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.pcDock)
-
-        # self.pointCloudDockWidget.show()
 
         pc['pointcloudList'] = QComboBox(self.graphParamsGroupBox)
         pc['pointcloudList'].setEnabled(False)
@@ -2660,9 +2567,7 @@ The first point is significant, as it is used as a global starting point and ref
                 self.PointCloudWorker("load pointcloud file")
             else:
                 self.warningDialog("Please select a .roi file", "Error")
-            #array = folder[0].split("/")
-            #self.roi = array[-1]
-            #label.setText(self.roi)
+
         if self.copy_files:
             filename = os.path.basename(self.roi)
             shutil.copyfile(self.roi, os.path.join(tempfile.tempdir, filename))
@@ -3017,7 +2922,7 @@ The first point is significant, as it is used as a global starting point and ref
             self.pointCloud_shape = cilRegularPointCloudToPolyData.CUBE
             #print("No details found")
 
-        #SET UP APPROPRIATE VALUES OF SPINBOXES ON INTERFACE:
+        #SET UP APPROPRIATE VALUES OF SPINBOXES ON INTERFACE: #TODO
         # self.overlapXValueEntry.setValue(float(self.pointCloud_overlap[0]))
         # self.overlapYValueEntry.setValue(float(self.pointCloud_overlap[1]))
         # self.overlapZValueEntry.setValue(float(self.pointCloud_overlap[2]))
@@ -3112,7 +3017,6 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
         self.DisplayNumberOfPointcloudPoints()
 
     def clearPointCloud(self):
-        
         self.clearPointCloud2D()
         self.clearPointCloud3D()
         self.pointcloud_parameters['pc_points_value'].setText("0")
@@ -3652,8 +3556,6 @@ This parameter has a strong effect on computation time, so be careful.")
         
         rdvc_widgets['subvol_size_range_min_value'].setText(current_subv_size)
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_size_range_min_value'])
-        #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
-        #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
 
         rdvc_widgets['subvol_size_range_max_label'] = QLabel(bulkRun_groupBox)
@@ -3663,8 +3565,6 @@ This parameter has a strong effect on computation time, so be careful.")
         rdvc_widgets['subvol_size_range_max_value'].setValidator(validatorint)
         rdvc_widgets['subvol_size_range_max_value'].setText("100")
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_size_range_max_value'])
-        #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
-        #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
 
         rdvc_widgets['subvol_size_range_step_label'] = QLabel(bulkRun_groupBox)
@@ -3674,8 +3574,6 @@ This parameter has a strong effect on computation time, so be careful.")
         rdvc_widgets['subvol_size_range_step_value'].setValidator(validatorint)
         rdvc_widgets['subvol_size_range_step_value'].setText("0")
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_size_range_step_value'])
-        #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
-        #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
         
         separators = [QFrame(groupBox)]
@@ -3698,8 +3596,6 @@ This parameter has a strong effect on computation time, so be careful.")
         rdvc_widgets['points_in_subvol_range_min_value'].setValidator(validatorint)
         rdvc_widgets['points_in_subvol_range_min_value'].setText("10")
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['points_in_subvol_range_min_value'])
-        #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
-        #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
         # overlap range max
         rdvc_widgets['points_in_subvol_range_max_label'] = QLabel(bulkRun_groupBox)
@@ -3709,8 +3605,6 @@ This parameter has a strong effect on computation time, so be careful.")
         rdvc_widgets['points_in_subvol_range_max_value'].setValidator(validatorint)
         rdvc_widgets['points_in_subvol_range_max_value'].setText("100")
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['points_in_subvol_range_max_value'])
-        #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
-        #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
         # overlap range step
         rdvc_widgets['points_in_subvol_range_step_label'] = QLabel(bulkRun_groupBox)
@@ -3720,8 +3614,6 @@ This parameter has a strong effect on computation time, so be careful.")
         rdvc_widgets['points_in_subvol_range_step_value'].setValidator(validatorint)
         rdvc_widgets['points_in_subvol_range_step_value'].setText("0")
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['points_in_subvol_range_step_value'])
-        #self.treeWidgetUpdateElements.append(self.extendAboveEntry)
-        #self.treeWidgetUpdateElements.append(self.extendAboveLabel)
         widgetno += 1
 
         button_groupBox = QGroupBox()
@@ -3731,10 +3623,10 @@ This parameter has a strong effect on computation time, so be careful.")
 
         rdvc_widgets['run_button'] = QPushButton(button_groupBox)
         rdvc_widgets['run_button'].setText("Run DVC")
-        #rdvc_widgets['run_button'].setEnabled(False)
         button_groupBoxFormLayout.setWidget(widgetno, QFormLayout.SpanningRole, rdvc_widgets['run_button'])
         widgetno += 1
 
+        # TODO: implement option to only generate config
         # rdvc_widgets['run_config'] = QPushButton(button_groupBox)
         # rdvc_widgets['run_config'].setText("Generate Run Config")
         # #rdvc_widgets['run_config'].setEnabled(False)
@@ -3742,8 +3634,6 @@ This parameter has a strong effect on computation time, so be careful.")
         # widgetno += 1
 
         #Add button functionality:
-        #rdvc_widgets['dir_browse'].clicked.connect(lambda: self.select_directory(rdvc_widgets['dir_name_label'], [rdvc_widgets['run_button'], rdvc_widgets['run_config']], self.run_folder, "Select a directory to save the run", "run"))
-        #rdvc_widgets['roi_browse'].clicked.connect(lambda: self.select_roi(rdvc_widgets['roi_name_label'], rdvc_widgets['run_button']))
         rdvc_widgets['run_type_entry'].currentIndexChanged.connect(self.show_run_groupbox)
         rdvc_widgets['run_button'].clicked.connect(self.create_config_worker)
 
@@ -3884,7 +3774,6 @@ This parameter has a strong effect on computation time, so be careful.")
                     if not self.createPointCloud(filename, subvol_size=int(subvol_size)):
                         return ("pointcloud error")
                     self.roi_files.append(os.path.join(tempfile.tempdir, filename))
-                    #print("completed subvol_size")
                     progress_callback.emit(subvol_size_count/len(self.subvol_sizes)*90)
                 #print("finished making pointclouds")
 
@@ -3944,8 +3833,6 @@ This parameter has a strong effect on computation time, so be careful.")
             self.progress_window.close()
             #TODO: test this and see if we need to stop the worker, or if not returning anything is enough
 
-
-        
 
     def run_external_code(self, error = None):
         if error == "subvolume error":
