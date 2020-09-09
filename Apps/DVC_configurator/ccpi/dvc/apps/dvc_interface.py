@@ -73,7 +73,6 @@ import copy
 
 from distutils.dir_util import copy_tree
 
-
 #TODO: switch from/to these lines for dev/release
 from ccpi.dvc.apps.image_data import ImageDataCreator
 
@@ -87,7 +86,7 @@ from ccpi.dvc.apps.dvc_runner import DVC_runner
 
 # from dvc_runner import DVC_runner
 
-__version__ = '20.07.2'
+__version__ = '20.07.3'
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -366,25 +365,27 @@ class MainWindow(QMainWindow):
         for viewer in viewers_2D:
             if hasattr(viewer, 'img3D'):
                 if viewer.img3D is not None:
+                    viewer.setVisualisationDownsampling(self.resample_rate)
+                    shown_resample_rate = self.resample_rate
                     vs_widgets['loaded_image_dims_label'].setVisible(True)
                     vs_widgets['loaded_image_dims_value'].setVisible(True)
 
                     if vs_widgets['coords_combobox'].currentIndex() == 0:
-                        shown_resample_rate = self.resample_rate
+                        viewer.setDisplayUnsampledCoordinates(True)
                         if shown_resample_rate != [1,1,1]:
                             vs_widgets['coords_warning_label'].setVisible(True)
                         else:
                             vs_widgets['coords_warning_label'].setVisible(False)
 
                     else:
-                        shown_resample_rate =[1,1,1]
+                        viewer.setDisplayUnsampledCoordinates(False)
                         vs_widgets['coords_warning_label'].setVisible(False)
 
                     if hasattr(self, 'point0_world_coords'):
                         self.SetPoint0Text()
                     
 
-                    viewer.setVisualisationDownsampling(shown_resample_rate)
+                    
                     viewer.updatePipeline()
 
 
@@ -398,8 +399,7 @@ class MainWindow(QMainWindow):
 
         self.help_text = ["Please use 'raw' or 'npy' images.\n You can view the shortcuts for the viewer by clicking on the 2D image and then pressing the 'h' key."]
 
-        self.help_text.append("Click 'Select point 0' to select a point and region for registering the image.\n It is recommended to select 'Register on Selection' \
-and select a size smaller than 1000.\n Then click 'Start Registration'. You can move the two images relative to eachother using the keys: j, n, b and m and switch orientation using 'x, y, z'. \n Once you are satisfied with the registration, make sure the point 0 \
+        self.help_text.append("Click 'Select point 0' to select a point and region for registering the image, and then modify the registration box size.\n Then click 'Start Registration'. You can move the two images relative to eachother using the keys: j, n, b and m and switch orientation using 'x, y, z'. \n Once you are satisfied with the registration, make sure the point 0 \
 you have selected is the point you want the DVC to start from.")
         
         self.help_text.append("Enable trace mode by clicking on the 2D viewer, then pressing 't'. Then you may draw a region freehand. \n \
@@ -621,6 +621,8 @@ and then input to the DVC code.")
                 target_size = float(self.settings.value("vis_size"))
             else:
                 target_size = 0.125
+        self.target_image_size = target_size
+        
         ImageDataCreator.createImageData(self, self.image[0], self.ref_image_data, info_var = self.image_info, convert_numpy = True,  finish_fn = partial(self.save_image_info, "ref"), resample= True, target_size = target_size, tempfolder = os.path.abspath(tempfile.tempdir))
         #print("Created ref image")
 
@@ -629,6 +631,14 @@ and then input to the DVC code.")
         #print("INFO: ", self.image_info)
         if 'vol_bit_depth' in self.image_info:
             self.vol_bit_depth = self.image_info['vol_bit_depth']
+
+            #Update registration box size according to target size and vol bit depth
+            self.registration_parameters['registration_box_size_entry'].setMaximum(round((self.target_image_size**(1/3))*1024/3*int(self.vol_bit_depth)/8))
+            self.registration_parameters['registration_box_size_entry'].setValue(round((self.target_image_size**(1/3))*1024/3*int(self.vol_bit_depth)/8))
+        
+        #Update mask slices above/below to be max extent of downsampled image
+        self.mask_parameters['mask_extend_above_entry'].setMaximum(np.max(self.ref_image_data.GetDimensions()))
+        self.mask_parameters['mask_extend_below_entry'].setMaximum(np.max(self.ref_image_data.GetDimensions()))
 
         if 'header_length' in self.image_info:
             self.vol_hdr_lngth = self.image_info['header_length']
@@ -734,27 +744,27 @@ and then input to the DVC code.")
                 self.no_mask_pc_load = False
 
         if(self.reg_load):
-                self.createRegistrationViewer()
-                #first we need to set the z slice -> go to slice self.config['point0'][2]
-                v = self.vis_widget_2D.frame.viewer
-                self.createPoint0(self.config['point0'])
-                rp = self.registration_parameters
-                if self.config['reg_translation'] is not None:
-                    rp['translate_X_entry'].setText(str(self.config['reg_translation'][0]*-1))
-                    rp['translate_Y_entry'].setText(str(self.config['reg_translation'][1]*-1))
-                    rp['translate_Z_entry'].setText(str(self.config['reg_translation'][2]*-1))
-                    self.translate = vtk.vtkImageTranslateExtent()
-                    self.translate.SetTranslation(self.config['reg_translation'])
-                    self.registration_parameters['registration_box_size_entry'].setValue(self.config['reg_sel_size'])
-                    self.registration_parameters['registration_box_size_entry'].setEnabled(True)
-                #self.displayRegistrationViewer(registration_open = False)
-                self.dock_reg.setVisible(False)
-                self.viewer2D_dock.setVisible(True)
-                self.viewer3D_dock.setVisible(True)
-                self.reg_load = False
+            self.createRegistrationViewer()
+            #first we need to set the z slice -> go to slice self.config['point0'][2]
+            v = self.vis_widget_2D.frame.viewer
+            self.createPoint0(self.config['point0'])
+            rp = self.registration_parameters
+            if self.config['reg_translation'] is not None:
+                rp['translate_X_entry'].setText(str(self.config['reg_translation'][0]*-1))
+                rp['translate_Y_entry'].setText(str(self.config['reg_translation'][1]*-1))
+                rp['translate_Z_entry'].setText(str(self.config['reg_translation'][2]*-1))
+                self.translate = vtk.vtkImageTranslateExtent()
+                self.translate.SetTranslation(self.config['reg_translation'])
+                self.registration_parameters['registration_box_size_entry'].setValue(self.config['reg_sel_size'])
+                self.registration_parameters['registration_box_size_entry'].setEnabled(True)
+            #self.displayRegistrationViewer(registration_open = False)
+            self.dock_reg.setVisible(False)
+            self.viewer2D_dock.setVisible(True)
+            self.viewer3D_dock.setVisible(True)
+            self.reg_load = False
 
-                #bring image loading panel to front if it isnt already:          
-                self.select_image_dock.raise_() 
+            #bring image loading panel to front if it isnt already:          
+            self.select_image_dock.raise_() 
 
     def create_progress_window(self, title, text, max = 100, cancel = None):
         self.progress_window = QProgressDialog(text, "Cancel", 0,max, self, QtCore.Qt.Window) 
@@ -830,46 +840,42 @@ and then input to the DVC code.")
         # save reference
         self.transform = transform
         # rotate around the center of the image data
-        # print("ROTATE: ", self.pointCloud_rotation[2])
-        transform.RotateX(self.pointCloud_rotation[0])
-        transform.RotateY(self.pointCloud_rotation[1])
-        transform.RotateZ(self.pointCloud_rotation[2])
+        print("ROTATE: ", self.pointCloud_rotation[2])
+        self.transform.RotateX(self.pointCloud_rotation[0])
+        self.transform.RotateY(self.pointCloud_rotation[1])
+        self.transform.RotateZ(self.pointCloud_rotation[2])
         t_filter = vtk.vtkTransformPolyDataFilter()
-        t_filter.SetTransform(self.transform)
         t_filter.SetInputConnection(self.cube_source.GetOutputPort())
+        t_filter.SetTransform(self.transform)
         self.cube_transform_filter = t_filter
+        self.cube_transform_filter.Update()
+        self.cube_source.Update()
         #cube_source.SetRadius(spacing[0])
-        
-
-        self.cube_source = cube_source
-        
 
         # # mapper for the glyphs
         sphere_mapper = vtk.vtkPolyDataMapper()
         # # save reference
         self.cubesphere_mapper = sphere_mapper
         # # sphere_mapper.SetInputConnection( subv_glyph.GetOutputPort() )
-        
-        
 
         subv_glyph.SetInputConnection( self.polydata_masker.GetOutputPort() )
 
 
         if self.pointCloud_shape == cilRegularPointCloudToPolyData.CUBE:
             #print("CUBE")
-            self.glyph_source = t_filter #self.cube_source
+            self.glyph_source = self.cube_transform_filter #self.cube_source
+            self.cubesphere.SetSourceConnection(self.cube_transform_filter.GetOutputPort())
         else:
             #print("SPHERE")
             self.glyph_source = self.sphere_source
+            self.cubesphere.SetSourceConnection(self.sphere_source.GetOutputPort())
         
-        subv_glyph.SetSourceConnection( self.glyph_source.GetOutputPort() )
-        self.vis_widget_2D.PlaneClipper.AddDataToClip('pc_volumes', subv_glyph.GetOutputPort())
+        #self.cubesphere.SetSourceConnection( self.glyph_source.GetOutputPort() )
+        self.cubesphere.Update()
+        self.vis_widget_2D.PlaneClipper.AddDataToClip('pc_volumes', self.cubesphere.GetOutputPort())
         sphere_mapper.SetInputConnection( self.vis_widget_2D.PlaneClipper.GetClippedData('pc_volumes').GetOutputPort())
-        
-        # # subv_glyph.SetSourceConnection( sphere_source.GetOutputPort() )
-        # # subv_glyph.SetSourceConnection( cube_source.GetOutputPort() )
-
-        subv_glyph.SetVectorModeToUseNormal()
+        self.cubesphere.Update()
+        self.cubesphere.SetVectorModeToUseNormal()
 
         # # actor for the glyphs
         sphere_actor = vtk.vtkActor()
@@ -883,16 +889,10 @@ and then input to the DVC code.")
         sphere_actor.GetProperty().SetLineWidth(2.0)
         sphere_actor.GetProperty().SetEdgeVisibility(True)
         sphere_actor.GetProperty().SetEdgeColor(1, .2, .2)
-        # sphere_actor.SetOrigin(self.cube_source.GetCenter())
-        # sphere_actor.RotateZ(rotate[2])
-
-        #self.vtkWidget needs to become self.parent.vis_widget_.frame
-
-        #actor = 'PointCloud' in self.vis_widget_2D.frame.viewer.actors
-        #actor = 'PointCloud' in self.vis_widget_2D.frame.viewer.actors
 
         self.vis_widget_2D.frame.viewer.AddActor(actor, 'pc_actor')
         self.vis_widget_2D.frame.viewer.AddActor(sphere_actor, 'subvolume_actor')
+        self.cubesphere.Update()
         
 
     def setup3DPointCloudPipeline(self):
@@ -901,11 +901,7 @@ and then input to the DVC code.")
         mapper = vtk.vtkPolyDataMapper()
         # save reference
         self.pointmapper = mapper
-        # mapper.SetInputConnection(bpc.GetOutputPort())
         mapper.SetInputConnection(self.polydata_masker.GetOutputPort())
-        # mapper.SetInputConnection(pointCloud.GetOutputPort())
-        #mapper.SetInputData(self.polydata_masker.GetOutputDataObject(0))
-        
 
         # create an actor for the points as point
         actor = vtk.vtkLODActor()
@@ -915,7 +911,6 @@ and then input to the DVC code.")
         actor.GetProperty().SetPointSize(3)
         actor.GetProperty().SetColor(1, .2, .2)
         actor.VisibilityOn()
-
 
         # create a mapper/actor for the point cloud with a CubeSource and with vtkGlyph3D
         # which copies oriented and scaled glyph geometry to every input point
@@ -936,14 +931,6 @@ and then input to the DVC code.")
         self.cubesphere_mapper3D = sphere_mapper
         sphere_mapper.SetInputConnection( subv_glyph.GetOutputPort() )
 
-        subv_glyph.SetInputConnection( self.polydata_masker.GetOutputPort() )
-        if self.pointCloud_shape == 'cube':
-            subv_glyph.SetSourceConnection( cube_source.GetOutputPort() )
-        else:
-            #print("SPHERE")
-            subv_glyph.SetSourceConnection( sphere_source.GetOutputPort() )
-        subv_glyph.Modified()
-
         # # actor for the glyphs
         sphere_actor = vtk.vtkActor()
         # # save reference
@@ -955,7 +942,6 @@ and then input to the DVC code.")
         sphere_actor.GetProperty().SetLineWidth(3.0)
         # sphere_actor.GetProperty().SetEdgeVisibility(True)
         # sphere_actor.GetProperty().SetEdgeColor(0,0,0)
-
 
         self.vis_widget_3D.frame.viewer.getRenderer().AddActor(actor)
         self.vis_widget_3D.frame.viewer.getRenderer().AddActor(sphere_actor)
@@ -1041,7 +1027,7 @@ It is used as a global starting point and a translation reference."
         # rp['registration_box_size_entry'].returnPressed.connect(self.displayRegistrationSelection)
         rp['registration_box_size_entry'] = QSpinBox(groupBox)
         rp['registration_box_size_entry'].setSingleStep(1)
-        rp['registration_box_size_entry'].setValue(20)
+        rp['registration_box_size_entry'].setValue(200)
         rp['registration_box_size_entry'].setMaximum(200)
         rp['registration_box_size_entry'].setEnabled(True)
         rp['registration_box_size_entry'].valueChanged.connect(self.displayRegistrationSelection)
@@ -1191,18 +1177,18 @@ It is used as a global starting point and a translation reference."
             self.warningDialog("Load an image on the viewer first.", "Error")
         
     def OnLeftButtonPressEventForPointZero(self, interactor, event):
-            # print('OnLeftButtonPressEventForPointZero', event)
-            v = self.vis_widget_reg.frame.viewer
-            shift = interactor.GetShiftKey()          
-            rp = self.registration_parameters
-            
-            if shift and rp['select_point_zero'].isChecked():
-                position = interactor.GetEventPosition()
-                #print(position)
-                #print("Image coord p0l: ", v.style.display2imageCoordinate(position)[:-1])
-                p0l = v.style.image2world(v.style.display2imageCoordinate(position)[:-1])
-                #print("p0l, ", p0l)               
-                self.createPoint0(p0l)
+        # print('OnLeftButtonPressEventForPointZero', event)
+        v = self.vis_widget_reg.frame.viewer
+        shift = interactor.GetShiftKey()          
+        rp = self.registration_parameters
+        
+        if shift and rp['select_point_zero'].isChecked():
+            position = interactor.GetEventPosition()
+            #print(position)
+            #print("Image coord p0l: ", v.style.display2imageCoordinate(position)[:-1])
+            p0l = v.style.image2world(v.style.display2imageCoordinate(position)[:-1])
+            #print("p0l, ", p0l)               
+            self.createPoint0(p0l)
 
     def updatePoint0Display(self):
         vox = self.getPoint0WorldCoords()
@@ -1283,20 +1269,22 @@ It is used as a global starting point and a translation reference."
             rp = self.registration_parameters
             v = self.vis_widget_reg.frame.viewer
 
-            point0 = self.getPoint0ImageCoords()
+            if hasattr(self, 'point0_world_coords'):
+                point0 = self.getPoint0ImageCoords()
 
-            #print("center on Point0 is ", point0)
-
-            if isinstance (point0, tuple) or isinstance(point0, list):
-                #print("Tuple")
-                orientation = v.style.GetSliceOrientation()
-                gotoslice = point0[orientation]
-                v.style.SetActiveSlice( round(gotoslice) )
-                v.style.UpdatePipeline(True)
-                self.displayRegistrationSelection()
-                self.vis_widget_reg.PlaneClipper.UpdateClippingPlanes()
+                if isinstance (point0, tuple) or isinstance(point0, list):
+                    #print("Tuple")
+                    orientation = v.style.GetSliceOrientation()
+                    gotoslice = point0[orientation]
+                    v.style.SetActiveSlice( round(gotoslice) )
+                    v.style.UpdatePipeline(True)
+                    self.displayRegistrationSelection()
+                    self.vis_widget_reg.PlaneClipper.UpdateClippingPlanes()
+                else:
+                    self.warningDialog("Choose a Point 0 first.", "Error")
             else:
                 self.warningDialog("Choose a Point 0 first.", "Error")
+
 
     def displayRegistrationSelection(self):
         if hasattr(self, 'vis_widget_reg'):
@@ -1304,59 +1292,61 @@ It is used as a global starting point and a translation reference."
             rp = self.registration_parameters
             v = self.vis_widget_reg.frame.viewer
             rbdisplay = 'RegistrationBox' in v.actors
-
-
-        point0 = self.getPoint0WorldCoords()
-
-        reg_box_size = self.getRegistrationBoxSizeInWorldCoords()
-
-        if not rbdisplay:
-            
-            cube_source = vtk.vtkCubeSource()
-            cube_source.SetXLength(reg_box_size)
-            cube_source.SetYLength(reg_box_size)
-            cube_source.SetZLength(reg_box_size)
-            cube_source.SetCenter(point0)
-            cube_source.Update()
-
-            self.registration_box = []
-            viewer_widgets = [self.vis_widget_2D, self.vis_widget_reg, self.vis_widget_3D]
-
-            for viewer_widget in viewer_widgets:
-                RegistrationBoxMapper = vtk.vtkPolyDataMapper()
-                if viewer_widget.viewer == viewer2D:
-                    viewer_widget.PlaneClipper.AddDataToClip('RegistrationBox', cube_source.GetOutputPort())
-                    RegistrationBoxMapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('RegistrationBox').GetOutputPort())
-                else:
-                    RegistrationBoxMapper.SetInputConnection(cube_source.GetOutputPort())
-            
-                RegistrationBoxActor = vtk.vtkLODActor()
-                RegistrationBoxActor.SetMapper(RegistrationBoxMapper)
-                RegistrationBoxActor.GetProperty().SetColor(0.,.5,.5)
-                RegistrationBoxActor.GetProperty().SetLineWidth(2.0)
-                RegistrationBoxActor.GetProperty().SetEdgeColor(0.,.5,.5)
-
-                if viewer_widget.viewer == viewer2D:
-                    RegistrationBoxActor.GetProperty().SetOpacity(0.5)
-                    RegistrationBoxActor.GetProperty().SetLineWidth(4.0)
-                    RegistrationBoxActor.GetProperty().SetEdgeVisibility(True)
-                    viewer_widget.frame.viewer.AddActor(RegistrationBoxActor, 'RegistrationBox')
-                else:
-                    RegistrationBoxActor.GetProperty().SetRepresentationToWireframe()
-                    viewer_widget.frame.viewer.getRenderer().AddActor(RegistrationBoxActor)
-                
-                self.registration_box.append({'source': cube_source , 'mapper': RegistrationBoxMapper,
-                                        'actor': RegistrationBoxActor , 'viewer': viewer_widget.frame.viewer})
-                v.style.UpdatePipeline()
         else:
-            for i, viewer_box_info in enumerate(self.registration_box):
-                viewer_box_info['actor'].VisibilityOn()
-                cube_source = viewer_box_info['source']
+            return
+
+        if hasattr(self, 'point0_world_coords'):
+            point0 = self.getPoint0WorldCoords()
+
+            reg_box_size = self.getRegistrationBoxSizeInWorldCoords()
+
+            if not rbdisplay:
+                
+                cube_source = vtk.vtkCubeSource()
                 cube_source.SetXLength(reg_box_size)
                 cube_source.SetYLength(reg_box_size)
                 cube_source.SetZLength(reg_box_size)
                 cube_source.SetCenter(point0)
-                viewer_box_info['viewer'].style.UpdatePipeline()
+                cube_source.Update()
+
+                self.registration_box = []
+                viewer_widgets = [self.vis_widget_2D, self.vis_widget_reg, self.vis_widget_3D]
+
+                for viewer_widget in viewer_widgets:
+                    RegistrationBoxMapper = vtk.vtkPolyDataMapper()
+                    if viewer_widget.viewer == viewer2D:
+                        viewer_widget.PlaneClipper.AddDataToClip('RegistrationBox', cube_source.GetOutputPort())
+                        RegistrationBoxMapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('RegistrationBox').GetOutputPort())
+                    else:
+                        RegistrationBoxMapper.SetInputConnection(cube_source.GetOutputPort())
+                
+                    RegistrationBoxActor = vtk.vtkLODActor()
+                    RegistrationBoxActor.SetMapper(RegistrationBoxMapper)
+                    RegistrationBoxActor.GetProperty().SetColor(0.,.5,.5)
+                    RegistrationBoxActor.GetProperty().SetLineWidth(2.0)
+                    RegistrationBoxActor.GetProperty().SetEdgeColor(0.,.5,.5)
+
+                    if viewer_widget.viewer == viewer2D:
+                        RegistrationBoxActor.GetProperty().SetOpacity(0.5)
+                        RegistrationBoxActor.GetProperty().SetLineWidth(4.0)
+                        RegistrationBoxActor.GetProperty().SetEdgeVisibility(True)
+                        viewer_widget.frame.viewer.AddActor(RegistrationBoxActor, 'RegistrationBox')
+                    else:
+                        RegistrationBoxActor.GetProperty().SetRepresentationToWireframe()
+                        viewer_widget.frame.viewer.getRenderer().AddActor(RegistrationBoxActor)
+                    
+                    self.registration_box.append({'source': cube_source , 'mapper': RegistrationBoxMapper,
+                                            'actor': RegistrationBoxActor , 'viewer': viewer_widget.frame.viewer})
+                    v.style.UpdatePipeline()
+            else:
+                for i, viewer_box_info in enumerate(self.registration_box):
+                    viewer_box_info['actor'].VisibilityOn()
+                    cube_source = viewer_box_info['source']
+                    cube_source.SetXLength(reg_box_size)
+                    cube_source.SetYLength(reg_box_size)
+                    cube_source.SetZLength(reg_box_size)
+                    cube_source.SetCenter(point0)
+                    viewer_box_info['viewer'].style.UpdatePipeline()
   
     def getRegistrationBoxSizeInWorldCoords(self):
         # The value the user sets is in the world coords.
@@ -1413,8 +1403,11 @@ It is used as a global starting point and a translation reference."
             v = self.vis_widget_reg.frame.viewer
             if rp['start_registration_button'].isChecked():
                 # print ("Start Registration Checked")
-                rp['start_registration_button'].setText("Stop Registration")
+                rp['start_registration_button'].setText("Confirm Registration")
                 rp['registration_box_size_entry'].setEnabled(False)
+                
+                rp['select_point_zero'].setChecked(False)
+                rp['select_point_zero'].setCheckable(False)
 
                 # setup the appropriate stuff to run the registration
                 if not hasattr(self, 'translate'):
@@ -1433,7 +1426,8 @@ It is used as a global starting point and a translation reference."
                 # print ("Start Registration Unchecked")
                 rp['start_registration_button'].setText("Start Registration")
                 rp['registration_box_size_entry'].setEnabled(True)
-
+                rp['select_point_zero'].setCheckable(True)
+                
                 v.setInput3DData(self.ref_image_data)
                 v.style.UpdatePipeline()
                 if rp['point_zero_entry'].text() != "":
@@ -1450,7 +1444,8 @@ It is used as a global starting point and a translation reference."
             vs_widgets['coords_warning_label'].setVisible(False)
             vs_widgets['displayed_image_dims_label'].setVisible(False)
             vs_widgets['displayed_image_dims_value'].setVisible(False)
-            self.vis_widget_reg.frame.viewer.setVisualisationDownsampling((1,1,1))
+            self.vis_widget_reg.frame.viewer.setDisplayUnsampledCoordinates(False)
+            self.vis_widget_reg.frame.viewer.setVisualisationDownsampling([1,1,1])
             vs_widgets['coords_info_label'].setText("The viewer displays the original image:")
             #vs_widgets['loaded_image_dims_label'].setText("Image Size: ")
             
@@ -1459,6 +1454,7 @@ It is used as a global starting point and a translation reference."
             if hasattr(self, 'current_coord_choice'):
                 vs_widgets['coords_combobox'].setCurrentIndex(self.current_coord_choice)
                 
+                self.vis_widget_reg.frame.viewer.setDisplayUnsampledCoordinates(True)
                 self.vis_widget_reg.frame.viewer.setVisualisationDownsampling(self.resample_rate)
                 vs_widgets['coords_info_label'].setText("The viewer displays a downsampled image for visualisation purposes:")
                 if self.resample_rate != [1,1,1]:
@@ -1660,6 +1656,7 @@ It is used as a global starting point and a translation reference."
             current_slice = v.GetActiveSlice()
         # print("About to set the input data")
         v.setInputData(self.subtract.GetOutput())
+        #v.setVisualisationDownsampling(1,1,1)
         # print("Set the input data")
 
         if type == 'starting registration':
@@ -1722,7 +1719,7 @@ It is used as a global starting point and a translation reference."
         if orientation == SLICE_ORIENTATION_XY:
             ij = [0,1]
         elif orientation == SLICE_ORIENTATION_XZ:
-            ij = [0,2]
+            ij = [2,0]
         elif orientation == SLICE_ORIENTATION_YZ:
             ij = [1,2]
         if key_code == "j":
@@ -1796,7 +1793,7 @@ It is used as a global starting point and a translation reference."
         widgetno += 1
 
         mp_widgets['mask_extend_above_label'] = QLabel(groupBox)
-        mp_widgets['mask_extend_above_label'].setText("Extend Above ")
+        mp_widgets['mask_extend_above_label'].setText("Slices Above ")
         mp_widgets['mask_extend_above_label'].setToolTip("Slices above the current plane to extend the mask to.")
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, mp_widgets['mask_extend_above_label'])
         mp_widgets['mask_extend_above_entry'] = QSpinBox(groupBox)
@@ -1807,7 +1804,7 @@ It is used as a global starting point and a translation reference."
         widgetno += 1
 
         mp_widgets['mask_extend_below_label'] = QLabel(groupBox)
-        mp_widgets['mask_extend_below_label'].setText("Extend Below ")
+        mp_widgets['mask_extend_below_label'].setText("Slices Below ")
         mp_widgets['mask_extend_below_label'].setToolTip("Slices below the current plane to extend the mask to.")
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, mp_widgets['mask_extend_below_label'])
         mp_widgets['mask_extend_below_entry'] = QSpinBox(groupBox)
@@ -1817,11 +1814,16 @@ It is used as a global starting point and a translation reference."
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['mask_extend_below_entry'])
         widgetno += 1
 
+        mp_widgets['mask_downsampled_coords_warning'] = QLabel(groupBox)
+        mp_widgets['mask_downsampled_coords_warning'].setText("Note: if your image has been downsampled, the number of slices is in the coordinates of the downsampled image.")
+        formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['mask_downsampled_coords_warning'])
+        widgetno += 1
+
         # Add should extend checkbox
         mp_widgets['extendMaskCheck'] = QCheckBox(groupBox)
         mp_widgets['extendMaskCheck'].setText("Extend mask")
         mp_widgets['extendMaskCheck'].setToolTip("You may draw a second trace. Select extend mask to extend the mask to this second traced region.")
-        #mp_widgets['extendMaskCheck'].setEnabled(False)
+        mp_widgets['extendMaskCheck'].setEnabled(False)
 
         formLayout.setWidget(widgetno,QFormLayout.FieldRole, mp_widgets['extendMaskCheck'])
         widgetno += 1
@@ -2115,6 +2117,7 @@ It is used as a global starting point and a translation reference."
 
 
     def clearMask(self):
+        self.mask_parameters['extendMaskCheck'].setEnabled(False)
         self.vis_widget_2D.frame.viewer.setInputData2(vtk.vtkImageData()) #deletes mask
         self.mask_reader = None
 
@@ -2127,6 +2130,7 @@ It is used as a global starting point and a translation reference."
         #self.vis_widget_2D.frame.viewer.imageTracer.Modified()
 
     def DisplayMask(self, type = None):
+        self.mask_parameters['extendMaskCheck'].setEnabled(True)
         v = self.vis_widget_2D.frame.viewer
         if (hasattr(self,'mask_data')):
             v.setInputData2(self.mask_data)
@@ -2137,8 +2141,7 @@ It is used as a global starting point and a translation reference."
                         message="Mask and Dataset are not compatible",
                         detailed_text='Dataset dimensions {}\nMask dimensions {}'\
                             .format(str(v.img3D.GetDimensions()),
-                                    self.mask_reader.GetOutput().GetDimensions()
-                                    ))
+                                    self.mask_reader.GetOutput().GetDimensions()))
 
             else:    
                 self.warningDialog(window_title="Error", 
@@ -2209,8 +2212,13 @@ It is used as a global starting point and a translation reference."
         pc = {}
         self.pointcloud_parameters = pc
 
+        #Pointcloud points label
+        # self.pc_points_label = QLabel("Points in current Pointcloud:")
+        # self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.pc_points_label)
+        # self.pc_points_value = QLabel("0")
+        # self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.pc_points_value)
+        # widgetno += 1
         
-
         # Add ISO Value field
         self.isoValueLabel = QLabel(self.graphParamsGroupBox)
         self.isoValueLabel.setText("Subvolume radius")
@@ -2515,8 +2523,8 @@ A 3D pointcloud is created within the full extent of the mask.")
 
     def PointCloudWorker(self, type, filename = None, disp_file = None, vector_dim = None):
         if type == "create":
-            if not self.pointCloudCreated:
-                self.clearPointCloud()
+            #if not self.pointCloudCreated:
+            self.clearPointCloud()
             self.pointcloud_worker = Worker(self.createPointCloud, filename = "latest_pointcloud.roi")
             self.pointcloud_worker.signals.finished.connect(self.DisplayPointCloud)
         elif type == "load selection":
@@ -2528,8 +2536,8 @@ A 3D pointcloud is created within the full extent of the mask.")
             self.pointcloud_worker = Worker(self.loadPointCloud, self.roi)
             self.pointcloud_worker.signals.finished.connect(self.DisplayLoadedPointCloud)
         elif type == "create without loading":
-            if not self.pointCloudCreated:
-                self.clearPointCloud()
+            #if not self.pointCloudCreated:
+            self.clearPointCloud()
             self.pointcloud_worker = Worker(self.createPointCloud, filename = filename)
             self.pointcloud_worker.signals.finished.connect(self.progress_complete)
             
@@ -2832,9 +2840,11 @@ A 3D pointcloud is created within the full extent of the mask.")
         #array = np.zeros((pointcloud.GetNumberOfPoints(), 4))
         array = []
         #print("Points:", pointcloud.GetNumberOfPoints())
+        self.pc_no_points = pointcloud.GetNumberOfPoints()
         if(pointcloud.GetNumberOfPoints() == 0):
             self.pointCloud = pointcloud
             return (False)
+        
 
         if int(mm) == 1: #if point0 is in the mask
             count = 2
@@ -2867,6 +2877,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.roi = pointcloud_file
         #print(self.roi)
         points = np.loadtxt(self.roi)
+        self.pc_no_points = np.shape(points)[0]
         progress_callback.emit(50)
         self.polydata_masker = cilNumpyPointCloudToPolyData()
         self.polydata_masker.SetData(points)
@@ -2908,6 +2919,9 @@ A 3D pointcloud is created within the full extent of the mask.")
     def DisplayLoadedPointCloud(self):
         self.setup2DPointCloudPipeline()
         self.setup3DPointCloudPipeline()
+        #Update window so pointcloud is instantly visible without user having to interact with viewer first
+        self.vis_widget_2D.frame.viewer.GetRenderWindow().Render()
+        self.vis_widget_3D.frame.viewer.getRenderWindow().Render()
         #print(self.loading_session)
         self.progress_window.setValue(100)
         if not self.loading_session:
@@ -2932,12 +2946,12 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
         
         v = self.vis_widget_2D.frame.viewer
         if not self.pointCloudCreated:
-                # visualise polydata
-                self.setup2DPointCloudPipeline()
-                v.setInputData2(self.reader.GetOutput()) #TODO: fix this line - we don't have a reader
-                self.setup3DPointCloudPipeline()
-                self.pointCloudCreated = True
-                self.pointCloudLoaded = True
+            # visualise polydata
+            self.setup2DPointCloudPipeline()
+            v.setInputData2(self.reader.GetOutput()) #TODO: fix this line - we don't have a reader
+            self.setup3DPointCloudPipeline()
+            self.pointCloudCreated = True
+            self.pointCloudLoaded = True
 
         else:
             spacing = v.img3D.GetSpacing()
@@ -3268,11 +3282,12 @@ Try modifying the subvolume radius before creating a new pointcloud, and make su
         key_code = interactor.GetKeyCode()
         #print("OnKeyPressEventForVectors", key_code)
         if key_code in ['x','y','z'] and \
-            interactor._viewer.GetActor('arrow_shaft_actor').GetVisibility() and interactor._viewer.GetActor('arrowhead_actor').GetVisibility():
-                self.clearPointCloud2D()
-                #print("Cleared pc")
-                displ = self.loadDisplacementFile(self.disp_file, disp_wrt_point0 = self.result_widgets['vec_entry'].currentIndex() == 2)
-                self.createVectors2D(displ, self.vis_widget_2D)
+            interactor._viewer.GetActor('arrow_shaft_actor') and interactor._viewer.GetActor('arrowhead_actor'):
+                if interactor._viewer.GetActor('arrow_shaft_actor').GetVisibility() and interactor._viewer.GetActor('arrowhead_actor').GetVisibility():
+                    self.clearPointCloud2D()
+                    #print("Cleared pc")
+                    displ = self.loadDisplacementFile(self.disp_file, disp_wrt_point0 = self.result_widgets['vec_entry'].currentIndex() == 2)
+                    self.createVectors2D(displ, self.vis_widget_2D)
 
     def createVectors3D(self, displ, viewer_widget, actor_list):
         viewer = viewer_widget.frame.viewer
@@ -5181,6 +5196,7 @@ class VisualisationWidget(QtWidgets.QMainWindow):
                 self.frame.viewer.volume.SetMapper(self.frame.viewer.volume_mapper)
         else:
             self.frame.viewer.setVisualisationDownsampling(self.parent.resample_rate)
+            self.frame.viewer.setDisplayUnsampledCoordinates(True)
 
             vs_widgets = self.parent.visualisation_setting_widgets
 
@@ -5645,7 +5661,7 @@ class RunResults():
             if count ==16 +offset:
                 self.subvol_points = int(line.split('\t')[1])
             if count == 25 + offset:
-                self.rigid_trans = [int(line.split('\t')[1]),int(line.split('\t')[2], int(line.split('\t')[3]))]
+                self.rigid_trans = [int(line.split('\t')[1]),int(line.split('\t')[2]), int(line.split('\t')[3])]
             count+=1
 
         self.disp_file = disp_file_name
