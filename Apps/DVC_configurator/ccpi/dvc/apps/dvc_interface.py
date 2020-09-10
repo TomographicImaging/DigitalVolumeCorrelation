@@ -395,7 +395,7 @@ It will be the first point in the file that is used as the reference point.")
 
         self.help_text.append("Once the code is run it is recommended that you save or export your session, to back up your results. You can access these options under 'File'.")
 
-        self.help_text.append("Vectors can be displayed in 2D or 3D on the 2D viewer. It is not advised to load vectors for more than 1000 points as this may cause the viewer to crash.")
+        self.help_text.append("Vectors can be displayed for the displacement of points either including or excluding the rigid body offset. You may also scale the vectors to make them larger and easier to view.")
 
         self.help_label = QLabel(groupBox)
         self.help_label.setWordWrap(True)
@@ -2200,7 +2200,6 @@ It is used as a global starting point and a translation reference."
         self.subvolumeShapeValue.setCurrentIndex(0)
         self.subvolumeShapeValue.currentTextChanged.connect(self.displaySubvolumePreview)
 
-
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.subvolumeShapeValue)
         widgetno += 1
         pc['pointcloud_volume_shape_entry'] = self.subvolumeShapeValue
@@ -3076,7 +3075,7 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
         self.pointcloud_parameters['subvolume_preview_check'].setChecked(False)
         self.disp_file = disp_file
         
-        displ = self.loadDisplacementFile(disp_file, disp_wrt_point0 = self.result_widgets['vec_entry'].currentIndex() == 2)
+        displ = self.loadDisplacementFile(disp_file, disp_wrt_point0 = self.result_widgets['vec_entry'].currentIndex() == 2, multiplier = self.result_widgets['scale_vectors_entry'].value())
 
         self.pc_no_points = np.shape(displ)[0]
         self.DisplayNumberOfPointcloudPoints()
@@ -3085,7 +3084,7 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
         self.createVectors3D(displ, self.vis_widget_3D, self.actors_3D)
         
 
-    def loadDisplacementFile(self, file, disp_wrt_point0 = False):
+    def loadDisplacementFile(self, file, disp_wrt_point0 = False, multiplier = 1):
         displ = np.asarray(
         PointCloudConverter.loadPointCloudFromCSV(file,'\t')[:]
         )
@@ -3094,7 +3093,7 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
             point0_disp = [displ[0][6],displ[0][7], displ[0][8]]
             for count in range(len(displ)):
                 for i in range(3):
-                    displ[count][i+6] = displ[count][i+6] - point0_disp[i]
+                    displ[count][i+6] = (displ[count][i+6] - point0_disp[i])*multiplier
         return displ
 
     def createVectors2D(self, displ, viewer_widget):
@@ -3980,9 +3979,23 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, result_widgets['vec_entry'])
         widgetno += 1
 
+        result_widgets['scale_vectors_label'] =  QLabel(groupBox)
+        result_widgets['scale_vectors_label'].setText("Vector Scaling:")
+        result_widgets['scale_vectors_label'].setToolTip("Adjust the scaling of the vectors. 1 means true displacement.")
+        formLayout.setWidget(widgetno, QFormLayout.LabelRole, result_widgets['scale_vectors_label'])
+
+        result_widgets['scale_vectors_entry'] = QDoubleSpinBox(groupBox)
+        result_widgets['scale_vectors_entry'].setSingleStep(0.1)
+        result_widgets['scale_vectors_entry'].setMaximum(20)
+        result_widgets['scale_vectors_entry'].setMinimum(0.1)
+        result_widgets['scale_vectors_entry'].setValue(1.00)
+        formLayout.setWidget(widgetno, QFormLayout.FieldRole, result_widgets['scale_vectors_entry'])
+        widgetno += 1
+
         result_widgets['load_button'] = QPushButton("View Pointcloud/Vectors")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, result_widgets['load_button'])
         widgetno += 1
+        
 
         result_widgets['run_entry'].currentIndexChanged.connect(self.show_run_pcs)
         
