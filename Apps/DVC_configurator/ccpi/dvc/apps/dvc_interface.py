@@ -365,9 +365,7 @@ class MainWindow(QMainWindow):
 
                     if hasattr(self, 'point0_world_coords'):
                         self.SetPoint0Text()
-                    
 
-                    
                     viewer.updatePipeline()
 
 
@@ -607,8 +605,7 @@ It will be the first point in the file that is used as the reference point.")
                 target_size = 0.125
         self.target_image_size = target_size
         
-        ImageDataCreator.createImageData(self, self.image[0], self.ref_image_data, info_var = self.image_info, convert_numpy = True,  finish_fn = partial(self.save_image_info, "ref"), resample= True, target_size = target_size, tempfolder = os.path.abspath(tempfile.tempdir))
-        #print("Created ref image")
+        ImageDataCreator.createImageData(self, self.image[0], self.ref_image_data, info_var = self.image_info, convert_raw = True,  finish_fn = partial(self.save_image_info, "ref"), resample= True, target_size = target_size, tempfolder = os.path.abspath(tempfile.tempdir))
 
 
     def save_image_info(self, image_type):
@@ -656,12 +653,17 @@ It will be the first point in the file that is used as the reference point.")
             self.unsampled_image_dimensions = list(self.ref_image_data.GetDimensions())
             self.visualisation_setting_widgets['coords_warning_label'].setVisible(False)
 
-        if 'numpy_file' in self.image_info:
-            image_file = [self.image_info['numpy_file']]
+        if 'raw_file' in self.image_info:
+            image_file = [self.image_info['raw_file']]
             if image_type == "ref":
                 self.dvc_input_image[0] = image_file
-            else:
+                if os.path.splitext(self.image[0][0])[1] in ['.mhd', '.mha']: #need to call create image data so we read header and save image to file w/o header
+                    self.temp_image_data = vtk.vtkImageData()
+                    ImageDataCreator.createImageData(self, self.image[1], self.temp_image_data, info_var = self.image_info, convert_raw = True,  finish_fn = partial(self.save_image_info, "corr"), tempfolder = os.path.abspath(tempfile.tempdir))
+            elif image_type == "corr":
                 self.dvc_input_image[1] = image_file
+                if hasattr(self, 'temp_image_data'):
+                    del self.temp_image_data
             self.dvc_input_image_in_session_folder = True
         else:
             self.dvc_input_image = self.image
