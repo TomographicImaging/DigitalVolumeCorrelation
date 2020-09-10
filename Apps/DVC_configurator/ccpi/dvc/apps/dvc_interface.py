@@ -74,17 +74,17 @@ import copy
 from distutils.dir_util import copy_tree
 
 #TODO: switch from/to these lines for dev/release
-from ccpi.dvc.apps.image_data import ImageDataCreator
+# from ccpi.dvc.apps.image_data import ImageDataCreator
 
-from ccpi.dvc.apps.pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
+# from ccpi.dvc.apps.pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
 
-from ccpi.dvc.apps.dvc_runner import DVC_runner
+# from ccpi.dvc.apps.dvc_runner import DVC_runner
 
-# from image_data import ImageDataCreator
+from image_data import ImageDataCreator
 
-# from pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
+from pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
 
-# from dvc_runner import DVC_runner
+from dvc_runner import DVC_runner
 
 __version__ = '20.07.3'
 
@@ -739,19 +739,20 @@ It will be the first point in the file that is used as the reference point.")
                 self.no_mask_pc_load = False
 
         if(self.reg_load):
-            self.createRegistrationViewer()
+            self.displayRegistrationViewer(registration_open = True)
             #first we need to set the z slice -> go to slice self.config['point0'][2]
             v = self.vis_widget_2D.frame.viewer
-            self.createPoint0(self.config['point0'])
-            rp = self.registration_parameters
-            if self.config['reg_translation'] is not None:
-                rp['translate_X_entry'].setText(str(self.config['reg_translation'][0]*-1))
-                rp['translate_Y_entry'].setText(str(self.config['reg_translation'][1]*-1))
-                rp['translate_Z_entry'].setText(str(self.config['reg_translation'][2]*-1))
-                self.translate = vtk.vtkImageTranslateExtent()
-                self.translate.SetTranslation(self.config['reg_translation'])
-                self.registration_parameters['registration_box_size_entry'].setValue(self.config['reg_sel_size'])
-                self.registration_parameters['registration_box_size_entry'].setEnabled(True)
+            if v.img3D is not None:
+                self.createPoint0(self.config['point0'])
+                rp = self.registration_parameters
+                if self.config['reg_translation'] is not None:
+                    rp['translate_X_entry'].setText(str(self.config['reg_translation'][0]*-1))
+                    rp['translate_Y_entry'].setText(str(self.config['reg_translation'][1]*-1))
+                    rp['translate_Z_entry'].setText(str(self.config['reg_translation'][2]*-1))
+                    self.translate = vtk.vtkImageTranslateExtent()
+                    self.translate.SetTranslation(self.config['reg_translation'])
+                    self.registration_parameters['registration_box_size_entry'].setValue(self.config['reg_sel_size'])
+                    self.registration_parameters['registration_box_size_entry'].setEnabled(True)
             #self.displayRegistrationViewer(registration_open = False)
             self.dock_reg.setVisible(False)
             self.viewer2D_dock.setVisible(True)
@@ -1032,6 +1033,7 @@ It is used as a global starting point and a translation reference."
         rp['translate_X_entry']= QLineEdit(groupBox)
         rp['translate_X_entry'].setValidator(validatorint)
         rp['translate_X_entry'].setText("0")
+        rp['translate_X_entry'].setToolTip(translation_tooltip_text)
         #rp['translate_X_entry'].setEnabled(False)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rp['translate_X_entry'])
         widgetno += 1
@@ -1043,6 +1045,7 @@ It is used as a global starting point and a translation reference."
         rp['translate_Y_entry']= QLineEdit(groupBox)
         rp['translate_Y_entry'].setValidator(validatorint)
         rp['translate_Y_entry'].setText("0")
+        rp['translate_Y_entry'].setToolTip(translation_tooltip_text)
         #rp['translate_Y_entry'].setEnabled(False) 
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rp['translate_Y_entry'])
         widgetno += 1
@@ -1054,6 +1057,7 @@ It is used as a global starting point and a translation reference."
         rp['translate_Z_entry']= QLineEdit(groupBox)
         rp['translate_Z_entry'].setValidator(validatorint)
         rp['translate_Z_entry'].setText("0")
+        rp['translate_Z_entry'].setToolTip(translation_tooltip_text)
         #rp['translate_Z_entry'].setEnabled(False)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rp['translate_Z_entry'])
         widgetno += 1
@@ -1125,6 +1129,12 @@ It is used as a global starting point and a translation reference."
                     self.viewer3D_dock.setVisible(False)
                     
                 else:
+                    if self.vis_widget_reg.getImageData() != self.ref_image_data:
+                        self.orientation = self.vis_widget_2D.frame.viewer.GetSliceOrientation()
+                        self.current_slice = self.vis_widget_2D.frame.viewer.GetActiveSlice()
+                        self.vis_widget_reg.setImageData(self.ref_image_data)
+                        self.vis_widget_reg.displayImageData()
+
                     self.dock_reg.setVisible(True)
                     self.viewer2D_dock.setVisible(False)
                     self.viewer3D_dock.setVisible(False)
@@ -1529,8 +1539,7 @@ It is used as a global starting point and a translation reference."
         if hasattr(self, 'vis_widget_reg'):
             #print("About to del image reg viewer")
             self.displayRegistrationViewer(False)
-
-            del self.vis_widget_reg
+            self.vis_widget_reg.createEmptyFrame()
             if hasattr(self, 'unsampled_ref_image_data'):
                 del self.unsampled_ref_image_data
                 del self.unsampled_corr_image_data
@@ -1774,22 +1783,25 @@ It is used as a global starting point and a translation reference."
         mp_widgets['mask_extend_above_entry'].setSingleStep(1)
         mp_widgets['mask_extend_above_entry'].setValue(10)
         mp_widgets['mask_extend_above_entry'].setEnabled(True)
+        mp_widgets['mask_extend_above_entry'].setToolTip("Slices above the current plane to extend the mask to.")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['mask_extend_above_entry'])
         widgetno += 1
 
         mp_widgets['mask_extend_below_label'] = QLabel(groupBox)
         mp_widgets['mask_extend_below_label'].setText("Slices Below ")
         mp_widgets['mask_extend_below_label'].setToolTip("Slices below the current plane to extend the mask to.")
+        
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, mp_widgets['mask_extend_below_label'])
         mp_widgets['mask_extend_below_entry'] = QSpinBox(groupBox)
         mp_widgets['mask_extend_below_entry'].setSingleStep(1)
         mp_widgets['mask_extend_below_entry'].setValue(10)
         mp_widgets['mask_extend_below_entry'].setEnabled(True)
+        mp_widgets['mask_extend_below_entry'].setToolTip("Slices below the current plane to extend the mask to.")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['mask_extend_below_entry'])
         widgetno += 1
 
         mp_widgets['mask_downsampled_coords_warning'] = QLabel(groupBox)
-        mp_widgets['mask_downsampled_coords_warning'].setText("Note: if your image has been downsampled, the number of slices is in the coordinates of the downsampled image.")
+        mp_widgets['mask_downsampled_coords_warning'].setText("Note: if your image has been downsampled, the number of slices is in the coordinates\nof the downsampled image.")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['mask_downsampled_coords_warning'])
         widgetno += 1
 
@@ -1806,6 +1818,7 @@ It is used as a global starting point and a translation reference."
         mp_widgets['submitButton'] = QPushButton(groupBox)
         mp_widgets['submitButton'].setText("Create Mask")
         mp_widgets['submitButton'].clicked.connect(lambda: self.MaskWorker("extend"))
+        mp_widgets['submitButton'].setToolTip("Press 't' and draw a region on the viewer to create a mask.")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['submitButton'])
         widgetno += 1
 
@@ -2184,6 +2197,7 @@ It is used as a global starting point and a translation reference."
         self.isoValueEntry= QLineEdit(self.graphParamsGroupBox)
         self.isoValueEntry.setValidator(validatorint)
         self.isoValueEntry.setText('30')
+        self.isoValueEntry.setToolTip("Defines the diameter or side length of the subvolumes created around each search point. This is in units of voxels on the original image.")
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.isoValueEntry)
         self.isoValueEntry.textChanged.connect(self.displaySubvolumePreview)
 
@@ -2228,6 +2242,8 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.dimensionalityValue.addItems(["3D","2D"])
         self.dimensionalityValue.setCurrentIndex(1)
         self.dimensionalityValue.currentIndexChanged.connect(self.updatePointCloudPanel)
+        self.dimensionalityValue.setToolTip("A 2D pointcloud is created only on the currently viewed plane.\n\
+A 3D pointcloud is created within the full extent of the mask.")
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.dimensionalityValue)
         widgetno += 1
@@ -2249,6 +2265,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapXValueEntry.setMinimum(0.00)
         self.overlapXValueEntry.setSingleStep(0.01)
         self.overlapXValueEntry.valueChanged.connect(self.displaySubvolumePreview)
+        self.overlapXValueEntry.setToolTip(overlap_tooltip_text)
         if orientation == 0:
             self.overlapXValueEntry.setEnabled(False)
 
@@ -2266,6 +2283,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapYValueEntry.setMinimum(0.00)
         self.overlapYValueEntry.setSingleStep(0.01)
         self.overlapYValueEntry.valueChanged.connect(self.displaySubvolumePreview)
+        self.overlapYValueEntry.setToolTip(overlap_tooltip_text)
         if orientation == 1:
             self.overlapYValueEntry.setEnabled(False)
 
@@ -2283,6 +2301,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.overlapZValueEntry.setMinimum(0.00)
         self.overlapZValueEntry.setSingleStep(0.01)
         self.overlapZValueEntry.valueChanged.connect(self.displaySubvolumePreview)
+        self.overlapZValueEntry.setToolTip(overlap_tooltip_text)
         if orientation == 2:
             self.overlapZValueEntry.setEnabled(False)
 
@@ -2301,6 +2320,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateXValueEntry.setValidator(validator)
         self.rotateXValueEntry.setText("0.00")
         self.rotateXValueEntry.textChanged.connect(self.displaySubvolumePreview)
+        self.rotateXValueEntry.setToolTip(rotation_tooltip_text)
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateXValueEntry)
         widgetno += 1
         pc['pointcloud_rotation_x_entry'] = self.rotateXValueEntry
@@ -2313,6 +2333,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateYValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateYValueEntry.setValidator(validator)
         self.rotateYValueEntry.setText("0.00")
+        self.rotateYValueEntry.setToolTip(rotation_tooltip_text)
         self.rotateYValueEntry.textChanged.connect(self.displaySubvolumePreview)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateYValueEntry)
@@ -2327,6 +2348,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.rotateZValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateZValueEntry.setValidator(validator)
         self.rotateZValueEntry.setText("0.00")
+        self.rotateZValueEntry.setToolTip(rotation_tooltip_text)
         self.rotateZValueEntry.textChanged.connect(self.displaySubvolumePreview)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateZValueEntry)
@@ -2361,6 +2383,7 @@ A 3D pointcloud is created within the full extent of the mask.")
         self.erodeRatioSpinBox.setMaximum(1.50)
         self.erodeRatioSpinBox.setMinimum(0.1)
         self.erodeRatioSpinBox.setValue(1.00)
+        self.erodeRatioSpinBox.setToolTip("Adjust the level of mask erosion.")
         self.erodeCheck.stateChanged.connect(lambda: self.erodeRatioSpinBox.setEnabled(True) if self.erodeCheck.isChecked() else  self.erodeRatioSpinBox.setEnabled(False))
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.erodeRatioSpinBox)
         widgetno += 1
@@ -2524,20 +2547,20 @@ The first point is significant, as it is used as a global starting point and ref
 
                     subvol_actor.SetMapper(subvol_preview_mapper)   
                     subvol_actor.VisibilityOn()
-                    subvol_actor.GetProperty().SetColor(0.,.5,.5)
+                    subvol_actor.GetProperty().SetColor(0.,0,0)
                     subvol_actor.GetProperty().SetLineWidth(2.0)
-                    subvol_actor.GetProperty().SetEdgeColor(0.,.5,.5)
+                    subvol_actor.GetProperty().SetEdgeColor(0.,0,0)
 
                     if viewer_widget.viewer == viewer2D:
                         subvol_actor.GetProperty().SetOpacity(0.5)
                         subvol_actor.GetProperty().SetLineWidth(4.0)
                         subvol_actor.GetProperty().SetEdgeVisibility(True)
-                        subvol_actor.GetProperty().SetEdgeColor(1, .2, .2)
+                        subvol_actor.GetProperty().SetEdgeColor(0, 0, 0)
                         if not 'subvol_preview_actor' in viewer_widget.frame.viewer.actors:
                             viewer_widget.frame.viewer.AddActor(subvol_actor, 'subvol_preview_actor')
                     else:
                         subvol_actor.GetProperty().SetRepresentationToWireframe()
-                        subvol_actor.GetProperty().SetColor(1, 0, 0)
+                        subvol_actor.GetProperty().SetColor(0, 0, 0)
                         subvol_actor.GetProperty().SetOpacity(1)
                         subvol_actor.GetProperty().SetLineWidth(3.0)
                         if not 'subvol_preview_actor' in self.actors_3D:
@@ -3431,37 +3454,45 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
 
         rdvc_widgets['run_max_displacement_label'] = QLabel(groupBox)
         rdvc_widgets['run_max_displacement_label'].setText("Maximum Displacement (voxels)")
-        rdvc_widgets['run_max_displacement_label'].setToolTip("Defines the maximum displacement expected within the reference image volume.\n\
+        
+        displacement_text = "Defines the maximum displacement expected within the reference image volume.\n\
 This is a very important paramater used for search process control and memory allocation.\n\
 Set to a reasonable value just greater than the actual sample maximum displacement.\n\
 Be cautious: large displacements make the search process slower and less reliable.\n\
 It is best to reduce large rigid body displacements through image volume manipulation.\n\
-Future code development will introduce methods for better management of large displacements.")
+Future code development will introduce methods for better management of large displacements."
+        rdvc_widgets['run_max_displacement_label'].setToolTip(displacement_text)
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['run_max_displacement_label'])
         rdvc_widgets['run_max_displacement_entry'] = QSpinBox(groupBox)
         rdvc_widgets['run_max_displacement_entry'].setValue(15)
+        rdvc_widgets['run_max_displacement_entry'].setToolTip(displacement_text)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['run_max_displacement_entry'])
         widgetno += 1
 
         rdvc_widgets['run_ndof_label'] = QLabel(groupBox)
         rdvc_widgets['run_ndof_label'].setText("Number of Degrees of Freedom")
-        rdvc_widgets['run_ndof_label'].setToolTip("Defines the degree-of-freedom set for the final stage of the search.\nThe actual search process introduces degrees-of-freedom in stages up to this value.\n\
+        
+        dof_text = "Defines the degree-of-freedom set for the final stage of the search.\nThe actual search process introduces degrees-of-freedom in stages up to this value.\n\
 Translation only suffices for a quick, preliminary investigation.\nAdding rotation will significantly improve displacement accuracy in most cases.\nReserve strain degrees-of-freedom for cases when the highest precision is required.\n\
 3 = translation only,\n\
 6 = translation plus rotation,\n\
-12 = translation, rotation and strain.")
+12 = translation, rotation and strain."
+        rdvc_widgets['run_ndof_label'].setToolTip(dof_text)
+
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['run_ndof_label'])
         rdvc_widgets['run_ndof_entry'] = QComboBox(groupBox)
         rdvc_widgets['run_ndof_entry'].addItem('3')
         rdvc_widgets['run_ndof_entry'].addItem('6')
         rdvc_widgets['run_ndof_entry'].addItem('12')
         rdvc_widgets['run_ndof_entry'].setCurrentIndex(1)
+        rdvc_widgets['run_ndof_entry'].setToolTip(dof_text)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['run_ndof_entry'])
         widgetno += 1
 
         rdvc_widgets['run_objf_label'] = QLabel(groupBox)
         rdvc_widgets['run_objf_label'].setText("Objective Function")
-        rdvc_widgets['run_objf_label'].setToolTip("Defines the objective function template matching form.\n\
+        
+        objf_text = "Defines the objective function template matching form.\n\
 See B. Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010\n\
 Functions become increasingly expensive and more robust as you progress from sad to znssd.\n\
 Minimizing squared-difference and maximizing cross-correlation are functionally equivalent.\n\
@@ -3473,7 +3504,8 @@ znssd  = intensity offset and range insensitive sum of squared differences (0.0 
 Notes on objective function values:\n\
     1. The normalized quantities nssd and znssd are preferred, as quality of match can be assessed.\n\
     2. The natural range of nssd is [0.0 to 2.0], and of znssd is [0.0 to 4.0].\n\
-    3. Both are scaled for output into the [0.0 to 1.0] range for ease of comparison.")
+    3. Both are scaled for output into the [0.0 to 1.0] range for ease of comparison."
+        rdvc_widgets['run_objf_label'].setToolTip(objf_text)
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['run_objf_label'])
         rdvc_widgets['run_objf_entry'] = QComboBox(groupBox)
         rdvc_widgets['run_objf_entry'].addItem('sad')
@@ -3482,21 +3514,24 @@ Notes on objective function values:\n\
         rdvc_widgets['run_objf_entry'].addItem('nssd')
         rdvc_widgets['run_objf_entry'].addItem('znssd')
         rdvc_widgets['run_objf_entry'].setCurrentIndex(4)
+        rdvc_widgets['run_objf_entry'].setToolTip(objf_text)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['run_objf_entry'])
         widgetno += 1
 
         rdvc_widgets['run_iterp_type_label'] = QLabel(groupBox)
         rdvc_widgets['run_iterp_type_label'].setText("Interpolation type")
-        rdvc_widgets['run_iterp_type_label'].setToolTip("Defines the interpolation method used during template matching.\n\
+        interp_text = "Defines the interpolation method used during template matching.\n\
 Trilinear is significantly faster, but with known template matching artifacts.\n\
 Trilinear is most useful for tuning other search parameters during preliminary runs.\n\
-Tricubic is computationally expensive, but is the choice if strain is of interst.")
+Tricubic is computationally expensive, but is the choice if strain is of interst."
+        rdvc_widgets['run_iterp_type_label'].setToolTip(interp_text)
         formLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['run_iterp_type_label'])
         rdvc_widgets['run_iterp_type_entry'] = QComboBox(groupBox)
         rdvc_widgets['run_iterp_type_entry'].addItem('Nearest')
         rdvc_widgets['run_iterp_type_entry'].addItem('Trilinear')
         rdvc_widgets['run_iterp_type_entry'].addItem('Tricubic')
         rdvc_widgets['run_iterp_type_entry'].setCurrentIndex(2)
+        rdvc_widgets['run_iterp_type_entry'].setToolTip(interp_text)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['run_iterp_type_entry'])
         widgetno += 1
 
@@ -3526,18 +3561,22 @@ Tricubic is computationally expensive, but is the choice if strain is of interst
 
         rdvc_widgets['subvol_points_label'] = QLabel(singleRun_groupBox)
         rdvc_widgets['subvol_points_label'].setText("Sampling points in subvolume:")
-        rdvc_widgets['subvol_points_label'].setToolTip("Defines the number of points within each subvolume.\n\
+
+        subvol_points_text = "Defines the number of points within each subvolume.\n\
 In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n\
 Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n\
 For cubes a uniform grid of approximately this number of points is generated.\n\
 For spheres the sampling points are randomly distributed within the subvolume.\n\
-This parameter has a strong effect on computation time, so be careful.")
+This parameter has a strong effect on computation time, so be careful."
+
+        rdvc_widgets['subvol_points_label'].setToolTip(subvol_points_text)
         singleRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['subvol_points_label'])
     
         rdvc_widgets['subvol_points_spinbox'] = QSpinBox(singleRun_groupBox)
         rdvc_widgets['subvol_points_spinbox'].setMinimum(100)
         rdvc_widgets['subvol_points_spinbox'].setMaximum(50000)
         rdvc_widgets['subvol_points_spinbox'].setMaximum(10000)
+        rdvc_widgets['subvol_points_spinbox'].setToolTip(subvol_points_text)
 
         singleRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['subvol_points_spinbox'])
         widgetno += 1
@@ -3591,25 +3630,29 @@ This parameter has a strong effect on computation time, so be careful.")
         # NUMBER OF POINTS IN SUBVOLUME min
         rdvc_widgets['points_in_subvol_range_min_label'] = QLabel(bulkRun_groupBox)
         rdvc_widgets['points_in_subvol_range_min_label'].setText("Sampling points in subvolume min ")
-        rdvc_widgets['points_in_subvol_range_min_label'].setToolTip("Defines the number of points within each subvolume.\n\
+        subvol_range_text = "Defines the number of points within each subvolume.\n\
 In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n\
 Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n\
 For cubes a uniform grid of approximately subvol_npts is generated.\n\
 For spheres subvol_npts are randomly distributed within the subvolume.\n\
-This parameter has a strong effect on computation time, so be careful.")
+This parameter has a strong effect on computation time, so be careful."
+        rdvc_widgets['points_in_subvol_range_min_label'].setToolTip(subvol_range_text)
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['points_in_subvol_range_min_label'])
         rdvc_widgets['points_in_subvol_range_min_value'] = QLineEdit(bulkRun_groupBox)
         rdvc_widgets['points_in_subvol_range_min_value'].setValidator(validatorint)
-        rdvc_widgets['points_in_subvol_range_min_value'].setText("10")
+        rdvc_widgets['points_in_subvol_range_min_value'].setText("1000")
+        rdvc_widgets['points_in_subvol_range_min_value'].setToolTip(subvol_range_text)
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['points_in_subvol_range_min_value'])
         widgetno += 1
         # overlap range max
         rdvc_widgets['points_in_subvol_range_max_label'] = QLabel(bulkRun_groupBox)
         rdvc_widgets['points_in_subvol_range_max_label'].setText("Sampling points in subvolume max ")
+        rdvc_widgets['points_in_subvol_range_max_label'].setToolTip(subvol_range_text)
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.LabelRole, rdvc_widgets['points_in_subvol_range_max_label'])
         rdvc_widgets['points_in_subvol_range_max_value'] = QLineEdit(bulkRun_groupBox)
         rdvc_widgets['points_in_subvol_range_max_value'].setValidator(validatorint)
-        rdvc_widgets['points_in_subvol_range_max_value'].setText("100")
+        rdvc_widgets['points_in_subvol_range_max_value'].setText("10000")
+        rdvc_widgets['points_in_subvol_range_max_value'].setToolTip(subvol_range_text)
         bulkRun_groupBoxFormLayout.setWidget(widgetno, QFormLayout.FieldRole, rdvc_widgets['points_in_subvol_range_max_value'])
         widgetno += 1
         # overlap range step
@@ -3697,7 +3740,6 @@ This parameter has a strong effect on computation time, so be careful.")
             if not self.mask_reader:
                 self.warningDialog(window_title="Error", 
                                message="Load a mask on the viewer first" )
-                progress_callback.emit(100)
                 return
         
         folder_name = "_" + self.rdvc_widgets['name_entry'].text()
@@ -3843,7 +3885,7 @@ This parameter has a strong effect on computation time, so be careful.")
     def run_external_code(self, error = None):
         if error == "subvolume error":
             self.progress_window.setValue(100)
-            self.warningDialog("Minimum number of points in subvolume value higher than maximum", window_title="Value Error")
+            self.warningDialog("Minimum number of sampling points in subvolume value higher than maximum", window_title="Value Error")
             self.cancelled = True
             return
         elif error == "pointcloud error":
@@ -3906,19 +3948,9 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
 
     def finished_run(self):
-        #print("Completed all runs")
         if self.run_succeeded:
-            #print("cancelled false")
             self.result_widgets['run_entry'].addItem(self.rdvc_widgets['name_entry'].text())
-            # if hasattr(self, 'progress_window'):
-            #     self.progress_window.setValue(100)
-            #     self.progress_window.close()
-            # self.status.showMessage("Ready")
-            
-        # if self.cancelled:
-        #     #print("cancelled true")
-        #     self.progress_window.setValue(100)
-        #self.createVectors(filename, dimensions=3)
+
 
 
 # DVC Results Panel:
@@ -3996,6 +4028,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         result_widgets['scale_vectors_entry'].setMaximum(20)
         result_widgets['scale_vectors_entry'].setMinimum(0.1)
         result_widgets['scale_vectors_entry'].setValue(1.00)
+        result_widgets['scale_vectors_entry'].setToolTip("Adjust the scaling of the vectors. 1 means true displacement.")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, result_widgets['scale_vectors_entry'])
         widgetno += 1
 
@@ -4196,14 +4229,6 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                 self.config['run_button_enabled'] = True
                 self.config['run_folder'] = self.run_folder[len(os.path.abspath(tempfile.tempdir))+1:]
 
-        #print(len(self.results_folder))
-        # if self.gg_widgets['gen_button'].isEnabled():
-        #     self.config['results_folder'] = self.results_folder
-        #     if(hasattr(self, 'graph_window') and self.graph_window.isVisible()):
-        #         self.config['results_open'] = True
-        #     else:
-        #         self.config['results_open'] = False
-
         self.config['pointcloud_loaded'] = self.pointCloudLoaded
 
         #Image Registration:
@@ -4288,8 +4313,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         #give variables filepath including new name of temp folder:
         # print("temp", tempfile.tempdir)
         # print("roi ext", self.config['roi_ext'])
-        # print(self.roi)
-        # print(self.config['roi_file'])
+        # print(self.roi, self.config['roi_file'])
         if (self.roi and not self.config['roi_ext']):
             self.roi = os.path.join(os.path.abspath(tempfile.tempdir), self.config['roi_file'])
             #print(self.roi)
@@ -4365,34 +4389,26 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
             QMainWindow.closeEvent(self, event)
         
     def ShowZipProgress(self, folder, new_file_dest,ratio):
-        #print("in show zip progress")
-        
+       
         self.progress_window.setValue(10)
 
         temp_size = 0
         for dirpath, dirnames, filenames in os.walk(folder):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    #print(fp)
-                    temp_size += os.path.getsize(fp)
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                #print(fp)
+                temp_size += os.path.getsize(fp)
 
         while not os.path.exists(new_file_dest):
-                time.sleep(0.01)
+            time.sleep(0.01)
 
         zip_size = os.path.getsize(new_file_dest)
 
         while temp_size*ratio != zip_size and self.progress_window.value() < 98 and self.progress_window.value() !=-1:
-                    #print((float(zip_size)/float(temp_size)*ratio)*100)
-                    zip_size = os.path.getsize(new_file_dest)
-                    #if self.progress_window.value() < 95:
-                    #print((float(zip_size)/(float(temp_size)*ratio))*100)
-                        
-                    self.progress_window.setValue((float(zip_size)/(float(temp_size)*ratio))*100)
-                    #else:
-                    #    time.sleep(0.01)
-                    time.sleep(0.1)
-                    #zip_size = 0
-        #print("Finished showing zip progress")
+            zip_size = os.path.getsize(new_file_dest)
+            self.progress_window.setValue((float(zip_size)/(float(temp_size)*ratio))*100)
+            time.sleep(0.1)
+
     
     def ShowExportProgress(self, folder, new_file_dest):
         
@@ -4429,8 +4445,6 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                     fp = os.path.join(dirpath, f)
                     #print(fp)
                     exp_size += os.path.getsize(fp)
-            #print(exp_size)
-            #print(self.progress_window.value())  
 
     def ExportSession(self):
         #print("In select image")
@@ -4709,19 +4723,11 @@ Please move the file back to this location and reload the session, select a diff
         if 'points' in self.config:
 
             self.subvolume_points = self.config['subvol_points'] 
-            #self.rdvc_widgets['subvol_points_spinbox'].setValue(self.subvolume_points)
 
             self.points = self.config['points']
             self.rdvc_widgets['run_points_spinbox'].setValue(self.points)
 
-            #self.roi = self.config['roi_file'] 
-
-
-            #self.rdvc_widgets['run_button'].setEnabled(self.config['run_button_enabled'])
-            #self.rdvc_widgets['run_config'].setEnabled(self.config['run_button_enabled'])
-
             self.run_folder = self.config['run_folder']
-            #self.rdvc_widgets['dir_name_label'].setText(self.run_folder[0])
         
         else:
             self.subvolume_points = None 
@@ -4730,18 +4736,13 @@ Please move the file back to this location and reload the session, select a diff
             self.points = None
             self.rdvc_widgets['run_points_spinbox'].setValue(self.rdvc_widgets['run_points_spinbox'].minimum())
 
-            #self.roi = None
 
-            #self.rdvc_widgets['run_button'].setEnabled(False)
-            #self.rdvc_widgets['run_config'].setEnabled(False)
 
             self.run_folder = [None]
             #self.rdvc_widgets['dir_name_label'].setText("")
 
         if 'results_folder' in self.config:
             self.results_folder = self.config['results_folder']
-            #self.gg_widgets['dir_name_label'].setText(self.results_folder[0])
-            #self.gg_widgets['gen_button'].setEnabled(True)
             if(self.config['results_open']):
                 #print("results open")
                 if (hasattr(self, 'graph_window')):
@@ -4750,8 +4751,6 @@ Please move the file back to this location and reload the session, select a diff
                 self.CreateGraphsWindow()
         else:
             self.results_folder = None
-            #self.gg_widgets['dir_name_label'].setText("")
-            #self.gg_widgets['gen_button'].setEnabled(False)
             if (hasattr(self, 'graph_window')):
                     plt.close('all') #closes all open figures
                     self.graph_window.close()
@@ -4765,11 +4764,6 @@ Please move the file back to this location and reload the session, select a diff
             for r, d, f in os.walk(mask_folder):
                 for _file in f:
                     if '.mha' in _file:
-                        #array = file.split("_")
-                        #if(len(array)>1):
-                            #name = array[-2] + " " + array[-1]
-                            #name= array[-1]
-                            #name = name[:-4]
                         mask_files.append(_file)
             self.mask_parameters['masksList'].addItems(mask_files)
             self.mask_parameters['masksList'].setEnabled(True)
@@ -4787,7 +4781,6 @@ Please move the file back to this location and reload the session, select a diff
 
         for r, d, f in os.walk(results_directory):
             for directory in d:
-                # print(directory.split('_')[-1])
                 self.result_widgets['run_entry'].addItem(directory.split('_')[-1])
         
 
@@ -4811,17 +4804,6 @@ Please move the file back to this location and reload the session, select a diff
             pc['pointcloud_rotation_x_entry'].setText(self.config['pc_rotx'])
             pc['pointcloud_rotation_y_entry'].setText(self.config['pc_roty'])
             pc['pointcloud_rotation_z_entry'].setText(self.config['pc_rotz'])
-
-
-            #if hasattr(self, 'translate'):
-                #self.config['reg_translation'] = (self.translate.GetTranslation()[0],self.translate.GetTranslation()[1],self.translate.GetTranslation()[2])
-            #else:
-                #self.config['reg_translation'] = None
-
-            # if hasattr(self, 'point0_world_coords'):
-            #     self.config['point0'] = self.point0_world_coords
-            # else:
-            #     self.config['point0'] = None
 
         #bring image loading panel to front if it isnt already:        
         self.select_image_dock.raise_()
@@ -5267,11 +5249,6 @@ class VisualisationWidget(QtWidgets.QMainWindow):
 
         if self.viewer == viewer2D:
             self.frame.viewer.style.OnKeyPress(interactor, 'KeyPressEvent')
-            #Loads appropriate orientation
-            #self.frame.viewer.setSliceOrientation(axis)
-            #self.parent.orientation = self.frame.viewer.GetSliceOrientation()
-            #print("Target slice: ", self.parent.current_slice)
-            #print("extent: ", self.frame.viewer.img3D.GetExtent()[self.frame.viewer.GetSliceOrientation()*2+1])
             if self.parent.current_slice:
                 if self.parent.current_slice <= self.frame.viewer.img3D.GetExtent()[self.frame.viewer.GetSliceOrientation()*2+1]:
                     self.frame.viewer.displaySlice(self.parent.current_slice)
@@ -5299,6 +5276,9 @@ class VisualisationWidget(QtWidgets.QMainWindow):
 
     def setImageData(self, image_data):
         self.image_data = image_data
+
+    def getImageData(self):
+        return self.image_data
 
 class GraphsWindow(QMainWindow):
     '''creates a new window with graphs from results saved in the selected run folder.
@@ -5536,7 +5516,7 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.layout.addWidget(self.toolbar,widgetno,0,1,3)
         widgetno+=1
-        self.layout.addWidget(self.canvas,widgetno,0,1,3)
+        self.layout.addWidget(self.canvas,widgetno,0,3,3)
         widgetno+=1
 
         self.setLayout(self.layout)
