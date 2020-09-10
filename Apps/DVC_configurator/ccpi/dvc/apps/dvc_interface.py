@@ -5436,19 +5436,49 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
         super().__init__()
         self.parent = parent
 
+        #Layout
+        self.layout = QtWidgets.QGridLayout()
+        #self.layout.setSpacing(1)
+        self.layout.setAlignment(Qt.AlignTop)
+
+        widgetno=0
+
+        if len(result_list) >=1:
+            result = result_list[0] #These options were the same for all runs:
+
+            self.results_details_label = QLabel(self)
+            self.results_details_label.setText("Subvolume Geometry: {subvol_geom}\n\
+Maximum Displacement: {disp_max}\n\
+Degrees of Freedom: {num_srch_dof}\n\
+Objective Function: {obj_function}\n\
+Interpolation Type: {interp_type}\n\
+Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
+            disp_max=result.disp_max, num_srch_dof=str(result.num_srch_dof), obj_function=result.obj_function, \
+            interp_type=result.interp_type, rigid_trans=str(result.rigid_trans)))
+            self.layout.addWidget(self.results_details_label,widgetno,0,5,1)
+            self.results_details_label.setAlignment(Qt.AlignTop)        
+            widgetno+=1
+
+
         self.label = QLabel(self)
         self.label.setText("Select which variable would like to compare: ")
-        self.label1 = QLabel(self)
-        self.label1.setText("Select which parameter you would like to compare: ")
+        self.layout.addWidget(self.label,widgetno,1)
 
         self.combo = QComboBox(self)
         self.var_list = ["Objective Minimum", "x displacement", "y displacement","z displacment", "phi", "theta", "psi"]
         self.combo.addItems(self.var_list)
+        self.layout.addWidget(self.combo,widgetno,2)  
+        widgetno+=1
 
-
+        self.label1 = QLabel(self)
+        self.label1.setText("Select which parameter you would like to compare: ")
+        self.layout.addWidget(self.label1,widgetno,1)  
+        
         self.combo1 = QComboBox(self)
-        self.param_list = ["All","Points in Subvolume", "Subvolume Size"]
+        self.param_list = ["All","Sampling Points in Subvolume", "Subvolume Size"]
         self.combo1.addItems(self.param_list)
+        self.layout.addWidget(self.combo1,widgetno,2)
+        widgetno+=1
 
         self.subvol_points=[]
         self.subvol_sizes=[]
@@ -5463,31 +5493,32 @@ class SummaryGraphsWidget(QtWidgets.QWidget):
 
         self.secondParamLabel = QLabel(self)
         self.secondParamLabel.setText("Subvolume size:")
+        self.layout.addWidget(self.secondParamLabel,widgetno,1)
+        
         self.secondParamCombo = QComboBox(self)
         self.secondParamList = [str(i) for i in self.subvol_sizes]
         self.secondParamCombo.addItems(self.secondParamList)
+        self.layout.addWidget(self.secondParamCombo,widgetno,2)
+        widgetno+=1
+
         self.combo1.currentIndexChanged.connect(self.showSecondParam)
         self.secondParamLabel.hide()
         self.secondParamCombo.hide()
 
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.toolbar = NavigationToolbar(self.canvas, self)
-
         self.button = QtWidgets.QPushButton("Plot Histograms")
         self.button.clicked.connect(partial(self.CreateHistogram,result_list, displ_wrt_point0))
+        self.layout.addWidget(self.button,widgetno,2)
+        widgetno+=1
 
-        #Layout
-        self.layout = QtWidgets.QGridLayout()
-        self.layout.addWidget(self.label,1,1)
-        self.layout.addWidget(self.combo,1,2)
-        self.layout.addWidget(self.label1,2,1)
-        self.layout.addWidget(self.combo1,2,2)
-        self.layout.addWidget(self.secondParamLabel,3,1)
-        self.layout.addWidget(self.secondParamCombo,3,2)
-        self.layout.addWidget(self.button,4,2)
-        self.layout.addWidget(self.toolbar,5,1,1,2)
-        self.layout.addWidget(self.canvas,6,1,1,2)
+        self.figure = plt.figure()
+        
+        self.canvas = FigureCanvas(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.layout.addWidget(self.toolbar,widgetno,0,1,3)
+        widgetno+=1
+        self.layout.addWidget(self.canvas,widgetno,0,1,3)
+        widgetno+=1
+
         self.setLayout(self.layout)
 
     def showSecondParam(self):
@@ -5652,17 +5683,29 @@ class RunResults():
                 if line.split('\t')[0] == "vol_endian":
                     offset = 1
 
-            if count ==15 + offset:
+            if count == 14 + offset:
+                self.subvol_geom = str(line.split('\t')[1])
+            if count == 15 + offset:
                 self.subvol_size = round(int(line.split('\t')[1]))
-            if count ==16 +offset:
+            if count == 16 +offset:
                 self.subvol_points = int(line.split('\t')[1])
+            if count == 20 + offset:
+                self.disp_max = int(line.split('\t')[1])
+            if count == 21 + offset:
+                self.num_srch_dof = int(line.split('\t')[1])
+            if count == 22 + offset:
+                self.obj_function = str(line.split('\t')[1])
+            if count == 23 + offset:
+                self.interp_type = str(line.split('\t')[1])
             if count == 25 + offset:
                 self.rigid_trans = [int(line.split('\t')[1]),int(line.split('\t')[2]), int(line.split('\t')[3])]
+            # if count == 26 + offset:
+            #     self.basin_radius = int(line.split('\t')[1])
+            # if count == 27 + offset:
+            #     self.subvol_aspect = [int(line.split('\t')[1]),int(line.split('\t')[2]), int(line.split('\t')[3])]
             count+=1
 
         self.disp_file = disp_file_name
-
-        #self.rigid_trans.append(0)
 
         self.title =  str(self.subvol_points) + " Points in Subvolume," + " Subvolume Size: " + str(self.subvol_size)
 
