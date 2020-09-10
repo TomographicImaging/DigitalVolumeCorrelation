@@ -1030,7 +1030,7 @@ It is used as a global starting point and a translation reference."
         rp['translate_X_entry']= QLineEdit(groupBox)
         rp['translate_X_entry'].setValidator(validatorint)
         rp['translate_X_entry'].setText("0")
-        rp['translate_X_entry'].setEnabled(False)
+        #rp['translate_X_entry'].setEnabled(False)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rp['translate_X_entry'])
         widgetno += 1
         # Translate Y field
@@ -1041,7 +1041,7 @@ It is used as a global starting point and a translation reference."
         rp['translate_Y_entry']= QLineEdit(groupBox)
         rp['translate_Y_entry'].setValidator(validatorint)
         rp['translate_Y_entry'].setText("0")
-        rp['translate_Y_entry'].setEnabled(False) 
+        #rp['translate_Y_entry'].setEnabled(False) 
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rp['translate_Y_entry'])
         widgetno += 1
         # Translate Z field
@@ -1052,7 +1052,7 @@ It is used as a global starting point and a translation reference."
         rp['translate_Z_entry']= QLineEdit(groupBox)
         rp['translate_Z_entry'].setValidator(validatorint)
         rp['translate_Z_entry'].setText("0")
-        rp['translate_Z_entry'].setEnabled(False)
+        #rp['translate_Z_entry'].setEnabled(False)
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, rp['translate_Z_entry'])
         widgetno += 1
 
@@ -1387,16 +1387,16 @@ It is used as a global starting point and a translation reference."
                 
                 rp['select_point_zero'].setChecked(False)
                 rp['select_point_zero'].setCheckable(False)
+                rp['translate_X_entry'].setEnabled(False)
+                rp['translate_Y_entry'].setEnabled(False)
+                rp['translate_Z_entry'].setEnabled(False)
 
                 # setup the appropriate stuff to run the registration
                 if not hasattr(self, 'translate'):
-                    translate = vtk.vtkImageTranslateExtent()
-                    translate.SetTranslation(0,0,0)
-                    self.translate = translate
+                    self.translate = vtk.vtkImageTranslateExtent()
                 elif self.translate is None:
-                    translate = vtk.vtkImageTranslateExtent()
-                    translate.SetTranslation(0,0,0)
-                    self.translate = translate
+                    self.translate = vtk.vtkImageTranslateExtent()
+                self.translate.SetTranslation(-int(rp['translate_X_entry'].text()),-int(rp['translate_Y_entry'].text()),-int(rp['translate_Z_entry'].text()))
 
                 self.LoadImagesAndCompleteRegistration()
                 
@@ -1406,6 +1406,11 @@ It is used as a global starting point and a translation reference."
                 rp['start_registration_button'].setText("Start Registration")
                 rp['registration_box_size_entry'].setEnabled(True)
                 rp['select_point_zero'].setCheckable(True)
+
+                rp['select_point_zero'].setChecked(False)
+                rp['translate_X_entry'].setEnabled(True)
+                rp['translate_Y_entry'].setEnabled(True)
+                rp['translate_Z_entry'].setEnabled(True)
                 
                 v.setInput3DData(self.ref_image_data)
                 v.style.UpdatePipeline()
