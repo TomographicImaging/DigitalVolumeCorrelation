@@ -74,19 +74,19 @@ import copy
 from distutils.dir_util import copy_tree
 
 #TODO: switch from/to these lines for dev/release
-from ccpi.dvc.apps.image_data import ImageDataCreator
+from ccpi.viewer.utils.io import ImageDataCreator
 
 from ccpi.dvc.apps.pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
 
 from ccpi.dvc.apps.dvc_runner import DVC_runner
 
-# from image_data import ImageDataCreator
+#from image_data import ImageDataCreator
 
 # from pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
 
 # from dvc_runner import DVC_runner
 
-__version__ = '20.07.3'
+__version__ = '20.07.4'
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -2480,7 +2480,6 @@ The first point is significant, as it is used as a global starting point and ref
                     float(self.rotateYValueEntry.text()),
                     float(self.rotateZValueEntry.text())
             ]
-            print(subvol_size, self.pointCloud_shape)
 
             if hasattr(self, 'point0_world_coords'):
                 point0 = self.getPoint0WorldCoords()
@@ -2536,7 +2535,6 @@ The first point is significant, as it is used as a global starting point and ref
                 for viewer_widget in viewer_widgets:
                     subvol_preview_mapper = vtk.vtkPolyDataMapper()
                     if viewer_widget.viewer == viewer2D:
-                        print("Clipping")
                         viewer_widget.PlaneClipper.AddDataToClip('subvol_preview_actor', data_to_clip.GetOutputPort())
                         subvol_preview_mapper.SetInputConnection(viewer_widget.PlaneClipper.GetClippedData('subvol_preview_actor').GetOutputPort())
                         if not 'subvol_preview_actor' in viewer_widget.frame.viewer.actors:
