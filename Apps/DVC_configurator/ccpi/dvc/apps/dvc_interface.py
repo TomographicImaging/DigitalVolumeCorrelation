@@ -74,17 +74,17 @@ import copy
 from distutils.dir_util import copy_tree
 
 #TODO: switch from/to these lines for dev/release
-# from ccpi.dvc.apps.image_data import ImageDataCreator
+from ccpi.dvc.apps.image_data import ImageDataCreator
 
-# from ccpi.dvc.apps.pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
+from ccpi.dvc.apps.pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
 
-# from ccpi.dvc.apps.dvc_runner import DVC_runner
+from ccpi.dvc.apps.dvc_runner import DVC_runner
 
-from image_data import ImageDataCreator
+# from image_data import ImageDataCreator
 
-from pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
+# from pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
 
-from dvc_runner import DVC_runner
+# from dvc_runner import DVC_runner
 
 __version__ = '20.07.3'
 
@@ -144,15 +144,11 @@ class MainWindow(QMainWindow):
         exit_action.setShortcut(QKeySequence.Quit)
         exit_action.triggered.connect(self.close)
         self.file_menu.addAction(exit_action)
-
-        # Status Bar
-        self.status = self.statusBar()
-        self.status.showMessage("Ready")
              
         # # Window dimensions
         geometry = qApp.desktop().availableGeometry(self)
 
-        border = 100
+        border = 50
         self.setGeometry(border, border,geometry.width()-2*border, geometry.height()-2*border)
 
         self.e = ErrorObserver()
@@ -232,12 +228,23 @@ class MainWindow(QMainWindow):
         self.CreateViewerSettingsPanel()
         self.CreateHelpPanel()
 
+
         self.CreateSelectImagePanel()
         self.CreateRegistrationPanel()
         self.CreateMaskPanel()
         self.CreatePointCloudPanel()
         self.CreateRunDVCPanel()
         self.CreateViewDVCResultsPanel()
+
+        self.viewer2D_dock = QDockWidget("2D View")
+        self.viewer2D_dock.setObjectName("2DImageView")
+        self.viewer2D_dock.setWidget(self.vis_widget_2D)
+        self.viewer2D_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+
+        self.viewer3D_dock = QDockWidget("3D View")
+        self.viewer3D_dock.setObjectName("3DImageView")
+        self.viewer3D_dock.setWidget(self.vis_widget_3D)
+        self.viewer3D_dock.setAllowedAreas(Qt.LeftDockWidgetArea)
 
         #Tabifies dockwidgets in LeftDockWidgetArea:
         prev = None
@@ -254,25 +261,22 @@ class MainWindow(QMainWindow):
                 
         first_dock.raise_() # makes first panel the one that is open by default.
 
-        self.VisualisationWindow = VisualisationWindow(self)
-
-        self.setCentralWidget(self.VisualisationWindow)
-
-        dock4 = QDockWidget("2D View",self.VisualisationWindow)
-        dock4.setObjectName("2DImageView")
-        dock4.setWidget(self.vis_widget_2D)
-        self.viewer2D_dock = dock4
-
-        dock5 = QDockWidget("3D View",self.VisualisationWindow)
-        dock5.setObjectName("3DImageView")
-        dock5.setWidget(self.vis_widget_3D)
-        dock5.setAllowedAreas(Qt.RightDockWidgetArea)
-        self.viewer3D_dock = dock5
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea,self.viewer3D_dock)
 
 
-        self.VisualisationWindow.addDockWidget(QtCore.Qt.TopDockWidgetArea,dock4)
-        self.VisualisationWindow.addDockWidget(QtCore.Qt.BottomDockWidgetArea,dock5)
-        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea,self.viewer_settings_dock)
+        # Make a window to house the right dockwidgets
+        # This ensures the 2D viewer is large and allows us to position the help and settings below it
+
+        self.RightDockWindow = VisualisationWindow(self)
+
+        self.setCentralWidget(self.RightDockWindow)
+
+        self.RightDockWindow.setCentralWidget(self.viewer2D_dock)
+
+        self.RightDockWindow.addDockWidget(QtCore.Qt.TopDockWidgetArea,self.help_dock)
+
+        self.RightDockWindow.addDockWidget(QtCore.Qt.TopDockWidgetArea,self.viewer_settings_dock)
+        
 
     def CreateViewerSettingsPanel(self):
         self.viewer_settings_panel = generateUIDockParameters(self, "Viewer Settings")
@@ -400,7 +404,6 @@ It will be the first point in the file that is used as the reference point.")
         self.help_label.setText(self.help_text[0])
         formLayout.setWidget(1, QFormLayout.SpanningRole, self.help_label)
 
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea,dockWidget)
 
 
     def displayHelp(self, open, panel_no = None):
@@ -754,7 +757,7 @@ It will be the first point in the file that is used as the reference point.")
                     self.registration_parameters['registration_box_size_entry'].setValue(self.config['reg_sel_size'])
                     self.registration_parameters['registration_box_size_entry'].setEnabled(True)
             #self.displayRegistrationViewer(registration_open = False)
-            self.dock_reg.setVisible(False)
+            self.reg_viewer_dock.setVisible(False)
             self.viewer2D_dock.setVisible(True)
             self.viewer3D_dock.setVisible(True)
             self.reg_load = False
@@ -1085,19 +1088,26 @@ It is used as a global starting point and a translation reference."
         self.vis_widget_reg = VisualisationWidget(self, viewer2D)
         
 
-        dock_reg = QDockWidget("Image Registration",self.VisualisationWindow)
-        dock_reg.setObjectName("2DRegView")
-        dock_reg.setWidget(self.vis_widget_reg)
-        self.VisualisationWindow.addDockWidget(Qt.TopDockWidgetArea,dock_reg)
+        reg_viewer_dock = QDockWidget("Image Registration",self.RightDockWindow)
+        reg_viewer_dock.setObjectName("2DRegView")
+        reg_viewer_dock.setWidget(self.vis_widget_reg)
+        reg_viewer_dock.setMinimumHeight(self.size().height()*0.9)
+
+
+        self.reg_viewer_dock = reg_viewer_dock
+        
+        self.RightDockWindow.addDockWidget(Qt.BottomDockWidgetArea,reg_viewer_dock)
+
+
         #ref_image_copy = vtk.vtkImageData()
         #ref_image_copy.DeepCopy(self.ref_image_data)
         self.vis_widget_reg.setImageData(self.ref_image_data)
         self.vis_widget_reg.displayImageData()
-        #self.tabifyDockWidget(self.viewer2D_dock,dock_reg) #breaks
+        #self.tabifyDockWidget(self.viewer2D_dock,reg_viewer_dock) #breaks
         self.viewer2D_dock.setVisible(False)
         self.viewer3D_dock.setVisible(False)
-        self.dock_reg = dock_reg
-        windowHeight = self.size().height()
+        
+
 
         #Clear for next image visualisation:
         self.orientation = None
@@ -1135,16 +1145,16 @@ It is used as a global starting point and a translation reference."
                         self.vis_widget_reg.setImageData(self.ref_image_data)
                         self.vis_widget_reg.displayImageData()
 
-                    self.dock_reg.setVisible(True)
+                    self.reg_viewer_dock.setVisible(True)
                     self.viewer2D_dock.setVisible(False)
                     self.viewer3D_dock.setVisible(False)
 
             else:
-                if (hasattr(self, 'dock_reg')):
+                if (hasattr(self, 'reg_viewer_dock')):
                     if self.registration_parameters['start_registration_button'].isChecked():
                         self.registration_parameters['start_registration_button'].setChecked(False)
                         self.OnStartStopRegistrationPushed()
-                    self.dock_reg.setVisible(False)
+                    self.reg_viewer_dock.setVisible(False)
                     self.viewer2D_dock.setVisible(True)
                     self.viewer3D_dock.setVisible(True)
 
@@ -5236,7 +5246,6 @@ class VisualisationWidget(QtWidgets.QMainWindow):
         if orientation == SLICE_ORIENTATION_XY:
             axis = 'z'
             interactor.SetKeyCode("z")
-            
         elif orientation == SLICE_ORIENTATION_XZ:
             axis = 'y'
             interactor.SetKeyCode("y")
@@ -5317,7 +5326,7 @@ class GraphsWindow(QMainWindow):
         # Window dimensions
         geometry = qApp.desktop().availableGeometry(self)
 
-        self.setGeometry(100,100, geometry.width()-200, geometry.height()-200)
+        self.setGeometry(50,50, geometry.width()-100, geometry.height()-100)
         #self.setFixedSize(geometry.width() * 0.6, geometry.height() * 0.8)
 
     def SetResultsFolder(self, folder):
