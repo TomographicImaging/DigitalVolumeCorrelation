@@ -236,7 +236,8 @@ class DVC_runner():
 
         #print("Total points", total_points)
 
-        process.readyRead.connect(lambda: update_progress(main_window, process, total_points, required_runs, run_succeeded))
+        process.readyRead.connect(lambda: update_progress(main_window, process, total_points, 
+            required_runs, run_succeeded))
         # process.readyReadStandardError.connect(lambda: report_error())
         # process.errorOccurred.connect(lambda: report_error())
 
@@ -251,14 +252,17 @@ class DVC_runner():
                 
             line_num = 1
             distances = []
+            point0 = main_window.getPoint0WorldCoords()
+            print ("Point0", point0)
             for line in entire_central_grid:
                 line_array = line.split()
 
-                if line_num == 1:
-                    point1_x = float(line_array[1]) #was previously int, not sure which is correct
-                    point1_y = float(line_array[2])
-                    point1_z = float(line_array[3])
-                distance = np.sqrt(np.square(float(line_array[1]) - point1_x) + np.square(float(line_array[2])-point1_y) + np.square(float(line_array[3])-point1_z))
+                # if line_num == 1:
+                #     point1_x = float(line_array[1]) #was previously int, not sure which is correct
+                #     point1_y = float(line_array[2])
+                #     point1_z = float(line_array[3])
+                distance = np.sqrt(np.square(float(line_array[1]) - point0[0]) + \
+                    np.square(float(line_array[2])-point0[1]) + np.square(float(line_array[3])-point0[2]))
 
                 distances.append(distance)
                 line_num+=1
@@ -267,22 +271,30 @@ class DVC_runner():
 
             lines_to_write = []
 
-            for i in range(points):
-                index = distances.index(min(distances))
-                lines_to_write.append(index)
-                distances[index]=max(distances)+1
+            # for i in range(points):
+            #     index = distances.index(min(distances))
+            #     lines_to_write.append(index)
+            #     distances[index]=max(distances)+1
+            order = [ i for i in range(len(distances))]
+            sorted_list_index = [ el for el in zip(distances, order)]
+            sorted_list_index.sort()
+            # this contains the indices of the sorted list
+            lines_to_write = [ el for el in zip(*sorted_list_index) ] [1][:points]
+            print ("lines_to_write", lines_to_write)
+            with open(os.path.join(os.path.abspath(run_folder), "grid_input.roi"),"w") as selected_central_grid:
+                with open(roi_file, "r") as entire_central_grid:
+            # selected_central_grid = open(os.path.join(os.path.abspath(run_folder), "grid_input.roi"),"w")
+            # entire_central_grid = open(roi_file, "r")
 
-            selected_central_grid = open(os.path.join(os.path.abspath(run_folder), "grid_input.roi"),"w")
-            entire_central_grid = open(roi_file, "r")
+                    i=0
+                    for line in entire_central_grid:
+                        if i in lines_to_write:
+                            selected_central_grid.write(line)
+                            print (line)
+                        i+=1
 
-            i=0
-            for line in entire_central_grid:
-                if i in lines_to_write:
-                    selected_central_grid.write(line)
-                i+=1
-
-            selected_central_grid.close()
-            entire_central_grid.close()
+            # selected_central_grid.close()
+            # entire_central_grid.close()
 
 
             for subvolume_point in subvolume_points:
@@ -334,3 +346,4 @@ class DVC_runner():
 
             
 
+    

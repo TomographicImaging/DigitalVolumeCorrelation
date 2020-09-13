@@ -3872,7 +3872,9 @@ This parameter has a strong effect on computation time, so be careful."
 
             self.run_folder = os.path.abspath(os.path.join(results_folder, folder_name))
             run_config['run_folder']= self.run_folder
-
+            
+            #where is point0
+            run_config['point0'] = self.getPoint0ImageCoords()
             suffix_text = "run_config"
 
             self.run_config_file = os.path.join(tempfile.tempdir, "Results/" +folder_name + "/_" + suffix_text + ".json")
