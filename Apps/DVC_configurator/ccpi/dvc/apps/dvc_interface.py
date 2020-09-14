@@ -773,6 +773,7 @@ It will be the first point in the file that is used as the reference point.")
         self.progress_window.setMinimumDuration(0.01)
         self.progress_window.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
         self.progress_window.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, False)
+        self.progress_window.setAutoClose(True)
         if cancel is None:
             self.progress_window.setCancelButton(None)
         else:
@@ -3122,9 +3123,10 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
         self.createVectors3D(displ, self.vis_widget_3D, self.actors_3D)
         
 
-    def loadDisplacementFile(self, file, disp_wrt_point0 = False, multiplier = 1):
+    def loadDisplacementFile(self, displ_file, disp_wrt_point0 = False, multiplier = 1):
+        
         displ = np.asarray(
-        PointCloudConverter.loadPointCloudFromCSV(file,'\t')[:]
+            PointCloudConverter.loadPointCloudFromCSV(displ_file,'\t')[:]
         )
 
         if disp_wrt_point0:
@@ -3934,8 +3936,9 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         # self.cancelled = False
 
         self.run_succeeded = True
-        DVC_runner.run_dvc(self,os.path.abspath(self.run_config_file), self.finished_run, self.run_succeeded)
-
+        # DVC_runner.run_dvc(self,os.path.abspath(self.run_config_file), self.finished_run, self.run_succeeded)
+        self.dvc_runner = DVC_runner(self, os.path.abspath(self.run_config_file), self.finished_run, self.run_succeeded)
+        self.dvc_runner.run_dvc()
 
     def update_progress(self, exe = None):
         if exe:
@@ -4076,6 +4079,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
         for r, d, f in os.walk(directory):
             for _file in f:
+                print ("Looking at ", _file)
                 if '.roi' in _file:
                     self.result_widgets['pc_entry'].addItem((_file.split('_')[-1]).split('.')[0])
 
@@ -4123,17 +4127,23 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                     self.PointCloudWorker("load pointcloud file")
 
                 else: 
-
+                    print("Result list", self.result_list)
                     for result in self.result_list:
-                        #print(subvol_size, result.subvol_size)
+                        print("Subvolume size match? ", result.subvol_size, subvol_size)
                         if result.subvol_size == subvol_size:
-                            #print("Subvolume size match", result.subvol_points, subvol_points)
+                            print ("YES")
+                            print("Subv points match? {} {}".format(result.subvol_points, subvol_points))
                             if result.subvol_points == subvol_points:
-                                #print("Subv points match")
+                                print ("YES")
                                 run_file = result.disp_file
-                                run_file = results_folder + "\\" + os.path.basename(run_file)
+                                run_file = os.path.join(results_folder , os.path.basename(run_file))
 
-                        self.displayVectors(run_file, 2)
+                                self.displayVectors(run_file, 2)
+                            else:
+                                print ("NO")    
+                        else:
+                            print ("NO")
+
 
 
     def CreateGraphsWindow(self):
