@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5 import QtCore
 from datetime import datetime
 from functools import partial
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QLabel
 import json
 import sys
 import time
@@ -78,8 +78,8 @@ def update_progress(main_window, process, total_points, required_runs, run_succe
             main_window.progress_window.setValue(count/(total_points+3*required_runs)*100)
         string = process.readLine()  
         line = str(string,"utf-8")
-        # print(line)
-        if line[:11] =="Input Error":
+        print(line)
+        if line[:11] == "Input Error":
             run_succeeded = False
             if hasattr(main_window, 'progress_window'):
                 main_window.progress_window.setValue(100)
@@ -111,6 +111,7 @@ def displayFileErrorDialog(main_window, message, title):
     msg.exec_()
 
 def cancel_run(main_window, process, run_succeeded):
+    print ("run cancelled?")
     process.kill()
     main_window.alert = QMessageBox(QMessageBox.NoIcon,"Cancelled","The run was cancelled.", QMessageBox.Ok)  
     main_window.alert.show()
@@ -213,7 +214,6 @@ class DVC_runner(object):
 
 
         # Process to run the DVC executable:
-        process = QtCore.QProcess()
         # process.setWorkingDirectory(run_folder)
         # process.finished.connect(partial(finished_run, main_window, process = process, required_runs = required_runs, run_succeeded = run_succeeded, finish_fn = finish_fn))
         
@@ -328,7 +328,7 @@ class DVC_runner(object):
                     rigid_trans= rigid_trans, #translation between ref and cor - determined from image registration
                     basin_radius='0.0',
                     subvol_aspect='1.0 1.0 1.0') # image spacing
-
+                time.sleep(1)
                 with open(param_file,"w") as config_file:
                     config_file.write(config)
             
@@ -344,19 +344,20 @@ class DVC_runner(object):
                 # process.waitForFinished(msecs=2147483647)
                 
                 self.processes.append( 
-                    ( process, exe_file, [ param_file ], run_folder , required_runs, total_points) 
-                    )
-        print ("Home many runs? {}".format(len(self.processes)))
-    
+                    ( exe_file, [ param_file ], run_folder , \
+                        required_runs, total_points ) 
+                )
+        
     def run_dvc(self):
-        print ("DVC runner running {}".format(self.process_num))
         main_window = self.main_window
         input_file = self.input_file
         finish_fn = self.finish_fn
         run_succeeded = self.run_succeeded
-
-        process, exe_file, param_file, run_folder, required_runs, total_points =\
-             self.processes[self.process_num]
+        
+        process = QtCore.QProcess()
+        
+        exe_file, param_file, run_folder, required_runs,\
+             total_points = self.processes[self.process_num]
         
 
         process.setWorkingDirectory(run_folder)
@@ -364,33 +365,54 @@ class DVC_runner(object):
         #             process = process, required_runs = required_runs, 
         #             run_succeeded = run_succeeded, finish_fn = finish_fn))
         process.finished.connect(self.finished_run)
-    
-        main_window.create_progress_window("Running", "Running DVC code", 100,
-            lambda: cancel_run(main_window, process, run_succeeded))
+        process.started.connect(self.onStarted)
+        if self.process_num == 0:
+            main_window.create_progress_window("Running", 
+                "Running DVC code {}/{}".format(self.process_num +1, len(self.processes)), 100,
+                lambda: cancel_run(main_window, process, run_succeeded))
+        else:
+            main_window.progress_window.setLabel(QLabel(
+                "Running DVC code {}/{}".format(self.process_num +1, len(self.processes))
+                )
+            )
         process.readyRead.connect(
             lambda: update_progress(main_window, process, total_points, required_runs,\
                                     run_succeeded))
         # process.finished.connect(self.run_dvc())
         process.start( exe_file , param_file )
 
+    def onStarted(self):
+        pass
+
+        
+
     def finished_run(self, exitCode, exitStatus):
         main_window = self.main_window
         input_file = self.input_file
         finish_fn = self.finish_fn
         run_succeeded = self.run_succeeded
-        required_runs = self.processes[self.process_num][4]
+        required_runs = self.processes[self.process_num][3]
 
-        print ("finished {}/{} (or{}) with {} {}".format(self.process_num, required_runs,
-         len(self.processes), exitCode, exitStatus))
-        if exitCode == 0:
-            main_window.progress_window.close()
+        print ("finished {}/{} (or {}) with {} {}"\
+            .format(self.process_num, required_runs, \
+                len(self.processes), exitCode, exitStatus))
+        
+        if exitStatus == 0:
+            self.run_succeeded = self.run_succeeded and True
+        else:
+            self.run_succeeded = self.run_succeeded and False
+            
         if self.process_num == required_runs-1:
-            if hasattr(main_window, 'progress_window'):
-                main_window.progress_window.close()
-            main_window.alert = QMessageBox(QMessageBox.NoIcon,"Success","The DVC code ran successfully.", QMessageBox.Ok) 
+            main_window.progress_window.close()
+            if self.run_succeeded:
+                main_window.alert = QMessageBox(QMessageBox.NoIcon,
+                    "Success","The DVC code ran successfully.", QMessageBox.Ok)
+            else:
+                main_window.alert = QMessageBox(QMessageBox.NoIcon,
+                    "Fail","The DVC code had some troubles.", QMessageBox.Ok) 
             main_window.alert.show()
             if finish_fn is not None:
-                finish_fn()
+                finish_fn() 
         else:
             self.process_num += 1
             self.run_dvc()
