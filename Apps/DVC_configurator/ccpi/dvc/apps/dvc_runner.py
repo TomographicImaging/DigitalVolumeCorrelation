@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5 import QtCore
 from datetime import datetime
 from functools import partial
-from PyQt5.QtWidgets import QMessageBox, QLabel
+from PyQt5.QtWidgets import QMessageBox
 import json
 import sys
 import time
@@ -111,11 +111,15 @@ def displayFileErrorDialog(main_window, message, title):
     msg.exec_()
 
 def cancel_run(main_window, process, run_succeeded):
-    print ("run cancelled?")
-    process.kill()
-    main_window.alert = QMessageBox(QMessageBox.NoIcon,"Cancelled","The run was cancelled.", QMessageBox.Ok)  
-    main_window.alert.show()
-    run_succeeded = False
+    
+    if not run_succeeded:
+        print ("run cancelled?")
+        process.kill()
+        main_window.alert = QMessageBox(QMessageBox.NoIcon,"Cancelled","The run was cancelled.", QMessageBox.Ok)  
+        main_window.alert.show()
+        run_succeeded = False
+    else:
+        print ("all OK, all processes ended")
 
 
 def finished_run(main_window, exitCode, exitStatus, process = None, required_runs = 1, run_succeeded = False, finish_fn = None):
@@ -369,12 +373,14 @@ class DVC_runner(object):
         if self.process_num == 0:
             main_window.create_progress_window("Running", 
                 "Running DVC code {}/{}".format(self.process_num +1, len(self.processes)), 100,
-                lambda: cancel_run(main_window, process, run_succeeded))
-        else:
-            main_window.progress_window.setLabel(QLabel(
-                "Running DVC code {}/{}".format(self.process_num +1, len(self.processes))
+                #lambda: cancel_run(main_window, process, run_succeeded)
+                lambda: self.onCancel(process)
                 )
+        else:
+            main_window.progress_window.setLabelText(
+                "Running DVC code {}/{}".format(self.process_num +1, len(self.processes))
             )
+            main_window.progress_window.canceled.connect(lambda: self.onCancel(process))
         process.readyRead.connect(
             lambda: update_progress(main_window, process, total_points, required_runs,\
                                     run_succeeded))
@@ -384,7 +390,19 @@ class DVC_runner(object):
     def onStarted(self):
         pass
 
-        
+    def onCancel(self, process):
+        main_window = self.main_window
+        run_succeeded = self.run_succeeded
+        state = process.state()
+        print ("Process state", state)
+        if state in [2,1]:
+            print ("Cancelling run")
+            process.kill()
+            main_window.alert = QMessageBox(QMessageBox.NoIcon,"Cancelled","The run was cancelled.", QMessageBox.Ok)  
+            main_window.alert.show()
+            self.run_succeeded = False
+        elif state == 0:
+            print ("all OK, all processes ended")
 
     def finished_run(self, exitCode, exitStatus):
         main_window = self.main_window
