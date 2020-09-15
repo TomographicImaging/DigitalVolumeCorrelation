@@ -1,6 +1,10 @@
 # ChangeLog
 
 ## v20.07.4
+* Changed default location of viewers on interface
+* refactored process launching for DVC analysis with DVC_runner class
+
+## v20.07.4
 * Rearranged viewers on interface
 * Changed subvolume radius setting to subvolume size
 * Added preview of subvolume at position of point 0
