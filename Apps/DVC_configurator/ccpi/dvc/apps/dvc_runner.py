@@ -70,15 +70,19 @@ def update_progress(main_window, process, total_points, required_runs, run_succe
     # print("Required runs", required_runs)
     while(process.canReadLine()):
         #print("READ")
+        string = process.readLine()  
+        line = str(string,"utf-8")
+        
         global count
         count+=1
         #print("{:.0f} \n".format(count/(total_points+3*required_runs)*100))
         if hasattr(main_window, 'progress_window'):
             #print(count/(total_points+3*required_runs)*100)
             main_window.progress_window.setValue(count/(total_points+3*required_runs)*100)
-        string = process.readLine()  
-        line = str(string,"utf-8")
-        print(line)
+            label_text = main_window.progress_window.labelText().split("\n")[0]
+            main_window.progress_window.setLabelText(
+                    "{}\n{}".format(label_text, line)
+                )
         if line[:11] == "Input Error":
             run_succeeded = False
             if hasattr(main_window, 'progress_window'):
