@@ -1,6 +1,6 @@
 # ChangeLog
 
-## v20.07.4
+## v20.07.5
 * Changed default location of viewers on interface
 * refactored process launching for DVC analysis with DVC_runner class
 
