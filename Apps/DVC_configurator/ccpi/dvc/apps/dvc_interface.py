@@ -5560,6 +5560,8 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
 
         resultsToPlot= []
 
+        displacements = []
+
         for result in result_list:
             displ = np.asarray(
             PointCloudConverter.loadPointCloudFromCSV(result.disp_file,'\t')[:]
@@ -5570,13 +5572,6 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
                     for i in range(3):
                         displ[count][i+6] = displ[count][i+6] - point0_disp[i]
 
-            obj_mins = displ[:, 5]
-            u_disp = displ[:, 6]
-            v_disp = displ[:, 7]
-            w_disp = displ[:, 8]
-            phi_disp = displ[:, 9]
-            theta_disp = displ[:, 10]
-            psi_disp = displ[:, 11]
             no_points = np.shape(displ[0])
 
             if no_points not in points_list:
@@ -5592,6 +5587,7 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
             elif index ==2:
                 if result.subvol_points == float(self.secondParamCombo.currentText()):
                     resultsToPlot.append(result)
+            displacements.append(displ)
 
         points_list.sort()
 
@@ -5600,11 +5596,6 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
             numColumns = len(self.subvol_sizes)
 
         else:
-            # if index ==1:
-            #     numRows = len(self.subvol_points)
-            # elif index ==2:
-            #     numRows = len(self.subvol_sizes)
-            # numColumns = len(points)
             if len(resultsToPlot) <= 3:
                 numRows = 1
             else:
@@ -5612,7 +5603,7 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
             numColumns = np.ceil(len(resultsToPlot)/numRows)
 
         plotNum = 0
-        for result in resultsToPlot:
+        for i, result in enumerate(resultsToPlot):
             if index ==0:
                 row = self.subvol_points.index(result.subvol_points) + 1
                 column= self.subvol_sizes.index(result.subvol_size) + 1
@@ -5626,31 +5617,22 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
                     ax.set_ylabel(text + " " + "Points in subvol")
 
             else:
-                # if index ==1:
-                #     row = self.subvol_points.index(result.subvol_points) + 1
-                # if index ==2:
-                #     row= self.subvol_sizes.index(result.subvol_size) + 1
-
-
                 plotNum = plotNum + 1
                 ax = self.figure.add_subplot(numRows, numColumns, plotNum)
-                #ax.set_ylabel("")
-                #ax.set_xlabel(plot_titles[plotNum-1])
-                #ax.set_title(plot_titles[plotNum-1])
-                #ax.hist(array,20)
 
-                # column = points.index(result.points) + 1
-                # plotNum = (row-1)*numColumns + column
-                # ax = self.figure.add_subplot(numRows, numColumns, plotNum)
-                
-                #if row ==1:
-                    #ax.set_title(str(result.points) + " Points")
-                #if column == 1:
                 if index ==1:
                     text = str(result.subvol_points) 
                 if index ==2:
                     text = str(result.subvol_size) 
                 ax.set_ylabel(text + " " + self.combo1.currentText())
+
+            obj_mins = displacements[i][:, 5]
+            u_disp = displacements[i][:, 6]
+            v_disp = displacements[i][:, 7]
+            w_disp = displacements[i][:, 8]
+            phi_disp = displacements[i][:, 9]
+            theta_disp = displacements[i][:, 10]
+            psi_disp = displacements[i][:, 11]
 
             #get variable to display graphs for:
             if self.combo.currentIndex()==0:
@@ -5677,7 +5659,7 @@ Rigid Body Offset: {rigid_trans}".format(subvol_geom=result.subvol_geom, \
 class RunResults():
     def __init__(self,file_name):
         
-        self.points = None       
+        self.points = None
 
         disp_file_name = file_name + ".disp"
         stat_file_name = file_name + ".stat"
