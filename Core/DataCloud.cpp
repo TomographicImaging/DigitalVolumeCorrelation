@@ -77,6 +77,8 @@ void DataCloud::organize_cloud(RunControl *run)
 	// *** get neighbors for each point	
 
 	neigh.resize(points.size());
+	int n_threads = omp_get_num_threads();
+	#pragma omp parallel for
 	for (int i=0; i<neigh.size(); i++) {
 		
 		for (int j=0; j<neigh.size(); j++) {
@@ -92,8 +94,16 @@ void DataCloud::organize_cloud(RunControl *run)
 
 		// indicate status for large point clouds
 		int inc = 1000;
-		if ((neigh.size()>inc) && (i>inc-1) && (i%inc == 0)) {
-			std::cout << "sorting: " << i << " of " << neigh.size() << "\n";
+		if (n_threads == 1) {
+			if ((neigh.size()>inc) && (i>inc-1) && (i%inc == 0)) {
+				std::cout << "sorting: " << i << " of " << neigh.size() << "\n";
+			}
+		} 
+		else if (omp_get_thread_num() == 0) {
+			int vi = n_threads * i;
+			if ((neigh.size()>inc) && (vi>inc-1) && (vi%inc == 0)) {
+				std::cout << "approx sorting: " << vi << " of " << neigh.size() << "\n";
+			}
 		}
 		
 		
