@@ -33,6 +33,7 @@
 #include "InputRead.h"
 #include "Utility.h"
 #include "CCPiDefines.h"
+#include <omp.h>
 //
 
 /******************************************************************************/
