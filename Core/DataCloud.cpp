@@ -34,7 +34,7 @@ void DataCloud::organize_cloud(RunControl *run)
 	// small test clouds present a challenge if points are far apart
 	
 	neigh_num_min = 6;	// absolute minimum number for strain calc
-	neigh_num_par = 8;	// just a test number for now is a guess for now
+	neigh_num_par = 50;	// just a test number for now is a guess for now
 	neigh_dst_par = 15.0;	// a placeholder, scale to subvol size?
 	
 	// just a quick check to avoid problems with really small test clouds
@@ -75,37 +75,43 @@ void DataCloud::organize_cloud(RunControl *run)
 	
 
 	// *** get neighbors for each point	
-
+	std::cout << "sorting point cloud" << std::endl;
 	neigh.resize(points.size());
+
+#pragma omp parallel
+{
 	int n_threads = omp_get_num_threads();
-	#pragma omp parallel for
-	for (int i=0; i<neigh.size(); i++) {
-		
-		for (int j=0; j<neigh.size(); j++) {
+
+# pragma omp for
+	for (int i = 0; i < neigh.size(); i++) {
+
+		for (int j = 0; j < neigh.size(); j++) {
 			indx_dist[j].index = j;
 			indx_dist[j].value = points[i].pt_dist(points[j]);
 		}
 		std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
-		
+
 		// this loads a set number
-		for (int j=0; j<neigh_num_par; j++)
+		for (int j = 0; j < neigh_num_par; j++)
 			neigh[i].push_back(indx_dist[j].index);
-		
+
 
 		// indicate status for large point clouds
 		int inc = 1000;
 		if (n_threads == 1) {
-			if ((neigh.size()>inc) && (i>inc-1) && (i%inc == 0)) {
+			if ((neigh.size() > inc) && (i > inc - 1) && (i%inc == 0)) {
 				std::cout << "sorting: " << i << " of " << neigh.size() << "\n";
 			}
-		} 
-		else if (omp_get_thread_num() == 0) {
-			int vi = n_threads * i;
-			if ((neigh.size()>inc) && (vi>inc-1) && (vi%inc == 0)) {
-				std::cout << "approx sorting: " << vi << " of " << neigh.size() << "\n";
+		}
+		else {
+			if (omp_get_thread_num() == 0) {
+				int vi = n_threads * i;
+				if ((neigh.size() > inc) && (vi > inc - 1) && (vi%inc == 0)) {
+					std::cout << "approx sorting: " << vi << " of " << neigh.size() << "\n";
+				}
 			}
 		}
-		
+}
 		
 		// this loads varying numbers of elements based on proximity
 //		for (int j=0; j<neigh.size(); j++)
@@ -113,7 +119,18 @@ void DataCloud::organize_cloud(RunControl *run)
 	
 	}
 	std::cout << "sorting finished, prepping for search ..." << std::endl;
+    std::cout << "Saving sorted pointcloud" << std::endl;
+
+    std::ofstream sorted_pc_file;
+	sorted_pc_file.open(run->pts_fname + ".sorted");
 	
+	for (auto &x : neigh) {
+		for (auto &k : x)
+			sorted_pc_file << k << " ";
+		sorted_pc_file << std::endl;
+	}
+	sorted_pc_file.close();
+
 //	for (int i=0; i<neigh.size(); i++) {
 //		for (int j=0; j<neigh[i].size(); j++)
 //			std::cout << neigh[i][j] << "\t";
