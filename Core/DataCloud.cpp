@@ -34,8 +34,9 @@ void DataCloud::organize_cloud(RunControl *run)
 	// small test clouds present a challenge if points are far apart
 	
 	neigh_num_min = 6;	// absolute minimum number for strain calc
-	neigh_num_par = 50;	// just a test number for now is a guess for now
+	neigh_num_par = 8;	// just a test number for now is a guess for now
 	neigh_dst_par = 15.0;	// a placeholder, scale to subvol size?
+	int neigh_num_save = 50;  // number of sorted neighbours saved for each point
 	
 	// just a quick check to avoid problems with really small test clouds
 	if (points.size() < neigh_num_par) neigh_num_par = (int)points.size();
@@ -78,23 +79,31 @@ void DataCloud::organize_cloud(RunControl *run)
 	std::cout << "sorting point cloud" << std::endl;
 	neigh.resize(points.size());
 
+	std::vector<std::vector<int>> save_neigh = {};
+	save_neigh.resize(points.size());
+	int N = neigh_num_save < indx_dist.size() ? neigh_num_save : indx_dist.size();
 #pragma omp parallel
 {
 	int n_threads = omp_get_num_threads();
-
+	std::vector<DualSort> indx_dist_copy(indx_dist);
+	
 # pragma omp for
 	for (int i = 0; i < neigh.size(); i++) {
 
 		for (int j = 0; j < neigh.size(); j++) {
-			indx_dist[j].index = j;
-			indx_dist[j].value = points[i].pt_dist(points[j]);
+			indx_dist_copy[j].index = j;
+			indx_dist_copy[j].value = points[i].pt_dist(points[j]);
 		}
-		std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
+		std::sort(indx_dist_copy.begin(), indx_dist_copy.end(), sortByValue);
 
 		// this loads a set number
 		for (int j = 0; j < neigh_num_par; j++)
-			neigh[i].push_back(indx_dist[j].index);
-
+			neigh[i].push_back(indx_dist_copy[j].index);
+		
+		
+		for (int j = 0; j < neigh_num_par; j++)
+			save_neigh[i].push_back(indx_dist_copy[j].index);
+		
 
 		// indicate status for large point clouds
 		int inc = 1000;
@@ -124,7 +133,7 @@ void DataCloud::organize_cloud(RunControl *run)
     std::ofstream sorted_pc_file;
 	sorted_pc_file.open(run->pts_fname + ".sorted");
 	
-	for (auto &x : neigh) {
+	for (auto &x : save_neigh) {
 		for (auto &k : x)
 			sorted_pc_file << k << " ";
 		sorted_pc_file << std::endl;
