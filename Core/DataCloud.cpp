@@ -68,14 +68,6 @@ void DataCloud::organize_cloud(RunControl *run)
 	
 	// *** break into groups based on re-sorted distance (testing)
 	
-//	split_by_volume(indx_dist, 2500.0);
-//		
-//	for (int i=0; i<sub_groups.size(); i++) {
-//		for (int j=0; j<sub_groups[i].size(); j++)
-//			std::cout << points[sub_groups[i][j]].x() << "\t" << points[sub_groups[i][j]].y() << "\t" << points[sub_groups[i][j]].z() << "\n";
-//		std::cout << "\n\n";
-//	}
-	
 
 	// *** get neighbors for each point	
 	std::cout << "sorting point cloud" << std::endl;
@@ -84,29 +76,29 @@ void DataCloud::organize_cloud(RunControl *run)
 	std::vector<std::vector<int>> save_neigh = {};
 	save_neigh.resize(points.size());
 	
-#pragma omp parallel
+#pragma omp parallel firstprivate(indx_dist)
 {
 	int n_threads = omp_get_num_threads();
-	std::vector<DualSort> indx_dist_copy(indx_dist);
+	int neigh_size = neigh.size();
 	
-# pragma omp for
-	for (int i = 0; i < neigh.size(); i++) {
+# pragma omp for 
+	for (int i = 0; i < neigh_size; i++) {
 
-		for (int j = 0; j < neigh.size(); j++) {
-			indx_dist_copy[j].index = j;
-			indx_dist_copy[j].value = points[i].pt_dist(points[j]);
+		for (int j = 0; j < neigh_size; j++) {
+			indx_dist[j].index = j;
+			indx_dist[j].value = points[i].pt_dist(points[j]);
 		}
-		std::sort(indx_dist_copy.begin(), indx_dist_copy.end(), sortByValue);
+		std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
 
 		// this loads a set number
 		for (int j = 0; j < neigh_num_par; j++)
-			neigh[i].push_back(indx_dist_copy[j].index);
+			neigh[i].push_back(indx_dist[j].index);
+			
 		
 		
 		for (int j = 0; j < neigh_num_save; j++)
-			save_neigh[i].push_back(indx_dist_copy[j].index);
+			save_neigh[i].push_back(indx_dist[j].index);
 		
-
 		// indicate status for large point clouds
 		int inc = 1000;
 		if (n_threads == 1) {
@@ -124,9 +116,7 @@ void DataCloud::organize_cloud(RunControl *run)
 		}
 }
 		
-		// this loads varying numbers of elements based on proximity
-//		for (int j=0; j<neigh.size(); j++)
-//			if (indx_dist[j].value <= neigh_dst_par) neigh[i].push_back(indx_dist[j].index);
+
 	
 	}
 	std::cout << "sorting finished, prepping for search ..." << std::endl;
@@ -142,13 +132,6 @@ void DataCloud::organize_cloud(RunControl *run)
 	}
 	sorted_pc_file.close();
 
-//	for (int i=0; i<neigh.size(); i++) {
-//		for (int j=0; j<neigh[i].size(); j++)
-//			std::cout << neigh[i][j] << "\t";
-//		std::cout << "\n";
-//	}
-
-	
 	
 	// *** create storage for results of searches and initialize
 	
