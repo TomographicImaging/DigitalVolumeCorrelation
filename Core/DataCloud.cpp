@@ -37,6 +37,9 @@ void DataCloud::organize_cloud(RunControl *run)
 	neigh_num_par = 8;	// just a test number for now is a guess for now
 	neigh_dst_par = 15.0;	// a placeholder, scale to subvol size?
 	
+	// number of sorted neighbours saved for each point
+	int neigh_num_save = 50 < points.size() ? 50 : points.size();
+	
 	// just a quick check to avoid problems with really small test clouds
 	if (points.size() < neigh_num_par) neigh_num_par = (int)points.size();
 	
@@ -75,37 +78,51 @@ void DataCloud::organize_cloud(RunControl *run)
 	
 
 	// *** get neighbors for each point	
-
+	std::cout << "sorting point cloud" << std::endl;
 	neigh.resize(points.size());
+
+	std::vector<std::vector<int>> save_neigh = {};
+	save_neigh.resize(points.size());
+	
+#pragma omp parallel
+{
 	int n_threads = omp_get_num_threads();
-	#pragma omp parallel for
-	for (int i=0; i<neigh.size(); i++) {
-		
-		for (int j=0; j<neigh.size(); j++) {
-			indx_dist[j].index = j;
-			indx_dist[j].value = points[i].pt_dist(points[j]);
+	std::vector<DualSort> indx_dist_copy(indx_dist);
+	
+# pragma omp for
+	for (int i = 0; i < neigh.size(); i++) {
+
+		for (int j = 0; j < neigh.size(); j++) {
+			indx_dist_copy[j].index = j;
+			indx_dist_copy[j].value = points[i].pt_dist(points[j]);
 		}
-		std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
-		
+		std::sort(indx_dist_copy.begin(), indx_dist_copy.end(), sortByValue);
+
 		// this loads a set number
-		for (int j=0; j<neigh_num_par; j++)
-			neigh[i].push_back(indx_dist[j].index);
+		for (int j = 0; j < neigh_num_par; j++)
+			neigh[i].push_back(indx_dist_copy[j].index);
+		
+		
+		for (int j = 0; j < neigh_num_save; j++)
+			save_neigh[i].push_back(indx_dist_copy[j].index);
 		
 
 		// indicate status for large point clouds
 		int inc = 1000;
 		if (n_threads == 1) {
-			if ((neigh.size()>inc) && (i>inc-1) && (i%inc == 0)) {
+			if ((neigh.size() > inc) && (i > inc - 1) && (i%inc == 0)) {
 				std::cout << "sorting: " << i << " of " << neigh.size() << "\n";
 			}
-		} 
-		else if (omp_get_thread_num() == 0) {
-			int vi = n_threads * i;
-			if ((neigh.size()>inc) && (vi>inc-1) && (vi%inc == 0)) {
-				std::cout << "approx sorting: " << vi << " of " << neigh.size() << "\n";
+		}
+		else {
+			if (omp_get_thread_num() == 0) {
+				int vi = n_threads * i;
+				if ((neigh.size() > inc) && (vi > inc - 1) && (vi%inc == 0)) {
+					std::cout << "approx sorting: " << vi << " of " << neigh.size() << "\n";
+				}
 			}
 		}
-		
+}
 		
 		// this loads varying numbers of elements based on proximity
 //		for (int j=0; j<neigh.size(); j++)
@@ -113,7 +130,18 @@ void DataCloud::organize_cloud(RunControl *run)
 	
 	}
 	std::cout << "sorting finished, prepping for search ..." << std::endl;
+    std::cout << "Saving sorted pointcloud" << std::endl;
+
+    std::ofstream sorted_pc_file;
+	sorted_pc_file.open(run->pts_fname + ".sorted");
 	
+	for (auto &x : save_neigh) {
+		for (auto &k : x)
+			sorted_pc_file << k << " ";
+		sorted_pc_file << std::endl;
+	}
+	sorted_pc_file.close();
+
 //	for (int i=0; i<neigh.size(); i++) {
 //		for (int j=0; j<neigh[i].size(); j++)
 //			std::cout << neigh[i][j] << "\t";

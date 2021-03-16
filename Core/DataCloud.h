@@ -34,6 +34,7 @@
 #include "Utility.h"
 #include "CCPiDefines.h"
 #include <omp.h>
+#include <ostream>
 //
 
 /******************************************************************************/
