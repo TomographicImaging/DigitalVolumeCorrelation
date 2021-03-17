@@ -49,26 +49,23 @@ SET (DVC_SRCS ${DVC_SRCS}
 	)
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
-add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
-#TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
+# add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
+# TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
 target_include_directories(cildvc_static PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
+        $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 	)
-
-target_include_directories(cildvc_shared PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
-	)
-
-# EXECUTABLES 
+target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
+#target_include_directories(cildvc_shared PUBLIC
+#	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
+#	)
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
 target_link_libraries (dvc cildvc_static)
-include_directories(dvc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
-
-add_executable (strain ${CMAKE_CURRENT_SOURCE_DIR}/strain.cpp )
-target_link_libraries (strain cildvc_static)
-include_directories(strain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
-	
+include_directories(dvc PUBLIC
+	${CMAKE_CURRENT_SOURCE_DIR} 
+        $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+)
 
 if(BUILD_TEST)
   add_executable (tests ${CMAKE_CURRENT_SOURCE_DIR}/tests.cpp )
@@ -95,7 +92,7 @@ set(INSTALL_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include)
 
-install(TARGETS dvc strain
+install(TARGETS dvc
 	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
        )
 
@@ -105,11 +102,12 @@ if(BUILD_TEST)
   )
 endif()
 
-install(TARGETS cildvc_shared
-	LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
-	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-	)
+#install(TARGETS cildvc_shared
+#	LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+#	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
+#	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+#	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+#	)
+
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/Core/wip
 	DESTINATION ${INSTALL_BIN_DIR})
