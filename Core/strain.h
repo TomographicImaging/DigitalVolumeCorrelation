@@ -49,6 +49,26 @@
 #include "Utility.h"
 //
 
+/******************************************************************************/
+class CCPI_EXPORT StrainCalc
+{
+public:
+	StrainCalc();
+
+	int nmp() const {return num_mod_para;}
+	int ndp() const {return num_data_pts;}
+
+private:
+	
+	int num_mod_para;		// number of model parameters (terms in the polynomial)
+	int num_data_pts;		// number of data (neighborhood) points
+
+
+
+};
+/******************************************************************************/
+
+
 #endif
 
 

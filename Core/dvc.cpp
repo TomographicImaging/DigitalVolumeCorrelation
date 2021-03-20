@@ -281,7 +281,6 @@ int main(int argc, char *argv[])
 
 	auto dtf = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-
 	// re-write output in point cloud order, from stored results
 	in.result_header(run.res_fname, optimize.par_min.size());
 	for (unsigned int i=0; i<data.points.size(); i++)
@@ -304,6 +303,14 @@ int main(int argc, char *argv[])
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)" << endl;
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)" << endl;
 	sta_file << std::endl;
+
+
+/*
+	// run strain calculation
+	std::cout << endl << endl << "strain calculation" << endl;
+
+	StrainCalc strain;
+*/
 
 	return 0;
 }
