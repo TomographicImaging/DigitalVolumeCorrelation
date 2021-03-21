@@ -649,7 +649,7 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	if (count == 0)
 	{
 		std::cout << "\n";
-		std::cout << "No points were read, and the Point Cloud file may be improperly formatted.\n";
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted.\n";
 		std::cout << "The expected format is plain text, tab (or other 'white space') delimited.\n";
 		std::cout << "Header info is OK as long as it does not match the format of a point description.\n";
 		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:\n\n";
@@ -662,6 +662,88 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	Point max_pt(max_x, max_y, max_z);
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
+
+	return 1;
+}
+/******************************************************************************/
+int DispRead::read_disp_file(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis)
+{
+
+//	std::cout << std::endl << fname << std::endl;
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);
+
+	char eol;
+	std::string term;
+
+	check_eol(ifs, eol, term);
+
+	ifs.clear();
+	ifs.seekg(0, std::ios::beg);
+
+	int a_label;
+	Point a_point(0.0, 0.0, 0.0);
+	double a_dbl;
+
+	int ptn = 0;
+	double ptx=0.0,pty=0.0,ptz=0.0;
+	double val = 0.0;
+	int count = 0;
+
+	std::string line;
+	std::istringstream ss;
+
+	int trys = 1;
+
+	while (getline(ifs, line, eol))
+	{
+		line += term;
+		ss.str(line);
+
+		ss >> ptn;
+		if (ss.fail()) {ss.clear(); continue;}
+		char c = ss.peek();
+		if ((c == '.')||(c == 'E')) {ss.clear(); continue;}
+
+		if (!(ss >> ptx)) {ss.clear(); continue;}
+		if (!(ss >> pty)) {ss.clear(); continue;}
+		if (!(ss >> ptz)) {ss.clear(); continue;}
+
+		label.push_back(a_label);
+		label[count] = ptn;
+
+		pos.push_back(a_point);
+		pos[count].move_to(ptx,pty,ptz);
+
+		ss >> ptn;
+//		if (ss.fail()) {ss.clear(); continue;}
+//		c = ss.peek();
+//		if ((c == '.')||(c == 'E')) {ss.clear(); continue;}
+		status.push_back(a_label);
+		status[count] = ptn;		
+
+		if (!(ss >> val)) {ss.clear(); continue;}
+		objmin.push_back(a_dbl);
+		objmin[count] = val;		
+
+		if (!(ss >> ptx)) {ss.clear(); continue;}
+		if (!(ss >> pty)) {ss.clear(); continue;}
+		if (!(ss >> ptz)) {ss.clear(); continue;}
+		dis.push_back(a_point);
+		dis[count].move_to(ptx,pty,ptz);
+
+		count += 1;
+	}
+
+//	std::cout << "count = " << count << std::endl;
+
+	if (count == 0)
+	{
+		std::cout << "\n";
+		std::cout << "No points were read, the .disp file may be improperly formatted.\n";
+		std::cout << "\n";
+		return 0;
+	}
 
 	return 1;
 }
@@ -944,6 +1026,8 @@ int InputRead::result_header(std::string fname, int num_params)
 
 	res_file << "\t" << "u" << "\t" << "v" << "\t" << "w";
 
+	// changed .disp output to just include displacements
+	/*
 	if (num_params > 3) res_file << "\t" << "phi" << "\t" << "the" << "\t" << "psi";
 
 	if (num_params > 6)
@@ -951,6 +1035,7 @@ int InputRead::result_header(std::string fname, int num_params)
 		res_file << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz";
 		res_file << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz";
 	}
+	*/
 
 	res_file << "\n";
 
@@ -971,7 +1056,19 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 
 	res_file << std::fixed << std::setprecision(6);
 
-	for (int i=0; i<result.size(); i++) res_file << "\t" << result[i];
+	// this prints full search params, disp, rotation, strain if used
+	/*
+	for (int i=0; i<result.size(); i++)
+	{
+		res_file << "\t" << result[i];
+	} 
+	*/
+
+	// this prints just the dispalcements
+	for (int i=0; i<3; i++)
+	{
+		res_file << "\t" << result[i];
+	} 
 
 	res_file << "\n";
 
