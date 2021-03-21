@@ -72,7 +72,6 @@ class CCPI_EXPORT InputRead
 public:
 
 	InputRead();
-
 	~InputRead();
 
 	std::ifstream input_file;
@@ -193,6 +192,17 @@ public:
 
 	int result_header(std::string fname, int num_params);
 	int append_result(std::string fname, int n, Point pt, const int status, double obj_min, std::vector<double> result);
+
+private:
+
+};
+/******************************************************************************/
+class CCPI_EXPORT DispRead: public InputRead
+{
+public:
+
+	int read_disp_file(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis);
+
 
 private:
 
