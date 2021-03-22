@@ -65,6 +65,13 @@ public:
 	
 	void organize_cloud(RunControl *run);
 //	DataCloud(InputRead *in);
+
+	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
+	// needs points and labels already available, generates order and neigh
+	void sort_order_neighbors(int neigh_num_save);
+
+	// write out neighbors as a .sort file
+	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh);
 	
 	// in order of appearance in the point cloud input file, [npts]
 	std::vector<Point> points;
@@ -98,7 +105,7 @@ public:
 	
 	
 	int n_n_m() const {return neigh_num_min;}
-	int n_n_p() const {return neigh_num_par;}
+//	int n_n_p() const {return neigh_num_par;}
 	double n_d_p() const {return neigh_dst_par;}
 
 
@@ -107,8 +114,11 @@ private:
 	int start_point_label;		// label of first point to process
 	int start_point_index;		// index corresponding to label
 	
+	int neigh_num;			// num of neighbors to save for each point
+
+
 	int neigh_num_min;		// minimum number for strain calc
-	int neigh_num_par;		// number of neighbors parameter
+//	int neigh_num_par;		// number of neighbors parameter
 	double neigh_dst_par;		// distance range parameter
 
 };

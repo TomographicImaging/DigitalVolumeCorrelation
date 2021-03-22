@@ -19,29 +19,40 @@ DataCloud::DataCloud ()
 	
 }
 /******************************************************************************/
-void DataCloud::organize_cloud(RunControl *run)
+void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh)
 {
+	std::cout << "Saving sorted pointcloud" << std::endl;
 
-	// these are process control parameters set at run time
-	// aim for a number of points within the neighborhood, let range adjust
-	// aim for points within a range, let numbr adjust
+    std::ofstream sorted_pc_file;
+	sorted_pc_file.open(fname + ".sort");
 	
-	// neighbor number is difficult to manage
-	// strain cal sets a lower limit of 6
-	// easiest to manage with a set number
-	// may also want to admit any points within a set distance
-	// start point estimation requires just a few, even 1 valid point
-	// small test clouds present a challenge if points are far apart
-	
-	neigh_num_min = 6;	// absolute minimum number for strain calc
-	neigh_num_par = 8;	// just a test number for now is a guess for now
+	for (auto &x : save_neigh) {
+		for (auto &k : x)
+			sorted_pc_file << k << " ";
+		sorted_pc_file << std::endl;
+	}
+	sorted_pc_file.close();
+}
+/******************************************************************************/
+void DataCloud::sort_order_neighbors(int neigh_num_save)
+{
+	// -> these are not up to date with the OLS polyfit approach to strain calc
+
+	neigh_num_min = 6;	// -> old value, update for strain calc
+//	neigh_num_par = 50;	// just a test number for now is a guess for now
 	neigh_dst_par = 15.0;	// a placeholder, scale to subvol size?
+
+	// -> set neigh_num_save higher (100)
+	// -> declare as private in DataCloud with access function
+
 	
 	// number of sorted neighbours saved for each point
-	int neigh_num_save = 50 < points.size() ? 50 : points.size();
-	
+//	int neigh_num_save = 50 < points.size() ? 50 : points.size();
+	neigh_num_save = 50 < points.size() ? 50 : points.size();
+
 	// just a quick check to avoid problems with really small test clouds
-	if (points.size() < neigh_num_par) neigh_num_par = (int)points.size();
+//	if (points.size() < neigh_num_par) neigh_num_par = (int)points.size();
+	if (points.size() < neigh_num_save) neigh_num_save = (int)points.size();
 	
 	start_point_label = 1;	// default 1, add as optional input parameter
 //	start_point_label = 7;	// just a test ...
@@ -99,7 +110,8 @@ void DataCloud::organize_cloud(RunControl *run)
 		std::sort(indx_dist_copy.begin(), indx_dist_copy.end(), sortByValue);
 
 		// this loads a set number
-		for (int j = 0; j < neigh_num_par; j++)
+		// for (int j = 0; j < neigh_num_par; j++)
+		for (int j = 0; j < neigh_num_save; j++)
 			neigh[i].push_back(indx_dist_copy[j].index);
 		
 		
@@ -130,26 +142,24 @@ void DataCloud::organize_cloud(RunControl *run)
 	
 	}
 	std::cout << "sorting finished, prepping for search ..." << std::endl;
-    std::cout << "Saving sorted pointcloud" << std::endl;
+   
 
-    std::ofstream sorted_pc_file;
-	sorted_pc_file.open(run->pts_fname + ".sorted");
-	
-	for (auto &x : save_neigh) {
-		for (auto &k : x)
-			sorted_pc_file << k << " ";
-		sorted_pc_file << std::endl;
-	}
-	sorted_pc_file.close();
 
-//	for (int i=0; i<neigh.size(); i++) {
-//		for (int j=0; j<neigh[i].size(); j++)
-//			std::cout << neigh[i][j] << "\t";
-//		std::cout << "\n";
-//	}
 
-	
-	
+
+}
+/******************************************************************************/
+void DataCloud::organize_cloud(RunControl *run)
+{
+	// establish point processing order and neighborhoods
+
+	neigh_num = 50;
+	sort_order_neighbors(neigh_num);
+
+	// write sort file
+	write_sort_file(run->pts_fname, neigh);
+
+	// this is where the integration with dvc executable occurs through results storage
 	// *** create storage for results of searches and initialize
 	
 	int ntrg = 1;

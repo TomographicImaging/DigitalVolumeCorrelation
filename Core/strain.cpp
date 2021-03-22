@@ -26,24 +26,53 @@ int main(int argc, char *argv[])
 
 	std::cout << endl << "strain calculation from strain main" << endl;
 
+	// Working, but still to do:
+	//	-> set up argc and argv for proper inputs, no inputs, etc.
+	//	-> manage bad points in the .disp file
+	//		-> does read automatically bypass bad points?
+	//	-> do conditioning checks and trap poor OLS points
+	//	-> formalize outputs file with headers
+	//	-> manage output: E? L? principal values? principal vectors? user selects?
+
 	// read .disp file into vectors
-	std::vector<int> label;
-	std::vector<Point> pos;
+	//std::vector<int> label;
+	//std::vector<Point> pos;
 	std::vector<int> status;
 	std::vector<double> objmin;
 	std::vector<Point> dis;
 
-	std::string fname;
-	fname = "tiny_cloud.disp";
+	// create a data cloud to store and sort points from the .disp file
+	// -> expand DataCloud to manage these results
+
+	DataCloud data;
+
+	std::string fname;					// -> example file, add to command line 
+	fname = "lava_cloud_full_cyl_inc_15.disp";
+
 	DispRead disp;
-	disp.read_disp_file(fname,label,pos,status,objmin,dis);
+	
+	disp.read_disp_file(fname,data.labels,data.points,status,objmin,dis);
+
+	// two options here:
+	//	1. establish neighbors by sorting the point cloud (done)
+	//	2. read in an existing .sort file (-> needs writing)
+
+	int nnbr = 50;
+	data.sort_order_neighbors(nnbr);
+	data.write_sort_file("lava_cloud_full_cyl_inc_15.disp",data.neigh);
+
+	//***************
 
 	// set up for OLS
 	StrainCalc strain;
 
 	int nmp = strain.nmp();		// set by poly model choice, fixed in constructor
-	int ndp = 25;				// user set, between a min and max set in constructor
-	int npts = pos.size();		// totla number of points in the .disp file
+
+	// key parameter ... number of neighborhood points used for the strianv calc
+	// needs to be greater than some min, 10 parameters but likely need about 25 points at least
+	// max is the number of points used for sorting, nnbr, 50 currently
+	int ndp = 25;				// user set, between a min and max set in constructor? 
+	int npts = data.points.size();		// total number of points in the .disp file
 
 	std::cout << endl << "nmp local = " << nmp << endl;
 	std::cout << endl << "ndp local = " << ndp << endl;
@@ -57,6 +86,8 @@ int main(int argc, char *argv[])
 	Eigen::VectorXd par = Eigen::VectorXd(nmp);
 
 	Eigen::MatrixXd D = Eigen::MatrixXd(3,3);		// deformation gradient
+	Eigen::MatrixXd E = Eigen::MatrixXd(3,3);		// Engineering strain
+	Eigen::MatrixXd L = Eigen::MatrixXd(3,3);		// Lagrangian strain
 
 	// model used for fitting, 3D quadratic polynomial
 	//    m  = c1 
@@ -64,35 +95,41 @@ int main(int argc, char *argv[])
 	//       + c5*x^2 + c6*y^2 + c7*z^2 
 	//       + c8*x*y + c9*y*z + c10*x*z
 
+	// output files for Eningeering and Lagrangian strain data
+	std::ofstream strain_results_E;
+	strain_results_E.open("lava_cloud_full_cyl_inc_15_E.strain");
 
-	// for (unsigned int i=0; i<npts; i++) {
-	for (unsigned int i=0; i<1; i++) {
+	std::ofstream strain_results_L;
+	strain_results_L.open("lava_cloud_full_cyl_inc_15_L.strain");
 
-		// test point 0 here:
+	// print headers
+	strain_results_E << "n" << "\t" << "x" << "\t" << "y" << "\t" << "z" << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz" << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz" << "\t" << "ep1" << "\t" << "ep2" << "\t" << "ep3" << std::endl;
+	strain_results_L << "n" << "\t" << "x" << "\t" << "y" << "\t" << "z" << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz" << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz" << "\t" << "ep1" << "\t" << "ep2" << "\t" << "ep3" << std::endl;
 
-		std::vector<int> nbr_ind = {0,1,5,25,6,26,30,31,2,10,50,7,11,27,35,51,55,32,36,56,12,52,60,3,15,37,57,61,75,8,16,28,40,76,80,33,41,81,62,13,17,53,65,77,85,38,42,58,66,82};
+	for (unsigned int i=0; i<npts; i++) {
+	//for (unsigned int i=0; i<1; i++) {
 
-		// load neighborhood vectors npos and ndis for current point and scale
+		// get neighborhood indices fro this point
+		std::vector<int> nbr_ind = data.neigh[i];
 
-		// scaling
-
+		// find matrix scaling factor and load neighborhood vectors npos and ndis for current point
 		Point origin(0.0, 0.0, 0.0);
-		double distance =  pos[i].pt_dist(origin);
+		double distance =  data.points[i].pt_dist(origin);
 		double scale = 1.0/distance;
 
 		std::vector<Point> npos = {};
 		std::vector<Point> ndis = {};
 
+		// load neighborhood data vectors from full list
 		for (unsigned int j=0; j<ndp; j++) {
-			Point spos(scale*pos[nbr_ind[j]].x(), scale*pos[nbr_ind[j]].y(), scale*pos[nbr_ind[j]].z());
+			Point spos(scale*data.points[nbr_ind[j]].x(), scale*data.points[nbr_ind[j]].y(), scale*data.points[nbr_ind[j]].z());
 			npos.push_back(spos);
 			Point sdis(scale*dis[nbr_ind[j]].x(), scale*dis[nbr_ind[j]].y(), scale*dis[nbr_ind[j]].z());
 			ndis.push_back(sdis);
 		}
 
 		// scale the derivative calculation location
-		Point spos(scale*pos[i].x(), scale*pos[i].y(), scale*pos[i].z());
-
+		Point spos(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
 		for (unsigned int j=0; j<ndp; j++) {
 			Xm(j,0) = 1;
@@ -113,6 +150,7 @@ int main(int argc, char *argv[])
 			dvs(j,1) = ndis[j].y();
 			dvs(j,2) = ndis[j].z();
 		}
+
 		XtXm = Xm.transpose()*Xm;
 
 		for (unsigned int j=0; j<3; j++) {
@@ -124,16 +162,45 @@ int main(int argc, char *argv[])
 			D(j,2) = par(3) + 2*par(6)*spos.z() + par(8)*spos.y() + par(9)*spos.x();
 		}
 
-	}
+		E = 0.5*(D + D.transpose());
+		
+		EigenSolver<MatrixXd> esE(E);
+		std::vector<double> lamE = {esE.eigenvalues()[0].real(), esE.eigenvalues()[1].real(), esE.eigenvalues()[2].real()};
+		std::sort(lamE.begin(), lamE.end());
+		std::reverse(lamE.begin(), lamE.end());
 
+		strain_results_E << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t" << E(0,0) << "\t" << E(1,1) << "\t" << E(2,2) << "\t" << E(0,1) << "\t" << E(1,2) << "\t" << E(0,2) << "\t" << lamE[0] << "\t" << lamE[1] << "\t" << lamE[2] << std::endl;
+		
+		L = 0.5*(D + D.transpose() + D.transpose()*D);
+
+		EigenSolver<MatrixXd> esL(L);
+		std::vector<double> lamL = {esL.eigenvalues()[0].real(), esL.eigenvalues()[1].real(), esL.eigenvalues()[2].real()};
+		std::sort(lamL.begin(), lamL.end());
+		std::reverse(lamL.begin(), lamL.end());
+
+		strain_results_L << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t" << L(0,0) << "\t" << L(1,1) << "\t" << L(2,2) << "\t" << L(0,1) << "\t" << L(1,2) << "\t" << L(1,2) << "\t" << lamL[0] << "\t" << lamL[1] << "\t" << lamL[2] << std::endl;
+	}
+	strain_results_E.close();
+	strain_results_L.close();
+/*
 	std::cout << endl;
 	std::cout << D(0,0) << " " << D(0,1) << " "<< D(0,2) << endl;
 	std::cout << D(1,0) << " " << D(1,1) << " "<< D(1,2) << endl;
 	std::cout << D(2,0) << " " << D(2,1) << " "<< D(2,2) << endl;
 	std::cout << endl;
 
+	std::cout << endl;
+	std::cout << E(0,0) << " " << E(0,1) << " "<< E(0,2) << endl;
+	std::cout << E(1,0) << " " << E(1,1) << " "<< E(1,2) << endl;
+	std::cout << E(2,0) << " " << E(2,1) << " "<< E(2,2) << endl;
+	std::cout << endl;
 
-
+	std::cout << endl;
+	std::cout << L(0,0) << " " << L(0,1) << " "<< L(0,2) << endl;
+	std::cout << L(1,0) << " " << L(1,1) << " "<< L(1,2) << endl;
+	std::cout << L(2,0) << " " << L(2,1) << " "<< L(2,2) << endl;
+	std::cout << endl;	
+*/
 /*
 	std::cout << endl << "pos: " << pos[9].x() << "  " << pos[9].y() << "  " << pos[9].z() << "  " << endl;
 	std::cout << endl << "status: " << status[9] << endl;
