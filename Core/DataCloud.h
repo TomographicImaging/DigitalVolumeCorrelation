@@ -54,7 +54,7 @@ struct ResultRecord
 	double obj_min;			// value at minumum
 	
 	std::vector<double> par_min;	// parameters at min [ndof]
-	
+
 };
 
 /******************************************************************************/
@@ -86,11 +86,19 @@ public:
 	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
 						// [nnbr] may vary by point
 	
+	// vector of result records for a point
 	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
 	
+	// strain calculation results
+
+	// engineering strain components and principals
+	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
 	
-	
-	
+	// Lagrangian strain components and principals
+	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
+
+
+
 	// trial idea ... create subgroups within order based on resorting
 	// sub_groups contain indices of points in the main list
 	// could subdivide points into fixed-number groups, with last one smaller
