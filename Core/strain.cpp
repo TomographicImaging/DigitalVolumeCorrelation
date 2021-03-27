@@ -11,7 +11,10 @@ StrainCalc::StrainCalc ()
 
 	num_mod_para = 10;
 
-//	num_data_pts = 5;	// testing, straight line fit
+	num_data_points_min = 10;		// min number for the strain window size
+	num_data_points_max = 50;		// max number for the strain window size
+	num_data_points_def = 25;		// default number for the strain window size
+
 	
 }
 /******************************************************************************/
@@ -32,17 +35,26 @@ int main(int argc, char *argv[])
 	//	-> add strain results to DataCloud for potential visualization within gui (done)
 	//	-> manage output: E? L? principal values? principal vectors? user selects?
 
+	// for full cylinder test file ran determined (ndp 10) and the results look ok ... should this be min with recommended higher?
+	// ran a single slice (single z value) and it ran just fine, seems to give OK normal values anyway
+	// ran with exactly 
+
 	// can the strain command be issued out of the gui with the same command line argument style?
 
 	std::cout << endl << "strain calculation from strain main" << endl;
 
 	// this needs to go in constructor and coordinated with sorting routine in DataCloud
 	// manage number of points (ndp) in the strain window for the OLS fit
-	int ndp_min = 25;
-	int ndp_max = 50;
-	int ndp_default = 25;
-	int ndp = ndp_default;		// may be modified by command inputs
+
+	StrainCalc strain;
+
+	int ndp_min = strain.ndp_min();	
+	int ndp_max = strain.ndp_max();
+	int ndp = strain.ndp_def();		// may be modified by command inputs
 	std::string fname_disp;
+	std::string fname_base;
+	std::string fname_sort;
+	bool do_sort_read = false;
 
 	// command entered with no arguments
 	if (argc == 1)
@@ -50,8 +62,8 @@ int main(int argc, char *argv[])
 		std::cout << std::endl;
 		std::cout << "Strain command needs more input." << std::endl;
 		std::cout << "Options:" << std::endl;
-		std::cout << "strain dvc.disp" << "\t\t\t" << "( .disp file specified, run with sorting and default strain window of " << ndp_default << ")" << std::endl;
-		std::cout << "strain dvc.disp 30" << "\t\t" << "( .disp file specified, run with sorting and specified strain window between " << ndp_min << " and " << ndp_max << ")" << std::endl;
+		std::cout << "strain dvc.disp" << "\t\t\t" << "( .disp file specified, run with default strain window of " << strain.ndp_def() << ")" << std::endl;
+		std::cout << "strain dvc.disp 30" << "\t\t" << "( .disp file specified, run with strain window between " << strain.ndp_min() << " and " << strain.ndp_max() << ")" << std::endl;
 //		std::cout << "strain dvc.disp dvc.sort" << "\t" << "(identify .disp file, use existing .sort file and default strain window)" << std::endl;
 //		std::cout << "strain dvc.disp dvc.sort 25" << "\t" << "(identify .disp file, use existing .sort file and specified strain window)" << std::endl;
 		std::cout << std::endl;
@@ -70,9 +82,22 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 		input_disp.close();
-
 	}
-	std::cout << "using displcement file: " << fname_disp << std::endl;
+	std::cout << "using disp file: " << fname_disp << std::endl;
+	fname_base = fname_disp;
+	fname_base.erase(fname_base.end()-5, fname_base.end());
+	
+	// check for existence of an associated .sort file to read/use 
+	// if not available run sort and create a file for future use
+	fname_sort = fname_base + ".sort";
+	std::ifstream input_sort;
+	input_sort.open(fname_sort.c_str());
+	if (input_sort.good()) {
+		std::cout << "using sort file: " << fname_sort << std::endl;
+		do_sort_read = true;
+	}
+	input_sort.close();
+	
 
 	// command entered with two arguments
 	if (argc == 3)
@@ -106,15 +131,26 @@ int main(int argc, char *argv[])
 	//	2. read in an existing .sort file (-> needs writing)
 	// 		sorted_pc_file.open(fname + ".sort");
 
+	// read option
+	// call read function in InputRead
+	// put result into data.neigh (same as sort_order_neighbors does)
 
-	data.sort_order_neighbors(ndp_max);
-	data.write_sort_file(fname_disp,data.neigh);
+	if (do_sort_read) {
+		disp.read_sort_file(fname_sort,data.neigh);
+		std::cout << " back from read_sort_file \n";
+	}
+
+	// sort option
+	if (!do_sort_read) {
+		data.sort_order_neighbors(ndp_max);
+		data.write_sort_file(fname_base,data.neigh);
+	}
 
 	//***************
 
 	// set up for OLS
 
-	StrainCalc strain;
+	// StrainCalc strain;
 
 	int nmp = strain.nmp();				// set by poly model choice, fixed in constructor
 	int npts = data.points.size();		// total number of points in the .disp file
@@ -131,6 +167,7 @@ int main(int argc, char *argv[])
 
 	std::vector<double> lam(3);		// eigenvalues for a point
 	std::vector<double> str(9);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
+	std::vector<double> displ(3);		// u,v,w calculated from the fit equations
 
 	// model used for fitting, 3D quadratic polynomial
 	//    m  = c0 
@@ -146,6 +183,7 @@ int main(int argc, char *argv[])
 		std::vector<int> nbr_ind = data.neigh[i];
 
 		// find matrix scaling factor and load neighborhood vectors npos and ndis for current point
+		// using the distance to the current point (neighborhood center) for scaling 
 		Point origin(0.0, 0.0, 0.0);
 		double distance =  data.points[i].pt_dist(origin);
 		double scale = 1.0/distance;
@@ -161,7 +199,7 @@ int main(int argc, char *argv[])
 			ndis.push_back(sdis);
 		}
 
-		// scale the derivative calculation location
+		// scale the calculation location (x,y,z in the polyfit)
 		Point spos(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
 		for (unsigned int j=0; j<ndp; j++) {
@@ -190,10 +228,18 @@ int main(int argc, char *argv[])
 			rhs = Xm.transpose()*dvs.col(j);
 			par = XtXm.fullPivHouseholderQr().solve(rhs);
 
+			// deformation gradient
 			DG(j,0) = par(1) + 2*par(4)*spos.x() + par(7)*spos.y() + par(9)*spos.z();
 			DG(j,1) = par(2) + 2*par(5)*spos.y() + par(7)*spos.x() + par(8)*spos.z();
 			DG(j,2) = par(3) + 2*par(6)*spos.z() + par(8)*spos.y() + par(9)*spos.x();
+
+			// local volume fit displacement values
+			displ[j] = distance*( par(0) \
+								+ par(1)*spos.x() + par(2)*spos.y() + par(3)*spos.z() \
+								+ par(4)*spos.x()*spos.x() + par(5)*spos.y()*spos.y() + par(6)*spos.z()*spos.z() \
+								+ par(7)*spos.x()*spos.y() + par(8)*spos.y()*spos.z() + par(9)*spos.x()*spos.z() );
 		}
+		data.dis_vfit.push_back(displ);
 
 		// Engineering strain tensor
 
@@ -222,29 +268,52 @@ int main(int argc, char *argv[])
 
 	// output result files
 
-	std::string hdr = "n\tx\ty\tz\texx\teyy\tezz\texy\teyz\texz\tep1\tep2\tep3\n";
+	std::string hdr = "n\tx\ty\tz\tu_fit\tv_fit\tw_fit\texx\teyy\tezz\texy\teyz\texz\tep1\tep2\tep3\n";
+	std::string of_name;
 
+	// Engineering strain
 	std::ofstream strain_results_E;
-	strain_results_E.open(fname_disp + ".Estrain");
+	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr";
+	strain_results_E.open(of_name);
 	strain_results_E << hdr;
 	for (unsigned int i=0; i<data.points.size(); i++)
 	{
 		strain_results_E << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
+		for (auto &j : data.dis_vfit[i]){strain_results_E << j << "\t";}
 		for (auto &j : data.Estrain[i]){strain_results_E << j << "\t";}
 		strain_results_E << std::endl;
 	}
 	strain_results_E.close();
 
+	// Lagrangian strain
 	std::ofstream strain_results_L;
-	strain_results_L.open(fname_disp + ".Lstrain");
+	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr";
+	strain_results_L.open(of_name);
 	strain_results_L << hdr;
 	for (unsigned int i=0; i<data.points.size(); i++)
 	{
 		strain_results_L << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
+		for (auto &j : data.dis_vfit[i]){strain_results_L << j << "\t";}
 		for (auto &j : data.Lstrain[i]){strain_results_L << j << "\t";}
 		strain_results_L << std::endl;
 	}
 	strain_results_L.close();
+
+	/*
+	// Volume fit displacements output as standalone file
+	std::ofstream displacements;
+	hdr = "n\tx\ty\tz\tu_fit\tv_fit\tw_fit\n";
+	of_name = fname_base + "-sw" + std::to_string(ndp) + ".vfit";
+	displacements.open(of_name);
+	displacements << hdr;
+	for (unsigned int i=0; i<data.points.size(); i++)
+	{
+		displacements << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
+		for (auto &j : data.dis_vfit[i]){displacements << j << "\t";}
+		displacements << std::endl;
+	}	
+	displacements.close();
+	*/
 
 	return 0;
 }

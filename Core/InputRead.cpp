@@ -666,11 +666,64 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	return 1;
 }
 /******************************************************************************/
+int DispRead::read_sort_file(std::string fname, std::vector<std::vector<int>>  &neigh)
+{
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);
+
+	char eol;
+	std::string term;
+
+	check_eol(ifs, eol, term);
+
+	ifs.clear();
+	ifs.seekg(0, std::ios::beg);
+
+	int ptn = 0;
+	int index = 0;
+	int a_int;
+	
+	std::vector<int> a_int_vect = {};
+
+	std::string line;
+	std::istringstream ss;
+
+	int count_line = 0;
+	while (getline(ifs, line, eol))
+	{
+		line += term;
+		ss.str(line);
+
+		if (ss.fail()) {ss.clear(); continue;}
+
+		neigh.push_back(a_int_vect);
+
+	// this works as a for loop, but need to keep close track of number of neighbor points in .sort
+	// the while with check on ss read every other line
+		for (unsigned int j=0; j<50; j++)
+		//while (ss >> index) 
+		{
+			ss >> index;
+			neigh[count_line].push_back(a_int);
+			neigh[count_line][j] = index;
+		}
+
+		count_line += 1;
+	}
+
+	std::cout << "count_line = " << count_line << std::endl;
+
+	if (count_line == 0) 
+	{
+		std::cout << "\n";
+		std::cout << "No points were read, the .sort file may be improperly formatted.\n";
+		std::cout << "\n";
+		return 0;
+	}
+	return 1;
+}
+/******************************************************************************/
 int DispRead::read_disp_file(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis)
 {
-
-//	std::cout << std::endl << fname << std::endl;
-
 	std::ifstream ifs(fname.c_str(), std::ifstream::in);
 
 	char eol;
@@ -692,8 +745,6 @@ int DispRead::read_disp_file(std::string fname, std::vector<int> &label, std::ve
 
 	std::string line;
 	std::istringstream ss;
-
-	int trys = 1;
 
 	while (getline(ifs, line, eol))
 	{
@@ -734,8 +785,6 @@ int DispRead::read_disp_file(std::string fname, std::vector<int> &label, std::ve
 
 		count += 1;
 	}
-
-//	std::cout << "count = " << count << std::endl;
 
 	if (count == 0)
 	{

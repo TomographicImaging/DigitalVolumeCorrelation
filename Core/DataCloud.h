@@ -89,13 +89,16 @@ public:
 	// vector of result records for a point
 	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
 	
-	// strain calculation results
+	// results from the strain calculation executable
 
 	// engineering strain components and principals
 	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
 	
 	// Lagrangian strain components and principals
 	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
+
+	// displacement components computed at cloud locations from the volume fitting process
+	std::vector< std::vector<double> > dis_vfit;	// u,v,w
 
 
 

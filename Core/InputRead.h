@@ -203,6 +203,7 @@ public:
 
 	int read_disp_file(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis);
 
+	int read_sort_file(std::string fname, std::vector<std::vector<int>>  &neigh);
 
 private:
 
