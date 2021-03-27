@@ -56,14 +56,18 @@ public:
 	StrainCalc();
 
 	int nmp() const {return num_mod_para;}
-//	int ndp() const {return num_data_pts;}
+
+	int ndp_min() const {return num_data_points_min;}
+	int ndp_max() const {return num_data_points_max;}
+	int ndp_def() const {return num_data_points_def;}
 
 private:
 	
-	int num_mod_para;		// number of model parameters (terms in the polynomial)
-//	int num_data_pts;		// number of data (neighborhood) points
+	int num_mod_para;				// number of model parameters (terms in the polynomial)
 
-
+	int num_data_points_min;		// min number for the strain window size
+	int num_data_points_max;		// max number for the strain window size
+	int num_data_points_def;		// default number for the strain window size
 
 };
 /******************************************************************************/
