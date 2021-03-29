@@ -130,7 +130,7 @@ void DataCloud::sort_order_neighbors(int neigh_num_save)
 			if (omp_get_thread_num() == 0) {
 				int vi = n_threads * i;
 				if ((neigh.size() > inc) && (vi > inc - 1) && (vi%inc == 0)) {
-					std::cout << "approx sorting: " << vi << " of " << neigh.size() << "\n";
+					std::cout << "sorting status: " << vi << " of " << neigh.size() << "\n";
 				}
 			}
 		}
@@ -141,7 +141,7 @@ void DataCloud::sort_order_neighbors(int neigh_num_save)
 //			if (indx_dist[j].value <= neigh_dst_par) neigh[i].push_back(indx_dist[j].index);
 	
 	}
-	std::cout << "sorting finished, prepping for search ..." << std::endl;
+	std::cout << "sorting finished" << std::endl;
    
 
 
