@@ -710,7 +710,7 @@ int DispRead::read_sort_file(std::string fname, std::vector<std::vector<int>>  &
 		count_line += 1;
 	}
 
-	std::cout << "count_line = " << count_line << std::endl;
+//	std::cout << "count_line = " << count_line << std::endl;
 
 	if (count_line == 0) 
 	{

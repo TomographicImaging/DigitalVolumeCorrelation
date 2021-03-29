@@ -26,25 +26,7 @@ StrainCalc::StrainCalc ()
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
-	// Working, but still to do:
-	//	-> set up argc and argv for proper inputs, no inputs, etc. (started)
-	//	-> manage bad points in the .disp file
-	//		-> does read automatically bypass bad points?
-	//	-> do conditioning checks and trap poor OLS points
-	//	-> formalize outputs file with headers (done)
-	//	-> add strain results to DataCloud for potential visualization within gui (done)
-	//	-> manage output: E? L? principal values? principal vectors? user selects?
-
-	// for full cylinder test file ran determined (ndp 10) and the results look ok ... should this be min with recommended higher?
-	// ran a single slice (single z value) and it ran just fine, seems to give OK normal values anyway
-	// ran with exactly 
-
-	// can the strain command be issued out of the gui with the same command line argument style?
-
 	std::cout << endl << "strain calculation from strain main" << endl;
-
-	// this needs to go in constructor and coordinated with sorting routine in DataCloud
-	// manage number of points (ndp) in the strain window for the OLS fit
 
 	StrainCalc strain;
 
@@ -53,7 +35,8 @@ int main(int argc, char *argv[])
 	int ndp = strain.ndp_def();		// may be modified by command inputs
 	std::string fname_disp;
 	std::string fname_base;
-	std::string fname_sort;
+	std::string fname_sort_read;
+
 	bool do_sort_read = false;
 
 	// command entered with no arguments
@@ -64,8 +47,8 @@ int main(int argc, char *argv[])
 		std::cout << "Options:" << std::endl;
 		std::cout << "strain dvc.disp" << "\t\t\t" << "( .disp file specified, run with default strain window of " << strain.ndp_def() << ")" << std::endl;
 		std::cout << "strain dvc.disp 30" << "\t\t" << "( .disp file specified, run with strain window between " << strain.ndp_min() << " and " << strain.ndp_max() << ")" << std::endl;
-//		std::cout << "strain dvc.disp dvc.sort" << "\t" << "(identify .disp file, use existing .sort file and default strain window)" << std::endl;
-//		std::cout << "strain dvc.disp dvc.sort 25" << "\t" << "(identify .disp file, use existing .sort file and specified strain window)" << std::endl;
+		std::cout << "strain dvc.disp dvc.sort" << "\t" << "(identify .disp file, use existing .sort file and default strain window)" << std::endl;
+		std::cout << "strain dvc.disp dvc.sort 25" << "\t" << "(identify .disp file, use existing .sort file and specified strain window)" << std::endl;
 		std::cout << std::endl;
 		return 0;
 	}
@@ -86,34 +69,47 @@ int main(int argc, char *argv[])
 	std::cout << "using disp file: " << fname_disp << std::endl;
 	fname_base = fname_disp;
 	fname_base.erase(fname_base.end()-5, fname_base.end());
-	
-	// check for existence of an associated .sort file to read/use 
-	// if not available run sort and create a file for future use
-	fname_sort = fname_base + ".sort";
-	std::ifstream input_sort;
-	input_sort.open(fname_sort.c_str());
-	if (input_sort.good()) {
-		std::cout << "using sort file: " << fname_sort << std::endl;
-		do_sort_read = true;
-	}
-	input_sort.close();
-	
 
 	// command entered with two arguments
-	if (argc == 3)
+	// argv[2] could be a .sort filename or a window spec
+	if (argc >= 3)
 	{
-		// check validity of strain window spec
+		// check for sort file to read
+		fname_sort_read = argv[2];
+		std::ifstream input_sort_read;
+		input_sort_read.open(fname_sort_read.c_str());
+		if (input_sort_read.good())
+		{
+			std::cout << "using sort file: " << fname_sort_read << std::endl;			
+			do_sort_read = true;
+		} else {
+			do_sort_read = false;
+		}
+		input_sort_read.close();
+
+		// check for a valid strain window spec in either argc[2]
 		try {
 			ndp = std::stoi(argv[2]);
 		}
 		catch (const std::invalid_argument& ia) {
-			std::cout << "-> Need an integer for the strain window size.\n";
-			return 0;
 		}
-
 		if (ndp < ndp_min) ndp = ndp_min;
 		if (ndp > ndp_max) ndp = ndp_max;
 	} 
+
+	if (argc == 4)
+	{
+		try {
+			ndp = std::stoi(argv[3]);
+		}
+		catch (const std::invalid_argument& ia) {
+			std::cout << "-> put .sort file before the strain window size" << std::endl;
+		}
+		if (ndp < ndp_min) ndp = ndp_min;
+		if (ndp > ndp_max) ndp = ndp_max;
+	}
+
+	if (!do_sort_read) {std::cout << "sorting disp file" << std::endl;}
 	std::cout << "using strain window: " << ndp << std::endl;
 
 	// prepare local vectors and instantiate a data cloud for .disp file data storage
@@ -125,19 +121,25 @@ int main(int argc, char *argv[])
 	// read .disp file and check for success, read_disp_file prints error message
 	DispRead disp;
 	if (!disp.read_disp_file(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
+	int ndisp_pts = data.points.size();
 
 	// two options here:
 	//	1. establish neighbors by sorting the point cloud (done)
-	//	2. read in an existing .sort file (-> needs writing)
+	//	2. read in an existing .sort file 
 	// 		sorted_pc_file.open(fname + ".sort");
 
 	// read option
-	// call read function in InputRead
-	// put result into data.neigh (same as sort_order_neighbors does)
+	if (do_sort_read) { 
+		disp.read_sort_file(fname_sort_read,data.neigh);
+	}
+	int nsort_pts = data.neigh.size();
 
-	if (do_sort_read) {
-		disp.read_sort_file(fname_sort,data.neigh);
-		std::cout << " back from read_sort_file \n";
+	// check if .disp and .sort have equal numbers of points, revert to a new sort if not
+	if (ndisp_pts != nsort_pts) {
+		do_sort_read = false;
+		data.neigh = {};
+		std::cout << "-> different number of points in .disp and .sort" << std::endl;
+		std::cout << "-> creating a new sort file: " << fname_base + ".sort" << std::endl;
 	}
 
 	// sort option
