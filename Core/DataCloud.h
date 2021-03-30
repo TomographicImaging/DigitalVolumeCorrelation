@@ -89,6 +89,7 @@ public:
 	// vector of result records for a point
 	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
 	
+
 	// results from the strain calculation executable
 
 	// engineering strain components and principals
@@ -100,7 +101,11 @@ public:
 	// displacement components computed at cloud locations from the volume fitting process
 	std::vector< std::vector<double> > dis_vfit;	// u,v,w
 
+	// strain window radius (without half the subvol size) computed at cloud locations
+	std::vector<double> sw_rad;
 
+	// for variable neighborhood approaches, num of pts in the strain window
+	std::vector<int> pts_in_sw;
 
 	// trial idea ... create subgroups within order based on resorting
 	// sub_groups contain indices of points in the main list
