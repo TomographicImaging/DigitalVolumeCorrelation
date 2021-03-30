@@ -167,8 +167,8 @@ int main(int argc, char *argv[])
 	Eigen::MatrixXd DG = Eigen::MatrixXd(3,3);		// deformation gradient
 	Eigen::MatrixXd ST = Eigen::MatrixXd(3,3);		// strain tensor storage
 
-	std::vector<double> lam(3);		// eigenvalues for a point
-	std::vector<double> str(9);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
+	std::vector<double> lam(3);			// eigenvalues for a point
+	std::vector<double> str(9);			// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
 	std::vector<double> displ(3);		// u,v,w calculated from the fit equations
 
 	// model used for fitting, 3D quadratic polynomial
@@ -178,6 +178,9 @@ int main(int argc, char *argv[])
 	//       + c7*x*y + c8*y*z + c9*x*z
 
 	// loop for all points in the cloud
+
+	// TEST! undetermined system and no points
+	// ndp = 0;
 
 	for (unsigned int i=0; i<npts; i++) {
 
@@ -193,13 +196,38 @@ int main(int argc, char *argv[])
 		std::vector<Point> npos = {};
 		std::vector<Point> ndis = {};
 
-		// load neighborhood data vectors from full list
+		// The next step needs some careful throught.
+		// Only Point_Good results should go into the neighborhood (data.status == 0). 
+		// What if the user is using ndp = 10 and there aren't 10 good points within the 50?
+		// When should strain calc for a point not be done, and how reported (status code)?
+		// Should a size metric be reported (furthest point in the neighborhood)?
+		// R^2 values?
+		
+		// Surprisingly, the code just returns zeros for ndp of 0, and reasonable values for very low numbers in a neighborhood.
+		// e.g. with just 2 points, you get a linear fit in the direction of point span and a slope value for strain.
+		// An approach of not increasing strain window size but elminating points within is reasonable.
+		// Just need to report what is going on.
+
+		// with the for loop -- the size of the strain window is emphasized, with the number of points variable
+		// with the while loop -- the number of points is emphasized, with the size of the strain window variable
+		// both sw_radius and pts_in_sw are output for each point, making it possible to identify and manage poor points
+		// could be a defaule choice, with a command line option?
+
+		int np = 0;
+		int indx = 0;
 		for (unsigned int j=0; j<ndp; j++) {
-			Point spos(scale*data.points[nbr_ind[j]].x(), scale*data.points[nbr_ind[j]].y(), scale*data.points[nbr_ind[j]].z());
-			npos.push_back(spos);
-			Point sdis(scale*dis[nbr_ind[j]].x(), scale*dis[nbr_ind[j]].y(), scale*dis[nbr_ind[j]].z());
-			ndis.push_back(sdis);
+		//while ((np < ndp)&&(indx < ndp_max)) {
+			if (status[nbr_ind[indx]] == 0) {
+				Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
+				npos.push_back(spos);
+				Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
+				ndis.push_back(sdis);				
+				np += 1;
+			}
+			indx += 1;
 		}
+		data.sw_rad.push_back(data.points[i].pt_dist(data.points[nbr_ind[indx]]));
+		data.pts_in_sw.push_back(np);
 
 		// scale the calculation location (x,y,z in the polyfit)
 		Point spos(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
@@ -270,7 +298,7 @@ int main(int argc, char *argv[])
 
 	// output result files
 
-	std::string hdr = "n\tx\ty\tz\tu_fit\tv_fit\tw_fit\texx\teyy\tezz\texy\teyz\texz\tep1\tep2\tep3\n";
+	std::string hdr = "n\tx\ty\tz\tu_fit\tv_fit\tw_fit\tpts_in_sw\tsw_radius\texx\teyy\tezz\texy\teyz\texz\tep1\tep2\tep3\n";
 	std::string of_name;
 
 	// Engineering strain
@@ -282,6 +310,8 @@ int main(int argc, char *argv[])
 	{
 		strain_results_E << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
 		for (auto &j : data.dis_vfit[i]){strain_results_E << j << "\t";}
+		strain_results_E << data.pts_in_sw[i] << "\t";
+		strain_results_E << data.sw_rad[i] << "\t";
 		for (auto &j : data.Estrain[i]){strain_results_E << j << "\t";}
 		strain_results_E << std::endl;
 	}
@@ -296,6 +326,8 @@ int main(int argc, char *argv[])
 	{
 		strain_results_L << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
 		for (auto &j : data.dis_vfit[i]){strain_results_L << j << "\t";}
+		strain_results_L << data.pts_in_sw[i] << "\t";
+		strain_results_L << data.sw_rad[i] << "\t";
 		for (auto &j : data.Lstrain[i]){strain_results_L << j << "\t";}
 		strain_results_L << std::endl;
 	}
