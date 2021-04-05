@@ -15,14 +15,12 @@ StrainCalc::StrainCalc ()
 	num_data_points_max = 50;		// max number for the strain window size
 	num_data_points_def = 25;		// default number for the strain window size
 
+	objmin_thresh_min = 0.0001;		// only highly matched points used
+	objmin_thresh_max = 1.0;		// all points used
+	objmin_thresh_def = 1.0;		// default is no thresholding
 	
 }
 /******************************************************************************/
-
-
-
-
-
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
@@ -32,12 +30,18 @@ int main(int argc, char *argv[])
 
 	int ndp_min = strain.ndp_min();	
 	int ndp_max = strain.ndp_max();
-	int ndp = strain.ndp_def();		// may be modified by command inputs
+	int ndp = strain.ndp_def();			// may be modified by command inputs
+
+	double objt_min = strain.objt_min();
+	double objt_max = strain.objt_max();
+	double objt = strain.objt_def();	// may be modified by command inputs
+
 	std::string fname_disp;
 	std::string fname_base;
 	std::string fname_sort_read;
 
 	bool do_sort_read = false;
+	bool refill = false;				// try to fill neighborhood up to ndp, replacing (-r) bad and high objmin points
 
 	// command entered with no arguments
 	if (argc == 1)
@@ -72,6 +76,7 @@ int main(int argc, char *argv[])
 
 	// command entered with two arguments
 	// argv[2] could be a .sort filename or a window spec
+	// ? check for same file name as .disp but with .sort and try that one?
 	if (argc >= 3)
 	{
 		// check for sort file to read
@@ -79,8 +84,7 @@ int main(int argc, char *argv[])
 		std::ifstream input_sort_read;
 		input_sort_read.open(fname_sort_read.c_str());
 		if (input_sort_read.good())
-		{
-			std::cout << "using sort file: " << fname_sort_read << std::endl;			
+		{			
 			do_sort_read = true;
 		} else {
 			do_sort_read = false;
@@ -109,8 +113,31 @@ int main(int argc, char *argv[])
 		if (ndp > ndp_max) ndp = ndp_max;
 	}
 
-	if (!do_sort_read) {std::cout << "sorting disp file" << std::endl;}
-	std::cout << "using strain window: " << ndp << std::endl;
+	// check for command line option -t, set a threshold for including points in the strain windows
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare("-t") == 0) {
+			if (argc > i+1) {
+				try {
+					objt = std::stod(argv[i+1]);
+				}
+				catch (const std::invalid_argument& ia) {
+					std::cout << "-> after -t enter a number between " << strain.objt_min() << " (use only highly matched points) and 1.0 (use all points)" << std::endl;
+				}
+				if (objt < objt_min) objt = objt_min;
+				if (objt > objt_max) objt = objt_max;				
+			} else if (argc == i+1) {
+				std::cout << "-> after -t enter a number between " << strain.objt_min() << " (use only highly matched points) and 1.0 (use all points)" << std::endl;
+			}
+		} 
+	}
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare("-r") == 0) {
+			refill = true;
+		}
+	}
 
 	// prepare local vectors and instantiate a data cloud for .disp file data storage
 	std::vector<int> status;
@@ -131,45 +158,41 @@ int main(int argc, char *argv[])
 	// read option
 	if (do_sort_read) { 
 		disp.read_sort_file(fname_sort_read,data.neigh);
+		std::cout << "using sort file: " << fname_sort_read << std::endl;
 	}
 	int nsort_pts = data.neigh.size();
 
 	// check if .disp and .sort have equal numbers of points, revert to a new sort if not
-	if (ndisp_pts != nsort_pts) {
+	if ( (do_sort_read) && (ndisp_pts != nsort_pts) ){
 		do_sort_read = false;
 		data.neigh = {};
 		std::cout << "-> different number of points in .disp and .sort" << std::endl;
-		std::cout << "-> creating a new sort file: " << fname_base + ".sort" << std::endl;
 	}
 
 	// sort option
 	if (!do_sort_read) {
+		std::cout << "-> creating a new sort file: " << fname_base + ".sort" << std::endl;
 		data.sort_order_neighbors(ndp_max);
 		data.write_sort_file(fname_base,data.neigh);
 	}
 
-	//***************
+	// echo other run parameters and guide faulty commend line arguments
+	std::cout << "using strain window: " << ndp << std::endl;
 
-	// set up for OLS
+	if (objt == strain.objt_min()) {
+		std::cout << "using objmin thresh: " << objt << " (use only highly matched points)" << std::endl;
+	} else if (objt == strain.objt_max()) {
+		std::cout << "using objmin thresh: " << objt << " (use all points)" << std::endl;
+	} else {
+		std::cout << "using objmin thresh: " << objt << " " << std::endl;
+	}
 
-	// StrainCalc strain;
+	if (refill) {
+		std::cout << "using strain window refill " << std::endl;
+	}
 
-	int nmp = strain.nmp();				// set by poly model choice, fixed in constructor
-	int npts = data.points.size();		// total number of points in the .disp file
 
-	// OLS variables
-	Eigen::MatrixXd dvs = Eigen::MatrixXd(ndp,3);		// for u,v,w fits, use .col for individual access
-	Eigen::VectorXd rhs = Eigen::VectorXd(nmp);
-	Eigen::MatrixXd Xm = Eigen::MatrixXd(ndp,nmp);
-	Eigen::MatrixXd XtXm = Eigen::MatrixXd(nmp,nmp);
-	Eigen::VectorXd par = Eigen::VectorXd(nmp);			// the polynomial parameters, c0->9
-
-	Eigen::MatrixXd DG = Eigen::MatrixXd(3,3);		// deformation gradient
-	Eigen::MatrixXd ST = Eigen::MatrixXd(3,3);		// strain tensor storage
-
-	std::vector<double> lam(3);			// eigenvalues for a point
-	std::vector<double> str(9);			// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
-	std::vector<double> displ(3);		// u,v,w calculated from the fit equations
+	// *** StrainCalc strain;
 
 	// model used for fitting, 3D quadratic polynomial
 	//    m  = c0 
@@ -177,12 +200,7 @@ int main(int argc, char *argv[])
 	//       + c4*x^2 + c5*y^2 + c6*z^2 
 	//       + c7*x*y + c8*y*z + c9*x*z
 
-	// loop for all points in the cloud
-
-	// TEST! undetermined system and no points
-	// ndp = 0;
-
-	for (unsigned int i=0; i<npts; i++) {
+	for (unsigned int i=0; i<data.points.size(); i++) {
 
 		// get neighborhood indices for this point
 		std::vector<int> nbr_ind = data.neigh[i];
@@ -190,49 +208,73 @@ int main(int argc, char *argv[])
 		// find matrix scaling factor and load neighborhood vectors npos and ndis for current point
 		// using the distance to the current point (neighborhood center) for scaling 
 		Point origin(0.0, 0.0, 0.0);
-		double distance =  data.points[i].pt_dist(origin);
+		double distance = data.points[i].pt_dist(origin);
 		double scale = 1.0/distance;
+
+		// scale the calculation location (x,y,z in the polyfit)
+		Point base(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
 		std::vector<Point> npos = {};
 		std::vector<Point> ndis = {};
 
-		// The next step needs some careful throught.
-		// Only Point_Good results should go into the neighborhood (data.status == 0). 
-		// What if the user is using ndp = 10 and there aren't 10 good points within the 50?
-		// When should strain calc for a point not be done, and how reported (status code)?
-		// Should a size metric be reported (furthest point in the neighborhood)?
-		// R^2 values?
+		// establish neighborhoods and load neighbor position and displacement data
+
 		
-		// Surprisingly, the code just returns zeros for ndp of 0, and reasonable values for very low numbers in a neighborhood.
-		// e.g. with just 2 points, you get a linear fit in the direction of point span and a slope value for strain.
-		// An approach of not increasing strain window size but elminating points within is reasonable.
-		// Just need to report what is going on.
-
-		// with the for loop -- the size of the strain window is emphasized, with the number of points variable
-		// with the while loop -- the number of points is emphasized, with the size of the strain window variable
-		// both sw_radius and pts_in_sw are output for each point, making it possible to identify and manage poor points
-		// could be a defaule choice, with a command line option?
-
-		int np = 0;
-		int indx = 0;
-		for (unsigned int j=0; j<ndp; j++) {
-		//while ((np < ndp)&&(indx < ndp_max)) {
-			if (status[nbr_ind[indx]] == 0) {
-				Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
-				npos.push_back(spos);
-				Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-				ndis.push_back(sdis);				
-				np += 1;
+		if (!refill) {
+			int indx = 0;
+			for (unsigned int j=0; j<ndp; j++) {
+				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) ) {			
+					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
+					npos.push_back(spos);
+					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
+					ndis.push_back(sdis);				
+				}
+				indx += 1;	// generally would use j but the while loop version needs to count
 			}
-			indx += 1;
+		} else {
+			int indx = 0;
+			int np = 0;
+			while ( (np < ndp) && (indx < ndp_max) ) {
+				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) ) {			
+					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
+					npos.push_back(spos);
+					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
+					ndis.push_back(sdis);		
+					np += 1;		
+				}
+				indx += 1;
+			}
 		}
-		data.sw_rad.push_back(data.points[i].pt_dist(data.points[nbr_ind[indx]]));
-		data.pts_in_sw.push_back(np);
 
-		// scale the calculation location (x,y,z in the polyfit)
-		Point spos(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
-		for (unsigned int j=0; j<ndp; j++) {
+		// if no points in neigh then pts_in_sw becomes zero
+		data.pts_in_sw.push_back(npos.size());
+ 
+		if (npos.size() == 0) {
+			data.sw_rad.emplace_back(0.0);
+
+		} else {
+			data.sw_rad.emplace_back(distance*base.pt_dist(npos.back()));
+		}
+
+		int ngp = npos.size();		// number of good points, may be zero
+		int nmp = strain.nmp();				// set by poly model choice, fixed in constructor
+
+		// OLS variables sized to number of good points and reinitialized
+		Eigen::MatrixXd dvs = Eigen::MatrixXd(ngp,3);		// for u,v,w fits, use .col for individual access
+		Eigen::VectorXd rhs = Eigen::VectorXd(nmp);
+		Eigen::MatrixXd Xm = Eigen::MatrixXd(ngp,nmp);
+		Eigen::MatrixXd XtXm = Eigen::MatrixXd(nmp,nmp);
+		Eigen::VectorXd par = Eigen::VectorXd(nmp);			// the polynomial parameters, c0->9
+
+		Eigen::MatrixXd DG = Eigen::MatrixXd(3,3);		// deformation gradient
+		Eigen::MatrixXd ST = Eigen::MatrixXd(3,3);		// strain tensor storage
+
+		std::vector<double> lam(3);			// eigenvalues for a point
+		std::vector<double> str(9);			// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
+		std::vector<double> displ(3);		// u,v,w calculated from the fit equations
+
+		for (unsigned int j=0; j<ngp; j++) {	// not simply ndp, points may have different numbers of sw points
 			Xm(j,0) = 1;
 
 			Xm(j,1) = npos[j].x();
@@ -259,15 +301,15 @@ int main(int argc, char *argv[])
 			par = XtXm.fullPivHouseholderQr().solve(rhs);
 
 			// deformation gradient
-			DG(j,0) = par(1) + 2*par(4)*spos.x() + par(7)*spos.y() + par(9)*spos.z();
-			DG(j,1) = par(2) + 2*par(5)*spos.y() + par(7)*spos.x() + par(8)*spos.z();
-			DG(j,2) = par(3) + 2*par(6)*spos.z() + par(8)*spos.y() + par(9)*spos.x();
+			DG(j,0) = par(1) + 2*par(4)*base.x() + par(7)*base.y() + par(9)*base.z();
+			DG(j,1) = par(2) + 2*par(5)*base.y() + par(7)*base.x() + par(8)*base.z();
+			DG(j,2) = par(3) + 2*par(6)*base.z() + par(8)*base.y() + par(9)*base.x();
 
 			// local volume fit displacement values
 			displ[j] = distance*( par(0) \
-								+ par(1)*spos.x() + par(2)*spos.y() + par(3)*spos.z() \
-								+ par(4)*spos.x()*spos.x() + par(5)*spos.y()*spos.y() + par(6)*spos.z()*spos.z() \
-								+ par(7)*spos.x()*spos.y() + par(8)*spos.y()*spos.z() + par(9)*spos.x()*spos.z() );
+								+ par(1)*base.x() + par(2)*base.y() + par(3)*base.z() \
+								+ par(4)*base.x()*base.x() + par(5)*base.y()*base.y() + par(6)*base.z()*base.z() \
+								+ par(7)*base.x()*base.y() + par(8)*base.y()*base.z() + par(9)*base.x()*base.z() );
 		}
 		data.dis_vfit.push_back(displ);
 
@@ -332,22 +374,6 @@ int main(int argc, char *argv[])
 		strain_results_L << std::endl;
 	}
 	strain_results_L.close();
-
-	/*
-	// Volume fit displacements output as standalone file
-	std::ofstream displacements;
-	hdr = "n\tx\ty\tz\tu_fit\tv_fit\tw_fit\n";
-	of_name = fname_base + "-sw" + std::to_string(ndp) + ".vfit";
-	displacements.open(of_name);
-	displacements << hdr;
-	for (unsigned int i=0; i<data.points.size(); i++)
-	{
-		displacements << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
-		for (auto &j : data.dis_vfit[i]){displacements << j << "\t";}
-		displacements << std::endl;
-	}	
-	displacements.close();
-	*/
 
 	return 0;
 }

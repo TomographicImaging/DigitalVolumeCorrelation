@@ -61,6 +61,10 @@ public:
 	int ndp_max() const {return num_data_points_max;}
 	int ndp_def() const {return num_data_points_def;}
 
+	double objt_min() const {return objmin_thresh_min;}
+	double objt_max() const {return objmin_thresh_max;}
+	double objt_def() const {return objmin_thresh_def;}
+
 private:
 	
 	int num_mod_para;				// number of model parameters (terms in the polynomial)
@@ -68,6 +72,11 @@ private:
 	int num_data_points_min;		// min number for the strain window size
 	int num_data_points_max;		// max number for the strain window size
 	int num_data_points_def;		// default number for the strain window size
+
+	double objmin_thresh_min;		// min for objmin threshold
+	double objmin_thresh_max;		// max for objmin threshold
+	double objmin_thresh_def;		// default for objmin threshold
+
 
 };
 /******************************************************************************/
