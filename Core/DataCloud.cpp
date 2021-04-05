@@ -89,7 +89,7 @@ void DataCloud::sort_order_neighbors(int neigh_num_save)
 	
 
 	// *** get neighbors for each point	
-	std::cout << "sorting point cloud" << std::endl;
+//	std::cout << "sorting point cloud" << std::endl;
 	neigh.resize(points.size());
 
 	std::vector<std::vector<int>> save_neigh = {};
