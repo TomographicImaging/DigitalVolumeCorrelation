@@ -85,6 +85,10 @@ from ccpi.dvc.apps.dvc_runner import DVC_runner
 
 from eqt.ui import FormDialog
 
+import qdarkstyle
+from qdarkstyle.dark.palette import DarkPalette
+from qdarkstyle.light.palette import LightPalette
+
 __version__ = '21.0.0'
 
 class MainWindow(QMainWindow):
@@ -5830,6 +5834,9 @@ def main():
     # sys.stdout = log
 
     app = QtWidgets.QApplication([])
+    style = qdarkstyle.load_stylesheet(palette=DarkPalette)
+
+    app.setStyleSheet(style)
 
     window = MainWindow()
     window.show()

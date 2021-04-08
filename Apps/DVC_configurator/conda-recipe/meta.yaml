@@ -25,6 +25,7 @@ requirements:
     - docopt
     - matplotlib
     - openmp # [osx]
+    - qdarkstyle
     
 
     
