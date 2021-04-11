@@ -147,8 +147,14 @@ int main(int argc, char *argv[])
 
 	// read .disp file and check for success, read_disp_file prints error message
 	DispRead disp;
-	if (!disp.read_disp_file(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
+//	if (!disp.read_disp_file(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
+	if (!disp.read_disp_file_cst_sv(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
 	int ndisp_pts = data.points.size();
+
+
+//	return 0;
+
+
 
 	// two options here:
 	//	1. establish neighbors by sorting the point cloud (done)
@@ -165,12 +171,6 @@ int main(int argc, char *argv[])
 
 	std::cout << "nsort_pts =" << nsort_pts << std::endl;
 	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
-
-//	return 0;
-
-
-
-
 
 	// check if .disp and .sort have equal numbers of points, revert to a new sort if not
 	if ( (do_sort_read) && (ndisp_pts != nsort_pts) ){

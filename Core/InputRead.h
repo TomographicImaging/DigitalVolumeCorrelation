@@ -201,9 +201,13 @@ class CCPI_EXPORT DispRead: public InputRead
 {
 public:
 
-	int read_disp_file(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis);
+	int read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis);
 
 	int read_sort_file_cst_sv(std::string fname, std::vector<std::vector<int>>  &neigh);	// comma, space, or tab seperated variable
+
+	int get_val(std::stringstream &ss, int &val);
+	int get_val(std::stringstream &ss, double &val);
+	int get_val(std::stringstream &ss, Point &val);
 
 private:
 
