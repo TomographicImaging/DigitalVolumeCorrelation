@@ -157,10 +157,20 @@ int main(int argc, char *argv[])
 
 	// read option
 	if (do_sort_read) { 
-		disp.read_sort_file(fname_sort_read,data.neigh);
+	//	disp.read_sort_file(fname_sort_read,data.neigh);
+		disp.read_sort_file_cst_sv(fname_sort_read,data.neigh);
 		std::cout << "using sort file: " << fname_sort_read << std::endl;
 	}
 	int nsort_pts = data.neigh.size();
+
+	std::cout << "nsort_pts =" << nsort_pts << std::endl;
+	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
+
+//	return 0;
+
+
+
+
 
 	// check if .disp and .sort have equal numbers of points, revert to a new sort if not
 	if ( (do_sort_read) && (ndisp_pts != nsort_pts) ){
@@ -171,7 +181,7 @@ int main(int argc, char *argv[])
 
 	// sort option
 	if (!do_sort_read) {
-		std::cout << "-> creating a new sort file: " << fname_base + ".sort" << std::endl;
+		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
 		data.sort_order_neighbors(ndp_max);
 		data.write_sort_file(fname_base,data.neigh);
 	}
@@ -340,37 +350,37 @@ int main(int argc, char *argv[])
 
 	// output result files
 
-	std::string hdr = "n\tx\ty\tz\tu_fit\tv_fit\tw_fit\tpts_in_sw\tsw_radius\texx\teyy\tezz\texy\teyz\texz\tep1\tep2\tep3\n";
+	std::string hdr = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3\n";
 	std::string of_name;
 
 	// Engineering strain
 	std::ofstream strain_results_E;
-	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr";
+	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
 	strain_results_E.open(of_name);
 	strain_results_E << hdr;
 	for (unsigned int i=0; i<data.points.size(); i++)
 	{
-		strain_results_E << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
-		for (auto &j : data.dis_vfit[i]){strain_results_E << j << "\t";}
-		strain_results_E << data.pts_in_sw[i] << "\t";
-		strain_results_E << data.sw_rad[i] << "\t";
-		for (auto &j : data.Estrain[i]){strain_results_E << j << "\t";}
+		strain_results_E << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+		for (auto &j : data.dis_vfit[i]){strain_results_E << "," << j;}
+		strain_results_E << "," << data.pts_in_sw[i];
+		strain_results_E << "," << data.sw_rad[i];
+		for (auto &j : data.Estrain[i]){strain_results_E << "," << j;}
 		strain_results_E << std::endl;
 	}
 	strain_results_E.close();
 
 	// Lagrangian strain
 	std::ofstream strain_results_L;
-	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr";
+	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
 	strain_results_L.open(of_name);
 	strain_results_L << hdr;
 	for (unsigned int i=0; i<data.points.size(); i++)
 	{
-		strain_results_L << data.labels[i] << "\t" << data.points[i].x() << "\t" << data.points[i].y() << "\t" << data.points[i].z() << "\t";
-		for (auto &j : data.dis_vfit[i]){strain_results_L << j << "\t";}
-		strain_results_L << data.pts_in_sw[i] << "\t";
-		strain_results_L << data.sw_rad[i] << "\t";
-		for (auto &j : data.Lstrain[i]){strain_results_L << j << "\t";}
+		strain_results_L << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+		for (auto &j : data.dis_vfit[i]){strain_results_L << "," << j;}
+		strain_results_L << "," << data.pts_in_sw[i];
+		strain_results_L << "," << data.sw_rad[i];
+		for (auto &j : data.Lstrain[i]){strain_results_L << "," << j;}
 		strain_results_L << std::endl;
 	}
 	strain_results_L.close();

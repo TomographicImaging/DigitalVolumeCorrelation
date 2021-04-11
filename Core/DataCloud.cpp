@@ -24,13 +24,24 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 	std::cout << "Saving sorted pointcloud" << std::endl;
 
     std::ofstream sorted_pc_file;
-	sorted_pc_file.open(fname + ".sort");
+	sorted_pc_file.open(fname + ".sort.csv");
 	
+/*
 	for (auto &x : save_neigh) {
 		for (auto &k : x)
-			sorted_pc_file << k << " ";
+			sorted_pc_file << k << ",";
 		sorted_pc_file << std::endl;
 	}
+*/
+
+	for (unsigned int i=0; i<save_neigh.size(); i++) {
+		for (unsigned int j=0; j<save_neigh[i].size(); j++) {
+			if (j>0) {sorted_pc_file << ",";}
+			sorted_pc_file << save_neigh[i][j];
+		}
+		sorted_pc_file << std::endl;
+	}
+
 	sorted_pc_file.close();
 }
 /******************************************************************************/

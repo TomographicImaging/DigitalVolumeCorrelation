@@ -666,59 +666,47 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	return 1;
 }
 /******************************************************************************/
-int DispRead::read_sort_file(std::string fname, std::vector<std::vector<int>>  &neigh)
+int DispRead::read_sort_file_cst_sv(std::string fname, std::vector<std::vector<int>>  &neigh) 
 {
-	std::ifstream ifs(fname.c_str(), std::ifstream::in);
+	// checked with Mac and Windows generated .sort.csv files
+	// working without eol checks
+	// Windows files have \r at end of line (ss.peek()) but explicit check not needed
+	// Windows file did generate an extra line with no points at end, caught with the col_count check
 
-	char eol;
-	std::string term;
-
-	check_eol(ifs, eol, term);
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
 
 	ifs.clear();
 	ifs.seekg(0, std::ios::beg);
 
-	int ptn = 0;
-	int index = 0;
-	int a_int;
-	
-	std::vector<int> a_int_vect = {};
-
 	std::string line;
-	std::istringstream ss;
+	int val;
 
-	int count_line = 0;
-	while (getline(ifs, line, eol))
-	{
-		line += term;
-		ss.str(line);
+	int line_count = 0;					// not needed outside of read checking
+	while (getline(ifs, line)) {
+		std::stringstream ss(line);
+		std::vector<int> int_vect = {};
 
-		if (ss.fail()) {ss.clear(); continue;}
-
-		neigh.push_back(a_int_vect);
-
-	// this works as a for loop, but need to keep close track of number of neighbor points in .sort
-	// the while with check on ss read every other line
-		for (unsigned int j=0; j<50; j++)
-		//while (ss >> index) 
-		{
-			ss >> index;
-			neigh[count_line].push_back(a_int);
-			neigh[count_line][j] = index;
+		int col_count = 0;
+		while (ss >> val) {
+			int_vect.emplace_back(val);
+			if(ss.peek() == ',') ss.ignore();
+			if(ss.peek() == ' ') ss.ignore();
+			if(ss.peek() == '\t') ss.ignore();
+	//		if(ss.peek() == '\r') {
+	//			std::cout << "found slash r" << std::endl;
+	//		}
+			col_count += 1;
 		}
 
-		count_line += 1;
+		if (col_count > 0) {
+			neigh.emplace_back(int_vect);
+		}
+
+//		std::cout << "line_count, col_count = " << line_count << " " << col_count << std::endl;
+
+		line_count += 1;
 	}
 
-//	std::cout << "count_line = " << count_line << std::endl;
-
-	if (count_line == 0) 
-	{
-		std::cout << "\n";
-		std::cout << "No points were read, the .sort file may be improperly formatted.\n";
-		std::cout << "\n";
-		return 0;
-	}
 	return 1;
 }
 /******************************************************************************/
