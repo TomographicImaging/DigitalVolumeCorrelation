@@ -681,7 +681,7 @@ int DispRead::read_sort_file_cst_sv(std::string fname, std::vector<std::vector<i
 	std::string line;
 	int val;
 
-	int line_count = 0;					// not needed outside of read checking
+	int line_count = 0;
 	while (getline(ifs, line)) {
 		std::stringstream ss(line);
 		std::vector<int> int_vect = {};
@@ -700,86 +700,107 @@ int DispRead::read_sort_file_cst_sv(std::string fname, std::vector<std::vector<i
 
 		if (col_count > 0) {
 			neigh.emplace_back(int_vect);
+			line_count += 1;
 		}
-
-//		std::cout << "line_count, col_count = " << line_count << " " << col_count << std::endl;
-
-		line_count += 1;
 	}
+
+	// might change return if line_count = 0
 
 	return 1;
 }
 /******************************************************************************/
-int DispRead::read_disp_file(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis)
-{
-	std::ifstream ifs(fname.c_str(), std::ifstream::in);
+int DispRead::get_val(std::stringstream &ss, int &val) {
 
-	char eol;
-	std::string term;
+	if(ss >> val) {
+		if(ss.peek() == ',') ss.ignore();
+		if(ss.peek() == ' ') ss.ignore();
+		if(ss.peek() == '\t') ss.ignore();
+		return 1;
+	} else {
+		return 0;
+	}
 
-	check_eol(ifs, eol, term);
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, double &val) {
+
+	if(ss >> val) {
+		if(ss.peek() == ',') ss.ignore();
+		if(ss.peek() == ' ') ss.ignore();
+		if(ss.peek() == '\t') ss.ignore();
+		return 1;
+	} else {
+		return 0;
+	}
+
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, Point &val) {
+
+	double val_x, val_y, val_z;
+
+	if ( get_val(ss,val_x) && get_val(ss,val_y) && get_val(ss,val_z) ) {
+		val.move_to(val_x,val_y,val_z);
+		return 1;
+	} else {
+		return 0;
+	}
+
+}/******************************************************************************/
+int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis) {
+
+	// .disp file is:	n	x	y	z	status	objmin	u	v	w (int, 3xdouble->point, int, double, 3xdouble->point)
+	// ? define as a class and pass around that way?
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
 
 	ifs.clear();
 	ifs.seekg(0, std::ios::beg);
 
-	int a_label;
-	Point a_point(0.0, 0.0, 0.0);
-	double a_dbl;
-
-	int ptn = 0;
-	double ptx=0.0,pty=0.0,ptz=0.0;
-	double val = 0.0;
-	int count = 0;
-
 	std::string line;
-	std::istringstream ss;
 
-	while (getline(ifs, line, eol))
-	{
-		line += term;
-		ss.str(line);
+	int num_col = 9;		// to check line read success
+	int line_count = 0;	
 
-		ss >> ptn;
-		if (ss.fail()) {ss.clear(); continue;}
-		char c = ss.peek();
-		if ((c == '.')||(c == 'E')) {ss.clear(); continue;}
+	while (getline(ifs, line)) {
+		std::stringstream ss(line);
 
-		if (!(ss >> ptx)) {ss.clear(); continue;}
-		if (!(ss >> pty)) {ss.clear(); continue;}
-		if (!(ss >> ptz)) {ss.clear(); continue;}
+		int ival1,ival2;
+		double dval;
+		Point pval1(0.0, 0.0, 0.0);
+		Point pval2(0.0, 0.0, 0.0);
 
-		label.push_back(a_label);
-		label[count] = ptn;
+		int col_count = 0;
 
-		pos.push_back(a_point);
-		pos[count].move_to(ptx,pty,ptz);
+		if (get_val(ss,ival1)) { // n
+			col_count += 1;
+		}
 
-		ss >> ptn;
-//		if (ss.fail()) {ss.clear(); continue;}
-//		c = ss.peek();
-//		if ((c == '.')||(c == 'E')) {ss.clear(); continue;}
-		status.push_back(a_label);
-		status[count] = ptn;		
+		if (get_val(ss,pval1)) { // x,y,z
+			col_count += 3;
+		}
 
-		if (!(ss >> val)) {ss.clear(); continue;}
-		objmin.push_back(a_dbl);
-		objmin[count] = val;		
+		if (get_val(ss,ival2)) { // status
+			col_count += 1;
+		}
 
-		if (!(ss >> ptx)) {ss.clear(); continue;}
-		if (!(ss >> pty)) {ss.clear(); continue;}
-		if (!(ss >> ptz)) {ss.clear(); continue;}
-		dis.push_back(a_point);
-		dis[count].move_to(ptx,pty,ptz);
+		if (get_val(ss,dval)) { // objmin
+			col_count += 1;
+		}
 
-		count += 1;
-	}
+		if (get_val(ss,pval2)) { // u,v,w
+			col_count += 3;
+		}
 
-	if (count == 0)
-	{
-		std::cout << "\n";
-		std::cout << "No points were read, the .disp file may be improperly formatted.\n";
-		std::cout << "\n";
-		return 0;
+		if (col_count == num_col) {
+			label.emplace_back(ival1);
+			pos.emplace_back(pval1);
+			status.emplace_back(ival2);
+			objmin.emplace_back(dval);
+			dis.emplace_back(pval2);
+			line_count += 1;
+		}
+
 	}
 
 	return 1;
