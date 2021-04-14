@@ -511,7 +511,7 @@ It will be the first point in the file that is used as the reference point.")
                     else:
                         new_file_dest = os.path.join(tempfile.tempdir, file_name)
                     
-                    copy_worker = Worker(self.copy_file, f, new_file_dest)
+                    copy_worker = Worker(self.copy_file, start_location=f, end_location=new_file_dest)
                     self.threadpool.start(copy_worker)
                     files[file_num] = new_file_dest
                     file_num+=1
@@ -4656,9 +4656,6 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
     def load_session_new(self):
         self.NewSession()
         self.SessionSelectionWindow.close()
-
-
-
 
     def NewSession(self):
         self.RemoveTemp("new session")
