@@ -43,16 +43,26 @@ int main(int argc, char *argv[])
 	bool do_sort_read = false;
 	bool refill = false;				// try to fill neighborhood up to ndp, replacing (-r) bad and high objmin points
 
+	bool out_Estr = false;
+	bool out_Lstr = true;
+	bool out_dgrd = false;
+
 	// command entered with no arguments
 	if (argc == 1)
 	{
 		std::cout << std::endl;
 		std::cout << "Strain command needs more input." << std::endl;
-		std::cout << "Options:" << std::endl;
-		std::cout << "strain dvc.disp" << "\t\t\t" << "( .disp file specified, run with default strain window of " << strain.ndp_def() << ")" << std::endl;
-		std::cout << "strain dvc.disp 30" << "\t\t" << "( .disp file specified, run with strain window between " << strain.ndp_min() << " and " << strain.ndp_max() << ")" << std::endl;
-		std::cout << "strain dvc.disp dvc.sort" << "\t" << "(identify .disp file, use existing .sort file and default strain window)" << std::endl;
-		std::cout << "strain dvc.disp dvc.sort 25" << "\t" << "(identify .disp file, use existing .sort file and specified strain window)" << std::endl;
+		std::cout << "Command line options:" << std::endl;
+		std::cout << "strain dvc.disp.csv" << "\t\t\t" << "-> use dvc output file dvc.disp.csv, create sort file, use default strain window of " << strain.ndp_def() << std::endl;
+		std::cout << "strain dvc.disp.csv 30" << "\t\t\t" << "-> use dvc output file dvc.disp.csv, create sort file, use strain window between " << strain.ndp_min() << " and " << strain.ndp_max() << std::endl;
+		std::cout << "strain dvc.disp.csv dvc.sort.csv" << "\t" << "-> use dvc output file dvc.disp.csv and sort file dvc.sort.csv with default strain window" << std::endl;
+		std::cout << "strain dvc.disp.csv dvc.sort.csv 25" << "\t" << "-> use dvc output file dvc.disp.csv and sort file dvc.sort.csv with specified strain window" << std::endl;
+		std::cout << "Command line flags:" << std::endl;
+		std::cout << "\t" << "-t 0.01" << "\t\t" <<  "-> threshold strain windows, only use points with objmin below specified value (between "  << strain.objt_min() << " and " << strain.objt_max() << ")" << std::endl;
+		std::cout << "\t" << "-r" << "\t\t" <<  "-> refill strain window to replace points failing threshold (may expand strain window size)" << std::endl;
+		std::cout << "\t" << "-E" << "\t\t" <<	"-> add engineering strain output (default is Lagrangian)" << std::endl;
+		std::cout << "\t" << "-D" << "\t\t" <<	"-> add displacement gradient tensor output" << std::endl;
+		std::cout << "\t" << "-A" << "\t\t" <<	"-> write all output files" << std::endl;
 		std::cout << std::endl;
 		return 0;
 	}
@@ -70,9 +80,23 @@ int main(int argc, char *argv[])
 		}
 		input_disp.close();
 	}
+
+	// assuming disp file name has no extension or one or more .extensions
+	// work with the name up to the first extension to form output file names
+
 	std::cout << "using disp file: " << fname_disp << std::endl;
-	fname_base = fname_disp;
-	fname_base.erase(fname_base.end()-5, fname_base.end());
+
+	size_t fname_disp_length = fname_disp.length();
+	size_t fname_disp_to_dot = fname_disp.find_first_of(".");
+
+	if (fname_disp_to_dot == string::npos) {	// no dots in file name
+		fname_base = fname_disp;
+	} else {
+		fname_base = fname_disp;
+		fname_base.erase(fname_base.end() - (fname_disp_length - fname_disp_to_dot), fname_base.end());
+	}
+
+	//	std::cout << "fname_base = " << fname_base << std::endl;
 
 	// command entered with two arguments
 	// argv[2] could be a .sort filename or a window spec
@@ -101,13 +125,14 @@ int main(int argc, char *argv[])
 		if (ndp > ndp_max) ndp = ndp_max;
 	} 
 
-	if (argc == 4)
+	if (argc > 3)
+//	if (argc == 4)
 	{
 		try {
 			ndp = std::stoi(argv[3]);
 		}
 		catch (const std::invalid_argument& ia) {
-			std::cout << "-> put .sort file before the strain window size" << std::endl;
+//			std::cout << "-> put .sort file before the strain window size" << std::endl;
 		}
 		if (ndp < ndp_min) ndp = ndp_min;
 		if (ndp > ndp_max) ndp = ndp_max;
@@ -132,11 +157,27 @@ int main(int argc, char *argv[])
 		} 
 	}
 
+	// check for a subvolume refill option
 	for (unsigned int i=0; i<argc; i++) {
 		std::string argstr(argv[i]);
 		if (argstr.compare("-r") == 0) {
 			refill = true;
 		}
+	}
+
+	// check for output options, default is output Lstr
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare("-E") == 0) {
+			out_Estr = true;
+		}
+		if (argstr.compare("-D") == 0) {
+			out_dgrd = true;
+		}		
+		if (argstr.compare("-A") == 0) {
+			out_Estr = true;
+			out_dgrd = true;
+		}		
 	}
 
 	// prepare local vectors and instantiate a data cloud for .disp file data storage
@@ -209,6 +250,8 @@ int main(int argc, char *argv[])
 	//       + c1*x + c2*y + c3*z
 	//       + c4*x^2 + c5*y^2 + c6*z^2 
 	//       + c7*x*y + c8*y*z + c9*x*z
+
+	std::vector<Eigen::MatrixXd> DG_all_pts = {};	// store for output
 
 	for (unsigned int i=0; i<data.points.size(); i++) {
 
@@ -323,6 +366,8 @@ int main(int argc, char *argv[])
 		}
 		data.dis_vfit.push_back(displ);
 
+		DG_all_pts.emplace_back(DG);
+
 		// Engineering strain tensor
 
 		ST = 0.5*(DG + DG.transpose());
@@ -350,40 +395,70 @@ int main(int argc, char *argv[])
 
 	// output result files
 
-	std::string hdr = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3\n";
+	std::string hdr = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 	std::string of_name;
 
 	// Engineering strain
-	std::ofstream strain_results_E;
-	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
-	strain_results_E.open(of_name);
-	strain_results_E << hdr;
-	for (unsigned int i=0; i<data.points.size(); i++)
-	{
-		strain_results_E << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-		for (auto &j : data.dis_vfit[i]){strain_results_E << "," << j;}
-		strain_results_E << "," << data.pts_in_sw[i];
-		strain_results_E << "," << data.sw_rad[i];
-		for (auto &j : data.Estrain[i]){strain_results_E << "," << j;}
-		strain_results_E << std::endl;
+	if (out_Estr) {
+		std::ofstream strain_results_E;
+		of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
+		std::cout << "output file: " << of_name << std::endl;
+		strain_results_E.open(of_name);
+		strain_results_E << hdr << std::endl;
+		for (unsigned int i=0; i<data.points.size(); i++)
+		{
+			strain_results_E << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+			for (auto &j : data.dis_vfit[i]){strain_results_E << "," << j;}
+			strain_results_E << "," << data.pts_in_sw[i];
+			strain_results_E << "," << data.sw_rad[i];
+			for (auto &j : data.Estrain[i]){strain_results_E << "," << j;}
+			strain_results_E << std::endl;
+		}
+		strain_results_E.close();
 	}
-	strain_results_E.close();
 
 	// Lagrangian strain
-	std::ofstream strain_results_L;
-	of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
-	strain_results_L.open(of_name);
-	strain_results_L << hdr;
-	for (unsigned int i=0; i<data.points.size(); i++)
-	{
-		strain_results_L << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-		for (auto &j : data.dis_vfit[i]){strain_results_L << "," << j;}
-		strain_results_L << "," << data.pts_in_sw[i];
-		strain_results_L << "," << data.sw_rad[i];
-		for (auto &j : data.Lstrain[i]){strain_results_L << "," << j;}
-		strain_results_L << std::endl;
+	if (out_Lstr) {
+		std::ofstream strain_results_L;
+		of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
+		std::cout << "output file: " << of_name << std::endl;
+		strain_results_L.open(of_name);
+		strain_results_L << hdr << std::endl;
+		for (unsigned int i=0; i<data.points.size(); i++)
+		{
+			strain_results_L << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+			for (auto &j : data.dis_vfit[i]){strain_results_L << "," << j;}
+			strain_results_L << "," << data.pts_in_sw[i];
+			strain_results_L << "," << data.sw_rad[i];
+			for (auto &j : data.Lstrain[i]){strain_results_L << "," << j;}
+			strain_results_L << std::endl;
+		}
+		strain_results_L.close();
 	}
-	strain_results_L.close();
+
+
+	// displacement gradient
+	if (out_dgrd) {
+		std::ofstream dispgrad_results;
+		of_name = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
+		std::cout << "output file: " << of_name << std::endl;
+		dispgrad_results.open(of_name);
+		dispgrad_results << "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz" << std::endl;
+		for (unsigned int i=0; i<data.points.size(); i++) {
+			dispgrad_results << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+			for (auto &j : data.dis_vfit[i]){dispgrad_results << "," << j;}
+			dispgrad_results << "," << data.pts_in_sw[i];
+			dispgrad_results << "," << data.sw_rad[i];
+
+			for (unsigned int j=0; j<3; j++)
+				for (unsigned int k=0; k<3; k++)
+					dispgrad_results << "," << DG_all_pts[i](j,k);
+
+			dispgrad_results << std::endl;
+		}
+		dispgrad_results.close();
+	}
+
 
 	return 0;
 }
