@@ -4257,7 +4257,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         #Load Saved Session
         compress = self.SaveWindow.widgets['compress_field'].isChecked()
         self.SaveWindow.close()
-        self.SaveSession(self.SaveWindow.widgets['session_name_field'].text(), compress, QCloseEvent())
+        self.SaveSession(self.SaveWindow.widgets['session_name_field'].text(), compress, None)
         
 
     def save_quit_just_quit(self):
