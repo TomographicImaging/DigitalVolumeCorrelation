@@ -478,8 +478,8 @@ It will be the first point in the file that is used as the reference point.")
         widgetno += 1
 
         #button functions:
-        si_widgets['ref_browse'].clicked.connect(lambda: self.SelectImage(si_widgets['ref_file_label'],0,si_widgets['cor_browse']))
-        si_widgets['cor_browse'].clicked.connect(lambda: self.SelectImage(si_widgets['cor_file_label'],1,si_widgets['view_button']))
+        si_widgets['ref_browse'].clicked.connect(lambda: self.SelectImage(0, self.image, label=si_widgets['ref_file_label'], next_button=si_widgets['cor_browse']))
+        si_widgets['cor_browse'].clicked.connect(lambda: self.SelectImage(1, self.image, label=si_widgets['cor_file_label'], next_button=si_widgets['view_button']))
         si_widgets['view_button'].clicked.connect(self.view_and_load_images)
 
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea,dockWidget)
@@ -491,7 +491,7 @@ It will be the first point in the file that is used as the reference point.")
         self.resetRegistration()
         #del self.vis_widget_reg.frame.viewer
 
-    def SelectImage(self, label, image_var, next_button): 
+    def SelectImage(self, image_var, image, label=None, next_button=None): 
         #print("In select image")
         dialogue = QFileDialog()
         files = dialogue.getOpenFileNames(self,"Load Images")[0]
@@ -524,11 +524,12 @@ It will be the first point in the file that is used as the reference point.")
                 self.image_copied[image_var] = False
 
             if len(files) == 1: #@todo
-                if(self.image[image_var]):
-                    self.image[image_var]= files
+                if(image[image_var]):
+                    image[image_var]= files
                 else:
-                    self.image[image_var].append(files[0])
-                label.setText(os.path.basename(files[0]))
+                    image[image_var].append(files[0])
+                if label is not None:
+                    label.setText(os.path.basename(files[0]))
                 
             else:
                 # Make sure that the files are sorted 0 - end
@@ -544,14 +545,12 @@ It will be the first point in the file that is used as the reference point.")
                         error_text = "Error reading file: ({filename})".format(filename=f)
                         self.displayFileErrorDialog(message=error_text, title=error_title)
                         return #prevents dialog showing for every single file by exiting the for loop
-                if(self.image[image_var]):
-                    self.image[image_var] = filenames
-                else:
-                    self.image[image_var]=filenames
-                label.setText(os.path.basename(self.image[image_var][0]) + " + " + str(len(files)) + " more files.")
-            
-            next_button.setEnabled(True)
-            #print(self.vis_widget_2D.image_file)
+                image[image_var] = filenames
+                if label is not None:
+                    label.setText(os.path.basename(self.image[image_var][0]) + " + " + str(len(files)) + " more files.")
+
+            if next_button is not None:
+                next_button.setEnabled(True)
 
     def copy_file(self, **kwargs):
         
@@ -586,12 +585,14 @@ It will be the first point in the file that is used as the reference point.")
         self.progress_window.setValue(100)
 
 
-    def displayFileErrorDialog(self, message, title):
+    def displayFileErrorDialog(self, message, title, action_button=None):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle(title)
         msg.setText(message)
         msg.setDetailedText(self.e.ErrorMessage())
+        if action_button is not None:
+            msg.addButton(action_button, msg.ActionRole)
         msg.exec_()
 
     def view_image(self):
@@ -4738,7 +4739,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         os.remove(selected_file)
         if progress_callback is not None:
             progress_callback.emit(100)
-       
+
     def LoadSession(self):
         self.resetRegistration()
         
@@ -4797,36 +4798,46 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                         path = i
                         self.image[j].append(i)
                     if not os.path.exists(path):
-                            self.e(
-                            '', '', 'This file has been deleted or moved to another location. Therefore this session cannot be loaded. \
-Please move the file back to this location and reload the session, select a different session to load or start a new session')
-                            error_title = "READ ERROR"
-                            error_text = "Error reading file: ({filename})".format(filename=i)
-                            self.displayFileErrorDialog(message=error_text, title=error_title)
-                            return #Exits the LoadSession function
-
-                
-                for i in self.config['dvc_input_image'][j]:
-
-                    #save paths to images to variable
-                    if self.config['image_copied'][j]:
-                        path = os.path.abspath(os.path.join(tempfile.tempdir, i))
-                        # print("The DVC input path is")
-                        # print(path)
-                        self.dvc_input_image[j].append(path)
-                    elif('dvc_input_image_in_session_folder' in self.config):
-                        self.dvc_input_image_in_session_folder = self.config['dvc_input_image_in_session_folder']
-                    else:
-                        path = i
-                        self.dvc_input_image[j].append(i)
-                    if not os.path.exists(path):
+                        search_button = QPushButton('Select Image')
+                        search_button.clicked.connect(lambda: self.SelectImage(j,self.image))
                         self.e(
                         '', '', 'This file has been deleted or moved to another location. Therefore this session cannot be loaded. \
 Please move the file back to this location and reload the session, select a different session to load or start a new session')
                         error_title = "READ ERROR"
                         error_text = "Error reading file: ({filename})".format(filename=i)
-                        self.displayFileErrorDialog(message=error_text, title=error_title)
-                        return #Exits the LoadSession function
+                        self.displayFileErrorDialog(message=error_text, title=error_title, action_button=search_button)
+
+
+                if self.config['dvc_input_image'] == self.config['image']:
+                    self.dvc_input_image = copy.deepcopy(self.image)
+                else:
+                    for num, i in enumerate(self.config['dvc_input_image'][j]):
+
+                        #save paths to images to variable
+                        if self.config['image_copied'][j]:
+                            path = os.path.abspath(os.path.join(tempfile.tempdir, i))
+                            # print("The DVC input path is")
+                            # print(path)
+                            self.dvc_input_image[j].append(path)
+                        elif('dvc_input_image_in_session_folder' in self.config):
+                            #TODO: check this?
+                            self.dvc_input_image_in_session_folder = self.config['dvc_input_image_in_session_folder']
+                        else:
+                            path = i
+                            self.dvc_input_image[j].append(i)
+                        if not os.path.exists(path):
+                            if [path] == self.image[j][num]:
+                                self.dvc_input_image.append(self.image[j][num])
+
+                            else:
+                                search_button = QPushButton('Select Image')
+                                search_button.clicked.connect(lambda: self.SelectImage(j,self.dvc_input_image))
+                                self.e(
+                                '', '', 'This file has been deleted or moved to another location. Therefore this session cannot be loaded. \
+        Please move the file back to this location and reload the session, select a different session to load or start a new session')
+                                error_title = "READ ERROR"
+                                error_text = "Error reading file: ({filename})".format(filename=i)
+                                self.displayFileErrorDialog(message=error_text, title=error_title, action_button=search_button)
             
              # Set labels to display file names:
             if len(self.config['image'][0])>1:
