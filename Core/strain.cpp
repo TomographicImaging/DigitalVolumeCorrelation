@@ -21,6 +21,85 @@ StrainCalc::StrainCalc ()
 	
 }
 /******************************************************************************/
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[]) 
+{
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val) 
+{
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stoi(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;		// return success
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+
+		// no next argument on command line
+		std::cout << "no argument after " << flag << " flag" << std::endl;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val) 
+{
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stod(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;		// return success
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+
+		// no next argument on command line
+		std::cout << "no argument after " << flag << " flag" << std::endl;
+		}
+	}
+	return 0;
+}
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
@@ -49,6 +128,9 @@ int main(int argc, char *argv[])
 
 	// command entered with no arguments
 	if (argc == 1)
+
+	// ** update for new argument read process
+
 	{
 		std::cout << std::endl;
 		std::cout << "Strain command needs more input." << std::endl;
@@ -66,6 +148,39 @@ int main(int argc, char *argv[])
 		std::cout << std::endl;
 		return 0;
 	}
+
+	// ** seg fault if disp and sort file are swapped, or both disp or both sort, need to check file contents in some way
+
+	// look for the flag then take it out and adjust argc and argv accordingly
+
+	if (strain.find_flag("-sw", argc, argv, ndp)) {	// strain window number of points
+		if (ndp < ndp_min) ndp = ndp_min;
+		if (ndp > ndp_max) ndp = ndp_max;
+	} 
+
+	if (strain.find_flag("-t", argc, argv, objt)) { // objmin threshold
+		if (objt < objt_min) objt = objt_min;
+		if (objt > objt_max) objt = objt_max;	
+	} 
+
+	if (strain.find_flag("-r", argc, argv)) {		// use strain window refill option
+		refill = true;
+	}
+
+	if (strain.find_flag("-E", argc, argv)) {
+		out_Estr = true;
+	}
+
+	if (strain.find_flag("-D", argc, argv)) {
+		out_dgrd = true;
+	}
+
+	if (strain.find_flag("-A", argc, argv)) {
+		out_Estr = true;
+		out_dgrd = true;
+	}
+
+
 
 	// process first command argument
 	if (argc > 1) {
@@ -114,70 +229,6 @@ int main(int argc, char *argv[])
 			do_sort_read = false;
 		}
 		input_sort_read.close();
-
-		// check for a valid strain window spec in either argc[2]
-		try {
-			ndp = std::stoi(argv[2]);
-		}
-		catch (const std::invalid_argument& ia) {
-		}
-		if (ndp < ndp_min) ndp = ndp_min;
-		if (ndp > ndp_max) ndp = ndp_max;
-	} 
-
-	if (argc > 3)
-//	if (argc == 4)
-	{
-		try {
-			ndp = std::stoi(argv[3]);
-		}
-		catch (const std::invalid_argument& ia) {
-//			std::cout << "-> put .sort file before the strain window size" << std::endl;
-		}
-		if (ndp < ndp_min) ndp = ndp_min;
-		if (ndp > ndp_max) ndp = ndp_max;
-	}
-
-	// check for command line option -t, set a threshold for including points in the strain windows
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare("-t") == 0) {
-			if (argc > i+1) {
-				try {
-					objt = std::stod(argv[i+1]);
-				}
-				catch (const std::invalid_argument& ia) {
-					std::cout << "-> after -t enter a number between " << strain.objt_min() << " (use only highly matched points) and 1.0 (use all points)" << std::endl;
-				}
-				if (objt < objt_min) objt = objt_min;
-				if (objt > objt_max) objt = objt_max;				
-			} else if (argc == i+1) {
-				std::cout << "-> after -t enter a number between " << strain.objt_min() << " (use only highly matched points) and 1.0 (use all points)" << std::endl;
-			}
-		} 
-	}
-
-	// check for a subvolume refill option
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare("-r") == 0) {
-			refill = true;
-		}
-	}
-
-	// check for output options, default is output Lstr
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare("-E") == 0) {
-			out_Estr = true;
-		}
-		if (argstr.compare("-D") == 0) {
-			out_dgrd = true;
-		}		
-		if (argstr.compare("-A") == 0) {
-			out_Estr = true;
-			out_dgrd = true;
-		}		
 	}
 
 	// prepare local vectors and instantiate a data cloud for .disp file data storage

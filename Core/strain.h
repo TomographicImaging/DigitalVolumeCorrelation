@@ -55,6 +55,10 @@ class CCPI_EXPORT StrainCalc
 public:
 	StrainCalc();
 
+	int find_flag(std::string flag, int &argc, char *argv[]);
+	int find_flag(std::string flag, int &argc, char *argv[], int &val);
+	int find_flag(std::string flag, int &argc, char *argv[], double &val);
+
 	int nmp() const {return num_mod_para;}
 
 	int ndp_min() const {return num_data_points_min;}
