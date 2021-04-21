@@ -1,4 +1,4 @@
-import pysnooper
+# import pysnooper
 import sys
 from PySide2 import QtCore, QtWidgets, QtGui
 from PySide2.QtCore import QThreadPool, QRegExp, QSize, Qt, QSettings, QByteArray
