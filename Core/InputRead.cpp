@@ -692,9 +692,6 @@ int DispRead::read_sort_file_cst_sv(std::string fname, std::vector<std::vector<i
 			if(ss.peek() == ',') ss.ignore();
 			if(ss.peek() == ' ') ss.ignore();
 			if(ss.peek() == '\t') ss.ignore();
-	//		if(ss.peek() == '\r') {
-	//			std::cout << "found slash r" << std::endl;
-	//		}
 			col_count += 1;
 		}
 
@@ -754,6 +751,8 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
 
+std::cout << fname << std::endl;
+
 	ifs.clear();
 	ifs.seekg(0, std::ios::beg);
 
@@ -761,9 +760,18 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	int num_col = 9;		// to check line read success
 	int line_count = 0;	
+	int loop_count = 0;
 
 	while (getline(ifs, line)) {
 		std::stringstream ss(line);
+
+		// use header line to judge whether or not this is a .disp file
+		if (loop_count == 0) {
+			if(ss.peek() != 'n') {
+				std::cout << "-> .disp file lacks proper header, check command line arguments" << std::endl;
+				return 0;
+			}
+		}
 
 		int ival1,ival2;
 		double dval;
@@ -786,7 +794,7 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 		if (get_val(ss,dval)) { // objmin
 			col_count += 1;
-		}
+		} 
 
 		if (get_val(ss,pval2)) { // u,v,w
 			col_count += 3;
@@ -801,6 +809,7 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 			line_count += 1;
 		}
 
+		loop_count += 1;
 	}
 
 	return 1;

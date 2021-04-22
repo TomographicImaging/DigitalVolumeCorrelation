@@ -1,28 +1,22 @@
 #include "strain.h"
 
-
-
-
-
-
 /******************************************************************************/
 StrainCalc::StrainCalc ()
 {
-
 	num_mod_para = 10;
 
 	num_data_points_min = 10;		// min number for the strain window size
-	num_data_points_max = 50;		// max number for the strain window size
 	num_data_points_def = 25;		// default number for the strain window size
+	// max comes from DataCloud .sort file setting
 
 	objmin_thresh_min = 0.0001;		// only highly matched points used
 	objmin_thresh_max = 1.0;		// all points used
 	objmin_thresh_def = 1.0;		// default is no thresholding
-	
 }
 /******************************************************************************/
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[]) 
 {
+	// loop through current arg list, if flag found, remove from list and return true
 
 	for (unsigned int i=0; i<argc; i++) {
 		std::string argstr(argv[i]);
@@ -39,7 +33,6 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
 /******************************************************************************/
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val) 
 {
-
 	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
 		std::string argstr(argv[i]);
 		if (argstr.compare(flag) == 0) {			// found the flag
@@ -50,7 +43,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 						argv[j] = argv[j+2];
 					}
 					argc -= 2;
-					return 1;		// return success
+					return 1;						// return true
 				}
 				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
 					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
@@ -61,9 +54,9 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 					return 0;
 				}
 			}	
-
-		// no next argument on command line
-		std::cout << "no argument after " << flag << " flag" << std::endl;
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
 		}
 	}
 	return 0;
@@ -71,7 +64,6 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 /******************************************************************************/
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val) 
 {
-
 	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
 		std::string argstr(argv[i]);
 		if (argstr.compare(flag) == 0) {			// found the flag
@@ -93,9 +85,27 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val
 					return 0;
 				}
 			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
+{
+	// clear extraneous flags
 
-		// no next argument on command line
-		std::cout << "no argument after " << flag << " flag" << std::endl;
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(pos, len, flag) == 0) {
+			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
 		}
 	}
 	return 0;
@@ -103,56 +113,68 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val
 /******************************************************************************/
 int main(int argc, char *argv[])
 {
-	std::cout << endl << "strain calculation from strain main" << endl;
+	std::cout << std::endl;
 
-	StrainCalc strain;
+	StrainCalc strain;		// instantiate StrainCalc object to set fixed run parameters and default values
+	DataCloud data;			// instantiate DataCloud object to access .sort file settings and set up storage
 
 	int ndp_min = strain.ndp_min();	
-	int ndp_max = strain.ndp_max();
-	int ndp = strain.ndp_def();			// may be modified by command inputs
+	int ndp_max = data.nbr_num_save();		// this coordinates with .sort file management
+	int ndp = strain.ndp_def();
 
 	double objt_min = strain.objt_min();
 	double objt_max = strain.objt_max();
-	double objt = strain.objt_def();	// may be modified by command inputs
+	double objt = strain.objt_def();
 
 	std::string fname_disp;
 	std::string fname_base;
 	std::string fname_sort_read;
 
+	// all of these may be modified by command line inputs
 	bool do_sort_read = false;
-	bool refill = false;				// try to fill neighborhood up to ndp, replacing (-r) bad and high objmin points
-
+	bool refill = false;
 	bool out_Estr = false;
 	bool out_Lstr = true;
 	bool out_dgrd = false;
 
 	// command entered with no arguments
 	if (argc == 1)
-
-	// ** update for new argument read process
-
 	{
-		std::cout << std::endl;
 		std::cout << "Strain command needs more input." << std::endl;
-		std::cout << "Command line options:" << std::endl;
-		std::cout << "strain dvc.disp.csv" << "\t\t\t" << "-> use dvc output file dvc.disp.csv, create sort file, use default strain window of " << strain.ndp_def() << std::endl;
-		std::cout << "strain dvc.disp.csv 30" << "\t\t\t" << "-> use dvc output file dvc.disp.csv, create sort file, use strain window between " << strain.ndp_min() << " and " << strain.ndp_max() << std::endl;
-		std::cout << "strain dvc.disp.csv dvc.sort.csv" << "\t" << "-> use dvc output file dvc.disp.csv and sort file dvc.sort.csv with default strain window" << std::endl;
-		std::cout << "strain dvc.disp.csv dvc.sort.csv 25" << "\t" << "-> use dvc output file dvc.disp.csv and sort file dvc.sort.csv with specified strain window" << std::endl;
-		std::cout << "Command line flags:" << std::endl;
-		std::cout << "\t" << "-t 0.01" << "\t\t" <<  "-> threshold strain windows, only use points with objmin below specified value (between "  << strain.objt_min() << " and " << strain.objt_max() << ")" << std::endl;
-		std::cout << "\t" << "-r" << "\t\t" <<  "-> refill strain window to replace points failing threshold (may expand strain window size)" << std::endl;
-		std::cout << "\t" << "-E" << "\t\t" <<	"-> add engineering strain output (default is Lagrangian)" << std::endl;
-		std::cout << "\t" << "-D" << "\t\t" <<	"-> add displacement gradient tensor output" << std::endl;
-		std::cout << "\t" << "-A" << "\t\t" <<	"-> write all output files" << std::endl;
+		std::cout << std::endl << "Command line:" << std::endl;
+		std::cout << "strain dvc.disp.csv" << std::endl;
+		std::cout << "  • use dvc output file dvc.disp.csv, create sort file, use default run settings"  << std::endl;
+		std::cout << "  • it is much more efficient to read an eisting .sort file, particularly for large point clouds"  << std::endl;
+		std::cout << "  • but the strain command will run with only a .disp file, creating a .sort file in the process for subsequent use"  << std::endl;
+		std::cout << "strain dvc.disp.csv dvc.sort.csv" << std::endl;
+		std::cout << "  • use dvc output file dvc.disp.csv and sort file dvc.sort.csv, use default run settings"  << std::endl;
+		std::cout << "  • use either a .sort file created during the dvc run or one created during an initial strain run"  << std::endl;
+		
+		std::cout << std::endl << "Default settings:" << std::endl;
+		std::cout << "strain window = " << strain.ndp_def() << " points (min = " << strain.ndp_min() << ", max = " << data.nbr_num_save() << ")" << std::endl;
+		std::cout << "  • reset with -sw flag" << std::endl;
+		std::cout << "objmin threshold = " << strain.objt_def() << " (min = " << strain.objt_min() << ", max = " << strain.objt_def() << ")" << std::endl;
+		std::cout << "  • values lower than the threshold are used in filling the strain window" << std::endl;
+		std::cout << "  • the default value of 1.0 passes all convergent points into the strain window" << std::endl;
+		std::cout << "  • reset with -t flag" << std::endl;
+		std::cout << "output Lagrangian strain values" << std::endl;
+		std::cout << "  • adjust output with -E, -D, and -A flags" << std::endl;
+
+		std::cout << std::endl << "Command line flags:" << std::endl;
+		std::cout << "-sw 30" << "\t\t" <<  " • specify a target number of points for the strain windows (e.g. 30)" << std::endl;
+		std::cout << "-t 0.01" << "\t\t" <<  " • specify the objmin threshold value (e.g. 0.01)" << std::endl;
+		std::cout << "-r" << "\t\t" <<  " • refill strain window to replace points failing threshold (may expand strain window size)" << std::endl;
+		std::cout << "-E" << "\t\t" <<	" • add engineering strain output (default is Lagrangian)" << std::endl;
+		std::cout << "-D" << "\t\t" <<	" • add displacement gradient tensor output" << std::endl;
+		std::cout << "-A" << "\t\t" <<	" • write all output files" << std::endl;
 		std::cout << std::endl;
 		return 0;
 	}
 
-	// ** seg fault if disp and sort file are swapped, or both disp or both sort, need to check file contents in some way
+	// process command line flags first
+	// look for the flag, adjust run settings, then take it out and adjust argc and argv accordingly
 
-	// look for the flag then take it out and adjust argc and argv accordingly
-
+	// run control settings
 	if (strain.find_flag("-sw", argc, argv, ndp)) {	// strain window number of points
 		if (ndp < ndp_min) ndp = ndp_min;
 		if (ndp > ndp_max) ndp = ndp_max;
@@ -167,6 +189,8 @@ int main(int argc, char *argv[])
 		refill = true;
 	}
 
+	// output file control
+	// the default output is Lagrangian strains
 	if (strain.find_flag("-E", argc, argv)) {
 		out_Estr = true;
 	}
@@ -180,45 +204,41 @@ int main(int argc, char *argv[])
 		out_dgrd = true;
 	}
 
+	// clear any extraneous flags, find_flag writes an output message if found
+	strain.find_flag(0, 1, "-", argc, argv);
 
-
-	// process first command argument
-	if (argc > 1) {
-		// check for .disp file
+	// argc and argv now contain just possible input file names
+	// look for a readable file as the first argument, set as .disp file
+	if (argc > 1) 
+	{
 		fname_disp = argv[1];
 		std::ifstream input_disp;
 		input_disp.open(fname_disp.c_str());
 		if (!input_disp.good())
 		{
-			std::cout << "\nCannot find .disp file '" << fname_disp << "'\n\n" ;
+			std::cout << "-> cannot find .disp file '" << fname_disp << std::endl;
 			return 0;
 		}
 		input_disp.close();
 	}
 
-	// assuming disp file name has no extension or one or more .extensions
+	// use .disp file name to develop output file names
+	// assumes .disp file name has no extension or one or more .extensions
 	// work with the name up to the first extension to form output file names
 
 	std::cout << "using disp file: " << fname_disp << std::endl;
-
 	size_t fname_disp_length = fname_disp.length();
 	size_t fname_disp_to_dot = fname_disp.find_first_of(".");
-
 	if (fname_disp_to_dot == string::npos) {	// no dots in file name
 		fname_base = fname_disp;
-	} else {
+	} else {									// remove everything past first dot for base name
 		fname_base = fname_disp;
 		fname_base.erase(fname_base.end() - (fname_disp_length - fname_disp_to_dot), fname_base.end());
 	}
 
-	//	std::cout << "fname_base = " << fname_base << std::endl;
-
-	// command entered with two arguments
-	// argv[2] could be a .sort filename or a window spec
-	// ? check for same file name as .disp but with .sort and try that one?
-	if (argc >= 3)
+	// look for a readable file as the second argument, set as .sort file
+	if (argc > 2)
 	{
-		// check for sort file to read
 		fname_sort_read = argv[2];
 		std::ifstream input_sort_read;
 		input_sort_read.open(fname_sort_read.c_str());
@@ -226,6 +246,7 @@ int main(int argc, char *argv[])
 		{			
 			do_sort_read = true;
 		} else {
+			std::cout << "-> cannot find .sort file " << fname_sort_read << std::endl;
 			do_sort_read = false;
 		}
 		input_sort_read.close();
@@ -235,27 +256,21 @@ int main(int argc, char *argv[])
 	std::vector<int> status;
 	std::vector<double> objmin;
 	std::vector<Point> dis;
-	DataCloud data;
 
-	// read .disp file and check for success, read_disp_file prints error message
+	// read .disp file and check for success
+	// read_disp_file_cst_sv checks for "n" as first character of neader line
+	// if not present prints error message and returns 0 to abort the run
 	DispRead disp;
-//	if (!disp.read_disp_file(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
 	if (!disp.read_disp_file_cst_sv(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
 	int ndisp_pts = data.points.size();
 
-
-//	return 0;
-
-
-
+	// now move on to the .sort file
 	// two options here:
-	//	1. establish neighbors by sorting the point cloud (done)
+	//	1. establish neighbors by sorting the point cloud
 	//	2. read in an existing .sort file 
-	// 		sorted_pc_file.open(fname + ".sort");
 
 	// read option
 	if (do_sort_read) { 
-	//	disp.read_sort_file(fname_sort_read,data.neigh);
 		disp.read_sort_file_cst_sv(fname_sort_read,data.neigh);
 		std::cout << "using sort file: " << fname_sort_read << std::endl;
 	}
@@ -274,17 +289,17 @@ int main(int argc, char *argv[])
 	// sort option
 	if (!do_sort_read) {
 		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
-		data.sort_order_neighbors(ndp_max);
+		data.sort_order_neighbors();
 		data.write_sort_file(fname_base,data.neigh);
 	}
 
-	// echo other run parameters and guide faulty commend line arguments
+	// echo other run parameters and guide faulty command line arguments
 	std::cout << "using strain window: " << ndp << std::endl;
 
 	if (objt == strain.objt_min()) {
 		std::cout << "using objmin thresh: " << objt << " (use only highly matched points)" << std::endl;
 	} else if (objt == strain.objt_max()) {
-		std::cout << "using objmin thresh: " << objt << " (use all points)" << std::endl;
+		std::cout << "using objmin thresh: " << objt << " (use all convergent points)" << std::endl;
 	} else {
 		std::cout << "using objmin thresh: " << objt << " " << std::endl;
 	}
@@ -293,8 +308,9 @@ int main(int argc, char *argv[])
 		std::cout << "using strain window refill " << std::endl;
 	}
 
-
-	// *** StrainCalc strain;
+	// 
+	// strain calculation begins here
+	//
 
 	// model used for fitting, 3D quadratic polynomial
 	//    m  = c0 
@@ -302,7 +318,7 @@ int main(int argc, char *argv[])
 	//       + c4*x^2 + c5*y^2 + c6*z^2 
 	//       + c7*x*y + c8*y*z + c9*x*z
 
-	std::vector<Eigen::MatrixXd> DG_all_pts = {};	// store for output
+	std::vector<Eigen::MatrixXd> DG_all_pts = {};	// store for possible output
 
 	for (unsigned int i=0; i<data.points.size(); i++) {
 
@@ -322,12 +338,14 @@ int main(int argc, char *argv[])
 		std::vector<Point> ndis = {};
 
 		// establish neighborhoods and load neighbor position and displacement data
+		// the for and whle loops versions are essentially identical but the while loop looks for more good points
+		// ndp is the requested number of neighborhood points for the strain windows
+		// check nbr status, objmin threshold, and still within range of available nbr points
 
-		
 		if (!refill) {
 			int indx = 0;
 			for (unsigned int j=0; j<ndp; j++) {
-				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) ) {			
+				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {			
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
 					npos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
@@ -339,7 +357,7 @@ int main(int argc, char *argv[])
 			int indx = 0;
 			int np = 0;
 			while ( (np < ndp) && (indx < ndp_max) ) {
-				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) ) {			
+				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {			
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
 					npos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
@@ -349,7 +367,6 @@ int main(int argc, char *argv[])
 				indx += 1;
 			}
 		}
-
 
 		// if no points in neigh then pts_in_sw becomes zero
 		data.pts_in_sw.push_back(npos.size());
