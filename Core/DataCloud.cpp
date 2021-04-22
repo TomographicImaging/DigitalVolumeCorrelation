@@ -15,7 +15,7 @@ bool sortByIndex(const DualSort &lhs, const DualSort &rhs) { return lhs.index < 
 /******************************************************************************/
 DataCloud::DataCloud ()
 {
-
+	nbr_num_save_default = 75;		// store this many nearest neighbor points in the .sort file
 	
 }
 /******************************************************************************/
@@ -45,34 +45,17 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 	sorted_pc_file.close();
 }
 /******************************************************************************/
-void DataCloud::sort_order_neighbors(int neigh_num_save)
+void DataCloud::sort_order_neighbors()
 {
-	// -> these are not up to date with the OLS polyfit approach to strain calc
+	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
 
-	neigh_num_min = 6;	// -> old value, update for strain calc
-//	neigh_num_par = 50;	// just a test number for now is a guess for now
-	neigh_dst_par = 15.0;	// a placeholder, scale to subvol size?
+//  this would reset the initial sort point based on a point label, might be used in future
+//	start_point_label = 1;
+//	for (int i=0; i<labels.size(); i++)
+//		if (labels[i] == start_point_label) start_point_index = i;
 
-	// -> set neigh_num_save higher (100)
-	// -> declare as private in DataCloud with access function
-
+	start_point_index = 0;	// start with first point in the list, regardless of the label
 	
-	// number of sorted neighbours saved for each point
-//	int neigh_num_save = 50 < points.size() ? 50 : points.size();
-	neigh_num_save = 50 < points.size() ? 50 : points.size();
-
-	// just a quick check to avoid problems with really small test clouds
-//	if (points.size() < neigh_num_par) neigh_num_par = (int)points.size();
-	if (points.size() < neigh_num_save) neigh_num_save = (int)points.size();
-	
-	start_point_label = 1;	// default 1, add as optional input parameter
-//	start_point_label = 7;	// just a test ...
-	start_point_index = 0;	// default 0, if not reset by label match
-	
-	for (int i=0; i<labels.size(); i++)
-		if (labels[i] == start_point_label) start_point_index = i;
-	
-
 	// *** estblish search order based on distance from start_point
 	
 	order.resize(points.size());
@@ -87,22 +70,9 @@ void DataCloud::sort_order_neighbors(int neigh_num_save)
 	for (int i=0; i<points.size(); i++)
 		order[i] = indx_dist[i].index;
 	
-	
-	// *** break into groups based on re-sorted distance (testing)
-	
-//	split_by_volume(indx_dist, 2500.0);
-//		
-//	for (int i=0; i<sub_groups.size(); i++) {
-//		for (int j=0; j<sub_groups[i].size(); j++)
-//			std::cout << points[sub_groups[i][j]].x() << "\t" << points[sub_groups[i][j]].y() << "\t" << points[sub_groups[i][j]].z() << "\n";
-//		std::cout << "\n\n";
-//	}
-	
-
 	// *** get neighbors for each point	
-//	std::cout << "sorting point cloud" << std::endl;
-	neigh.resize(points.size());
 
+	neigh.resize(points.size());
 	std::vector<std::vector<int>> save_neigh = {};
 	save_neigh.resize(points.size());
 	
@@ -121,7 +91,6 @@ void DataCloud::sort_order_neighbors(int neigh_num_save)
 		std::sort(indx_dist_copy.begin(), indx_dist_copy.end(), sortByValue);
 
 		// this loads a set number
-		// for (int j = 0; j < neigh_num_par; j++)
 		for (int j = 0; j < neigh_num_save; j++)
 			neigh[i].push_back(indx_dist_copy[j].index);
 		
@@ -147,25 +116,15 @@ void DataCloud::sort_order_neighbors(int neigh_num_save)
 		}
 }
 		
-		// this loads varying numbers of elements based on proximity
-//		for (int j=0; j<neigh.size(); j++)
-//			if (indx_dist[j].value <= neigh_dst_par) neigh[i].push_back(indx_dist[j].index);
-	
 	}
 	std::cout << "sorting finished" << std::endl;
    
-
-
-
-
 }
 /******************************************************************************/
 void DataCloud::organize_cloud(RunControl *run)
 {
 	// establish point processing order and neighborhoods
-
-	neigh_num = 50;
-	sort_order_neighbors(neigh_num);
+	sort_order_neighbors();
 
 	// write sort file
 	write_sort_file(run->pts_fname, neigh);
@@ -188,6 +147,7 @@ void DataCloud::organize_cloud(RunControl *run)
 /******************************************************************************//******************************************************************************/
 /*DataCloud::DataCloud (InputRead *in)
 {
+	// this is the old non parallel code
 
 	// these are process control parameters set at run time
 	// aim for a number of points within the neighborhood, let range adjust
@@ -287,76 +247,6 @@ void DataCloud::organize_cloud(RunControl *run)
 
 }*/
 /******************************************************************************/
-void DataCloud::split_by_volume (std::vector<DualSort> indx_dist, double vol_limit)
-// assumes indx_dist sorted by distance from starting point at start
-{
-	
-	int ngrp = 1;
-	int grp = ngrp-1;
-	
-	sub_groups.resize(ngrp);
-	sub_groups[grp].push_back(indx_dist[0].index);
-	
-	// sub_groups should really be a vector of Clouds with BoundBox's
-	
-/*	
-	double min_x = points[indx_dist[0].index].x();
-	double min_y = points[indx_dist[0].index].y();
-	double min_z = points[indx_dist[0].index].z();
-	
-	double max_x = points[indx_dist[0].index].x();
-	double max_y = points[indx_dist[0].index].y();
-	double max_z = points[indx_dist[0].index].z();
-*/
-	for (int i=1; i<indx_dist.size(); i++) {
-		
-		double vol = points[sub_groups[grp][0]].pt_encl_vol(points[indx_dist[i].index]);
-		
-		
-		// this is volume from first point to furthest, but not total volume of the group
-		// need the volume of the box the group occupies
-		
-		if (vol <= vol_limit)
-			sub_groups[grp].push_back(indx_dist[i].index);
-			
-		
-		if (vol > vol_limit) {
-			
-			ngrp += 1;
-			grp = ngrp-1;
-			
-			sub_groups.resize(ngrp);
-			sub_groups[grp].push_back(indx_dist[i].index);
-			
-			for (int j=i; j<indx_dist.size(); j++)				
-				indx_dist[j].value = points[indx_dist[i].index].pt_dist(points[indx_dist[j].index]);
-			
-			std::sort(indx_dist.begin()+i, indx_dist.end(), sortByValue);
-			
-		}
-		
-	}
-	
-}
-/******************************************************************************/
-
-/*
-	if (new_point.x() < min_x) {min_x = new_point.x(); reset = true;}
-	if (new_point.y() < min_y) {min_y = new_point.y(); reset = true;}
-	if (new_point.z() < min_z) {min_z = new_point.z(); reset = true;}
-
-	if (new_point.x() > max_x) {max_x = new_point.x(); reset = true;}
-	if (new_point.y() > max_y) {max_y = new_point.y(); reset = true;}
-	if (new_point.z() > max_z) {max_z = new_point.z(); reset = true;}
-
-
-*/
-
-
-
-
-
-
 
 
 
