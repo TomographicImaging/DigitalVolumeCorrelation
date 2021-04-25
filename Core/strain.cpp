@@ -133,6 +133,10 @@ int main(int argc, char *argv[])
 	// all of these may be modified by command line inputs
 	bool do_sort_read = false;
 	bool refill = false;
+	bool xy_only = false;	// strain calc limitations for coordinate plane point clouds
+	bool yz_only = false;
+	bool zx_only = false;
+
 	bool out_Estr = false;
 	bool out_Lstr = true;
 	bool out_dgrd = false;
@@ -188,6 +192,24 @@ int main(int argc, char *argv[])
 	if (strain.find_flag("-r", argc, argv)) {		// use strain window refill option
 		refill = true;
 	}
+
+	// this manually sets coordinate plane analysis, but using an automated method based on cloud point positions
+	/*
+	if (strain.find_flag("-xy", argc, argv)) {		// do 2d strain calc for xy plane point cloud
+		xy_only = true;
+		// all z values in the .disp file should be the same, check that?
+	}
+
+	if (strain.find_flag("-yz", argc, argv)) {		// do 2d strain calc for yz plane point cloud
+		yz_only = true;
+		// all x values in the .disp file should be the same, check that?
+	}
+
+	if (strain.find_flag("-zx", argc, argv)) {		// do 2d strain calc for yz plane point cloud
+		zx_only = true;
+		// all y values in the .disp file should be the same, check that?
+	}
+	*/
 
 	// output file control
 	// the default output is Lagrangian strains
@@ -263,6 +285,39 @@ int main(int argc, char *argv[])
 	DispRead disp;
 	if (!disp.read_disp_file_cst_sv(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
 	int ndisp_pts = data.points.size();
+
+	// check for a 2d coordinate plane point cloud to manage strain calc
+
+	std::vector<double> x_pos = {};
+	std::vector<double> y_pos = {};
+	std::vector<double> z_pos = {};
+	for (unsigned int i=0; i<data.points.size(); i++) {
+		x_pos.emplace_back(data.points[i].x());
+		y_pos.emplace_back(data.points[i].y());
+		z_pos.emplace_back(data.points[i].z());
+	}
+	double min_x = *min_element(x_pos.begin(), x_pos.end());
+	double max_x = *max_element(x_pos.begin(), x_pos.end());
+
+	double min_y = *min_element(y_pos.begin(), y_pos.end());
+	double max_y = *max_element(y_pos.begin(), y_pos.end());
+
+	double min_z = *min_element(z_pos.begin(), z_pos.end());
+	double max_z = *max_element(z_pos.begin(), z_pos.end());
+
+	if ( fabs(max_x - min_x) < 0.001 ) {	// a fixed limit is tricky, but this would work for typical voxel coordinates
+		yz_only = true;
+		std::cout << "using yz coordinate plane analsis" << std::endl;
+	}
+	if ( fabs(max_y - min_y) < 0.001 ) {
+		zx_only = true;
+		std::cout << "using zx coordinate plane analsis" << std::endl;
+	}
+	if ( fabs(max_z - min_z) < 0.001 ) {
+		xy_only = true;
+		std::cout << "using xy coordinate plane analsis" << std::endl;
+	}
+
 
 	// now move on to the .sort file
 	// two options here:
@@ -380,22 +435,24 @@ int main(int argc, char *argv[])
 
 		int ngp = npos.size();		// number of good points, may be zero
 		int nmp = strain.nmp();				// set by poly model choice, fixed in constructor
+		int nsd = 3;				// number of spatial dimensions for calc
 
 		// OLS variables sized to number of good points and reinitialized
-		Eigen::MatrixXd dvs = Eigen::MatrixXd(ngp,3);		// for u,v,w fits, use .col for individual access
+		Eigen::MatrixXd dvs = Eigen::MatrixXd(ngp,nsd);		// for u,v,w fits, use .col for individual access
 		Eigen::VectorXd rhs = Eigen::VectorXd(nmp);
 		Eigen::MatrixXd Xm = Eigen::MatrixXd(ngp,nmp);
 		Eigen::MatrixXd XtXm = Eigen::MatrixXd(nmp,nmp);
 		Eigen::VectorXd par = Eigen::VectorXd(nmp);			// the polynomial parameters, c0->9
 
-		Eigen::MatrixXd DG = Eigen::MatrixXd(3,3);		// deformation gradient
-		Eigen::MatrixXd ST = Eigen::MatrixXd(3,3);		// strain tensor storage
+		Eigen::MatrixXd DG = Eigen::MatrixXd(nsd,nsd);		// deformation gradient
+		Eigen::MatrixXd ST = Eigen::MatrixXd(nsd,nsd);		// strain tensor storage
 
-		std::vector<double> lam(3);			// eigenvalues for a point
-		std::vector<double> str(9);			// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
-		std::vector<double> displ(3);		// u,v,w calculated from the fit equations
+		std::vector<double> lam(nsd);			// eigenvalues for a point
+		std::vector<double> str(nsd*nsd);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
+		std::vector<double> displ(nsd);			// u,v,w calculated from the fit equations
 
 		for (unsigned int j=0; j<ngp; j++) {	// not simply ndp, points may have different numbers of sw points
+
 			Xm(j,0) = 1;
 
 			Xm(j,1) = npos[j].x();
@@ -413,6 +470,36 @@ int main(int argc, char *argv[])
 			dvs(j,0) = ndis[j].x();
 			dvs(j,1) = ndis[j].y();
 			dvs(j,2) = ndis[j].z();
+
+			// adjust for coordinate plane point clouds, activated with -xy, -yz, -zx
+
+			if (yz_only) {			// zero out x terms
+				Xm(j,1) = 0.0;
+				Xm(j,4) = 0.0;
+				Xm(j,7) = 0.0;
+				Xm(j,9) = 0.0;
+
+				dvs(j,0) = 0.0;
+			}			
+
+			if (zx_only) {			// zero out y terms
+				Xm(j,2) = 0.0;
+				Xm(j,5) = 0.0;
+				Xm(j,7) = 0.0;
+				Xm(j,8) = 0.0;
+
+				dvs(j,1) = 0.0;
+			}
+
+			if (xy_only) {			// zero out z terms
+				Xm(j,3) = 0.0;
+				Xm(j,6) = 0.0;
+				Xm(j,8) = 0.0;
+				Xm(j,9) = 0.0;
+
+				dvs(j,2) = 0.0;
+			}
+
 		}
 
 		XtXm = Xm.transpose()*Xm;
@@ -439,24 +526,42 @@ int main(int argc, char *argv[])
 		// Engineering strain tensor
 
 		ST = 0.5*(DG + DG.transpose());
-
 		EigenSolver<MatrixXd> esE(ST);
-
 		lam = {esE.eigenvalues()[0].real(), esE.eigenvalues()[1].real(), esE.eigenvalues()[2].real()};
 		std::sort(lam.begin(), lam.end());
 		std::reverse(lam.begin(), lam.end());
+		// adjust for planar calcs, put the two principals into p1 and p2 spots, make p3 = 0.0
+		if ( (xy_only) || (yz_only) || (zx_only)) {
+			if (lam[0] == 0.0) {
+				lam[0] = lam[1];
+				lam[1] = lam[2];
+				}
+			if (lam[1] == 0.0) {
+				lam[1] = lam[2];
+			}
+			lam[2] = 0.0;
+		}
 		str = {ST(0,0),ST(1,1),ST(2,2),ST(0,1),ST(1,2),ST(0,2),lam[0],lam[1],lam[2]};
 		data.Estrain.push_back(str);
 
 		// Lagrangian strain tensor
 
 		ST = 0.5*(DG + DG.transpose() + DG.transpose()*DG);
-
 		EigenSolver<MatrixXd> esL(ST);
-
 		lam = {esL.eigenvalues()[0].real(), esL.eigenvalues()[1].real(), esL.eigenvalues()[2].real()};
 		std::sort(lam.begin(), lam.end());
 		std::reverse(lam.begin(), lam.end());
+		// adjust for planar calcs, put the two principals into p1 and p2 spots, make p3 = 0.0
+		if ( (xy_only) || (yz_only) || (zx_only)) {
+			if (lam[0] == 0.0) {
+				lam[0] = lam[1];
+				lam[1] = lam[2];
+				}
+			if (lam[1] == 0.0) {
+				lam[1] = lam[2];
+			}
+			lam[2] = 0.0;
+		}		
 		str = {ST(0,0),ST(1,1),ST(2,2),ST(0,1),ST(1,2),ST(0,2),lam[0],lam[1],lam[2]};
 		data.Lstrain.push_back(str);
 	}

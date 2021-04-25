@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <omp.h>
 #include <thread>
+#include <algorithm>
 
 // adjust Makefile if changes made here
 #include "InputRead.h"
