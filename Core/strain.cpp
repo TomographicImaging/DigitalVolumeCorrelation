@@ -193,23 +193,21 @@ int main(int argc, char *argv[])
 		refill = true;
 	}
 
-	// this manually sets coordinate plane analysis, but using an automated method based on cloud point positions
-	/*
+	// this manually sets to a 2d coordinate plane analysis
+	// code later uses an automated method based on cloud point position data
+	// leaving these flags in place but not listing in "no arg" output for now
+	
 	if (strain.find_flag("-xy", argc, argv)) {		// do 2d strain calc for xy plane point cloud
 		xy_only = true;
-		// all z values in the .disp file should be the same, check that?
 	}
 
 	if (strain.find_flag("-yz", argc, argv)) {		// do 2d strain calc for yz plane point cloud
 		yz_only = true;
-		// all x values in the .disp file should be the same, check that?
 	}
 
 	if (strain.find_flag("-zx", argc, argv)) {		// do 2d strain calc for yz plane point cloud
 		zx_only = true;
-		// all y values in the .disp file should be the same, check that?
 	}
-	*/
 
 	// output file control
 	// the default output is Lagrangian strains
@@ -286,7 +284,36 @@ int main(int argc, char *argv[])
 	if (!disp.read_disp_file_cst_sv(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
 	int ndisp_pts = data.points.size();
 
+	//
+	// now move on to the .sort file
+	// two options here:
+	//	1. establish neighbors by sorting the point cloud
+	//	2. read in an existing .sort file 
+
+	// read option
+	if (do_sort_read) { 
+		disp.read_sort_file_cst_sv(fname_sort_read,data.neigh);
+		std::cout << "using sort file: " << fname_sort_read << std::endl;
+	}
+	int nsort_pts = data.neigh.size();
+
+	// check if .disp and .sort have equal numbers of points, revert to a new sort if not
+	if ( (do_sort_read) && (ndisp_pts != nsort_pts) ){
+		do_sort_read = false;
+		data.neigh = {};
+		std::cout << "-> different number of points in .disp and .sort" << std::endl;
+	}
+
+	// sort option
+	if (!do_sort_read) {
+		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
+		data.sort_order_neighbors();
+		data.write_sort_file(fname_base,data.neigh);
+	}
+
+	//
 	// check for a 2d coordinate plane point cloud to manage strain calc
+	//
 
 	std::vector<double> x_pos = {};
 	std::vector<double> y_pos = {};
@@ -307,46 +334,18 @@ int main(int argc, char *argv[])
 
 	if ( fabs(max_x - min_x) < 0.001 ) {	// a fixed limit is tricky, but this would work for typical voxel coordinates
 		yz_only = true;
-		std::cout << "using yz coordinate plane analsis" << std::endl;
 	}
 	if ( fabs(max_y - min_y) < 0.001 ) {
 		zx_only = true;
-		std::cout << "using zx coordinate plane analsis" << std::endl;
 	}
 	if ( fabs(max_z - min_z) < 0.001 ) {
 		xy_only = true;
-		std::cout << "using xy coordinate plane analsis" << std::endl;
 	}
 
-
-	// now move on to the .sort file
-	// two options here:
-	//	1. establish neighbors by sorting the point cloud
-	//	2. read in an existing .sort file 
-
-	// read option
-	if (do_sort_read) { 
-		disp.read_sort_file_cst_sv(fname_sort_read,data.neigh);
-		std::cout << "using sort file: " << fname_sort_read << std::endl;
-	}
-	int nsort_pts = data.neigh.size();
-
-	std::cout << "nsort_pts =" << nsort_pts << std::endl;
-	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
-
-	// check if .disp and .sort have equal numbers of points, revert to a new sort if not
-	if ( (do_sort_read) && (ndisp_pts != nsort_pts) ){
-		do_sort_read = false;
-		data.neigh = {};
-		std::cout << "-> different number of points in .disp and .sort" << std::endl;
-	}
-
-	// sort option
-	if (!do_sort_read) {
-		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
-		data.sort_order_neighbors();
-		data.write_sort_file(fname_base,data.neigh);
-	}
+	// output here to catch flag setting as well
+	if (yz_only) {std::cout << "using 2d yz coordinate plane analsis" << std::endl;}
+	if (zx_only) {std::cout << "using 2d zx coordinate plane analsis" << std::endl;}
+	if (xy_only) {std::cout << "using 2d xy coordinate plane analsis" << std::endl;}
 
 	// echo other run parameters and guide faulty command line arguments
 	std::cout << "using strain window: " << ndp << std::endl;
@@ -362,6 +361,9 @@ int main(int argc, char *argv[])
 	if (refill) {
 		std::cout << "using strain window refill " << std::endl;
 	}
+
+	std::cout << "nsort_pts =" << nsort_pts << std::endl;
+	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
 
 	// 
 	// strain calculation begins here
@@ -471,7 +473,7 @@ int main(int argc, char *argv[])
 			dvs(j,1) = ndis[j].y();
 			dvs(j,2) = ndis[j].z();
 
-			// adjust for coordinate plane point clouds, activated with -xy, -yz, -zx
+			// adjust for coordinate plane point clouds, auto detected or activated with -xy, -yz, -zx flags
 
 			if (yz_only) {			// zero out x terms
 				Xm(j,1) = 0.0;
@@ -609,7 +611,6 @@ int main(int argc, char *argv[])
 		strain_results_L.close();
 	}
 
-
 	// displacement gradient
 	if (out_dgrd) {
 		std::ofstream dispgrad_results;
@@ -632,7 +633,7 @@ int main(int argc, char *argv[])
 		dispgrad_results.close();
 	}
 
-
+	std::cout << std::endl;
 	return 0;
 }
 /******************************************************************************/

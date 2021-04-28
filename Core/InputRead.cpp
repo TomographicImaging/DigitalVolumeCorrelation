@@ -751,8 +751,6 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
 
-std::cout << fname << std::endl;
-
 	ifs.clear();
 	ifs.seekg(0, std::ios::beg);
 
