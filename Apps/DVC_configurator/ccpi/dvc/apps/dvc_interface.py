@@ -1,4 +1,3 @@
-# import pysnooper
 import sys
 from PySide2 import QtCore, QtWidgets, QtGui
 from PySide2.QtCore import QThreadPool, QRegExp, QSize, Qt, QSettings, QByteArray
@@ -76,7 +75,6 @@ import copy
 
 from distutils.dir_util import copy_tree
 
-#TODO: switch from/to these lines for dev/release
 from ccpi.viewer.utils.io import ImageDataCreator
 
 from ccpi.dvc.apps.pointcloud_conversion import cilRegularPointCloudToPolyData, cilNumpyPointCloudToPolyData, PointCloudConverter
@@ -489,7 +487,6 @@ It will be the first point in the file that is used as the reference point.")
     def view_and_load_images(self):
         self.view_image()
         self.resetRegistration()
-        #del self.vis_widget_reg.frame.viewer
 
     def SelectImage(self, image_var, image, label=None, next_button=None): 
         #print("In select image")
