@@ -53,8 +53,9 @@ add_library(cildvc_static "STATIC" ${DVC_SRCS} )
 # TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
 target_include_directories(cildvc_static PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
+        $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 	)
-
+target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
 #target_include_directories(cildvc_shared PUBLIC
 #	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
 #	)
@@ -62,7 +63,9 @@ add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 #TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
 target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR} )
+	${CMAKE_CURRENT_SOURCE_DIR} 
+        $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+)
 
 if(BUILD_TEST)
   add_executable (tests ${CMAKE_CURRENT_SOURCE_DIR}/tests.cpp )
