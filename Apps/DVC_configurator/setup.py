@@ -13,22 +13,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import os
 from distutils.core import setup
 from distutils.extension import Extension
 
-cil_version= '20.07.6'
+cil_version = '21.0.0'
 
 # sourcefiles = ["src/image_data.py"]
 
 # extensions = [Extension("ccpi.apps.image_data", sourcefiles)]
 
 setup(
-      name="Digital Volume Correlation App",
-      description='CCPi DVC Configurator',
-	version=cil_version,
-	packages = {'ccpi','ccpi.dvc.apps'},
-      package_dir={'ccpi.dvc.apps': 'ccpi/dvc/apps'},
-      package_data= {'ccpi.dvc.apps':['DVCIconSquare.png']}
-      #ext_modules=extensions
+    name="Digital Volume Correlation App",
+    description='CCPi DVC Configurator',
+    version=cil_version,
+    packages={'ccpi', 'ccpi.dvc.apps'},
+    package_dir={'ccpi.dvc.apps': 'ccpi/dvc/apps'},
+    package_data={'ccpi.dvc.apps': ['DVCIconSquare.png']}
+    # ext_modules=extensions
 )
