@@ -1,5 +1,5 @@
 package:
-  name: ccpi-dvc
+  name: ccpi-dvc-gui
   version: 21.0.0
 
 build:
