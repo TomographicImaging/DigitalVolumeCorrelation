@@ -1,7 +1,9 @@
 mkdir "%SRC_DIR%\ccpi"
 ROBOCOPY /E "%RECIPE_DIR%\..\..\Wrappers\Python\src" "%SRC_DIR%\ccpi\src"
 ROBOCOPY /E "%RECIPE_DIR%\..\..\Wrappers\Python\ccpi" "%SRC_DIR%\ccpi\ccpi"
-
+:: copy "%RECIPE_DIR%\..\setup.py" "%SRC_DIR%\ccpi"
+::ROBOCOPY /E "%RECIPE_DIR%\..\..\..\Core" "%SRC_DIR%\Core"
+::cd %SRC_DIR%\ccpi\Python
 cd %SRC_DIR%/ccpi
 
 :: issue cmake to create setup.py
@@ -14,3 +16,9 @@ if errorlevel 1 exit 1
 
 :: nmake install
 :: if errorlevel 1 exit 1
+
+::%PYTHON% setup.py install
+::if errorlevel 1 exit 1
+
+::nmake install
+::if errorlevel 1 exit 1
