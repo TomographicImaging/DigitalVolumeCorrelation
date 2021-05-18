@@ -9,13 +9,13 @@ on:
       - '**'
   pull_request:
     branches: [ gui_devel ] # TODO: change to master
-strategy:
-  matrix:
-    compiler: [gcc, g++]
-    
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, g++]
     steps:
     - uses: actions/checkout@v1
     - name: publish-to-conda
