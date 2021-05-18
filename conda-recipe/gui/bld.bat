@@ -4,7 +4,7 @@
 ::)
 
 mkdir "%SRC_DIR%"
-copy "%RECIPE_DIR%\..\..\Apps\DVC_configurator\setup.py" "%SRC_DIR%\setup.py"
+copy "%RECIPE_DIR%\..\..\Apps\DVC_configurator" "%SRC_DIR%"
 cd %SRC_DIR%
 
 %PYTHON% setup.py install
