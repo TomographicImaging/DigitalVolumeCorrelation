@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: publish-to-conda
-      uses: paskino/conda-package-publish-action@master
+      uses: lauramurgatroyd/conda-package-publish-action@install_make
       with:
         subDir: 'conda-recipe/gui'
         channels: 'conda-forge -c paskino -c ccpi'
