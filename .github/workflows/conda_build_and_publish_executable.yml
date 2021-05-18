@@ -22,7 +22,7 @@ jobs:
     - name: publish-to-conda
       env:
         CXX: ${{ matrix.compiler }}
-      uses: paskino/conda-package-publish-action@master
+      uses: lauramurgatroyd/conda-package-publish-action@install_make
       with:
         subDir: 'conda-recipe/executable'
         channels: 'conda-forge'
