@@ -9,6 +9,9 @@ on:
       - '**'
   pull_request:
     branches: [ gui_devel ] # TODO: change to master
+strategy:
+  matrix:
+    compiler: [gcc, g++]
     
 jobs:
   build:
@@ -16,6 +19,8 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: publish-to-conda
+      env:
+        CC: ${{ matrix.compiler }}
       uses: paskino/conda-package-publish-action@master
       with:
         subDir: 'conda-recipe/executable'
