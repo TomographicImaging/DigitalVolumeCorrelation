@@ -4,11 +4,11 @@ on:
   release:
     types: [published]
   push:
-    branches: [ master ] # TODO: change to master
+    branches: [ gui_devel ] # TODO: change to master when merge app
     tags:
       - '**'
   pull_request:
-    branches: [ master ] # TODO: change to master
+    branches: [ gui_devel ] # TODO: change to master when merge app
 
 jobs:
   build:
