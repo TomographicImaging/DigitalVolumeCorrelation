@@ -16,12 +16,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        compiler: [g++]
     steps:
     - uses: actions/checkout@v1
     - name: publish-to-conda
-      env:
-        CXX: ${{ matrix.compiler }}
       uses: lauramurgatroyd/conda-package-publish-action@install_make
       with:
         subDir: 'conda-recipe/executable'

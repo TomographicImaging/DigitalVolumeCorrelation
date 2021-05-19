@@ -8,15 +8,12 @@ build:
 
 requirements:
   build:
-    - python
-    - numpy x.x
     - setuptools
     - boost >=1.65
     - boost-cpp >=1.65
     - cmake >=3.9
 
   run:
-    - numpy x.x
     - boost >=1.65
 	
 about:
