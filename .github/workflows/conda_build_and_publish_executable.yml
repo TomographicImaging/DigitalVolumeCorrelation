@@ -19,7 +19,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: publish-to-conda
-      uses: paskino/conda-package-publish-action@fix_conversion_check
+      uses: paskino/conda-package-publish-action@master
       with:
         subDir: 'conda-recipe/executable'
         channels: 'conda-forge'
