@@ -1,8 +1,8 @@
 import sys
 from PySide2 import QtCore, QtWidgets, QtGui
 from PySide2.QtCore import QThreadPool, QRegExp, QSize, Qt, QSettings, QByteArray
-from PySide2.QtWidgets import QMainWindow, QAction, QDockWidget, QFrame, QVBoxLayout, QFileDialog, QStyle, QMessageBox, QApplication, QWidget, QDialog, QDoubleSpinBox
-from PySide2.QtWidgets import QLineEdit, QSpinBox, QLabel, QComboBox, QProgressBar, QStatusBar,  QPushButton, QFormLayout, QGroupBox, QCheckBox, QTabWidget, qApp
+from PySide2.QtWidgets import QMainWindow, QAction, QDockWidget, QFrame, QVBoxLayout, QHBoxLayout, QFileDialog, QStyle, QMessageBox, QApplication, QWidget, QDialog, QDoubleSpinBox
+from PySide2.QtWidgets import QSizePolicy, QLineEdit, QSpinBox, QLabel, QComboBox, QProgressBar, QStatusBar,  QPushButton, QFormLayout, QGroupBox, QCheckBox, QTabWidget, qApp
 from PySide2.QtWidgets import QProgressDialog, QDialogButtonBox, QDialog
 from PySide2.QtGui import QRegExpValidator, QKeySequence, QCloseEvent
 import os
@@ -249,15 +249,13 @@ class MainWindow(QMainWindow):
         self.CreateRunDVCPanel()
         self.CreateViewDVCResultsPanel()
 
-        self.viewer2D_dock = QDockWidget("2D View")
-        self.viewer2D_dock.setObjectName("2DImageView")
-        self.viewer2D_dock.setWidget(self.vis_widget_2D)
-        self.viewer2D_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.viewer2D_dock = self.vis_widget_2D
 
         self.viewer3D_dock = QDockWidget("3D View")
         self.viewer3D_dock.setObjectName("3DImageView")
         self.viewer3D_dock.setWidget(self.vis_widget_3D)
         self.viewer3D_dock.setAllowedAreas(Qt.LeftDockWidgetArea)
+        
 
         #Tabifies dockwidgets in LeftDockWidgetArea:
         prev = None
@@ -275,6 +273,7 @@ class MainWindow(QMainWindow):
         first_dock.raise_() # makes first panel the one that is open by default.
 
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.viewer3D_dock)
+        
 
 
         # Make a window to house the right dockwidgets
@@ -2299,106 +2298,132 @@ A 3D pointcloud is created within the full extent of the mask.")
         # Add Log Tree field
         overlap_tooltip_text = "Overlap as a fraction of the subvolume size."
         # Add Overlap X
+
+        self.overlapLabel = QLabel("Overlap", self.graphParamsGroupBox)
+        self.overlapLabel.setToolTip(overlap_tooltip_text)
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.overlapLabel)
+
+        overlap_layout = QHBoxLayout()
+        overlap_layout.setContentsMargins(0,0,0,0)
+
         self.overlapXLabel = QLabel(self.graphParamsGroupBox)
-        self.overlapXLabel.setText("Overlap X")
+        self.overlapXLabel.setText("X: ")
+        overlap_layout.addWidget(self.overlapXLabel)
         self.overlapXLabel.setToolTip(overlap_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.overlapXLabel)
         self.overlapXValueEntry = QDoubleSpinBox(self.graphParamsGroupBox)
+        self.overlapXLabel.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.overlapXValueEntry.setValue(0.20)
         self.overlapXValueEntry.setMaximum(0.99)
         self.overlapXValueEntry.setMinimum(0.00)
         self.overlapXValueEntry.setSingleStep(0.01)
+        self.overlapXValueEntry.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
         self.overlapXValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         self.overlapXValueEntry.setToolTip(overlap_tooltip_text)
         if orientation == 0:
             self.overlapXValueEntry.setEnabled(False)
 
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.overlapXValueEntry)
-        widgetno += 1
+        overlap_layout.addWidget(self.overlapXValueEntry)
         pc['pointcloud_overlap_x_entry'] = self.overlapXValueEntry
         # Add Overlap Y
         self.overlapYLabel = QLabel(self.graphParamsGroupBox)
-        self.overlapYLabel.setText("Overlap Y")
+        self.overlapYLabel.setText("Y: ")
         self.overlapYLabel.setToolTip(overlap_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.overlapYLabel)
+        self.overlapYLabel.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        overlap_layout.addWidget(self.overlapYLabel)
         self.overlapYValueEntry = QDoubleSpinBox(self.graphParamsGroupBox)
         self.overlapYValueEntry.setValue(0.20)
         self.overlapYValueEntry.setMaximum(0.99)
         self.overlapYValueEntry.setMinimum(0.00)
         self.overlapYValueEntry.setSingleStep(0.01)
+        self.overlapYValueEntry.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
         self.overlapYValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         self.overlapYValueEntry.setToolTip(overlap_tooltip_text)
         if orientation == 1:
             self.overlapYValueEntry.setEnabled(False)
 
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.overlapYValueEntry)
-        widgetno += 1
+        overlap_layout.addWidget(self.overlapYValueEntry)
         pc['pointcloud_overlap_y_entry'] = self.overlapYValueEntry
         # Add Overlap Z
         self.overlapZLabel = QLabel(self.graphParamsGroupBox)
-        self.overlapZLabel.setText("Overlap Z")
+        self.overlapZLabel.setText("Z: ")
         self.overlapZLabel.setToolTip(overlap_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.overlapZLabel)
+        self.overlapZLabel.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        overlap_layout.addWidget(self.overlapZLabel)
         self.overlapZValueEntry = QDoubleSpinBox(self.graphParamsGroupBox)
         self.overlapZValueEntry.setValue(0.20)
         self.overlapZValueEntry.setMaximum(0.99)
         self.overlapZValueEntry.setMinimum(0.00)
         self.overlapZValueEntry.setSingleStep(0.01)
+        self.overlapZValueEntry.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
         self.overlapZValueEntry.valueChanged.connect(self.displaySubvolumePreview)
         self.overlapZValueEntry.setToolTip(overlap_tooltip_text)
         if orientation == 2:
             self.overlapZValueEntry.setEnabled(False)
 
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.overlapZValueEntry)
-        widgetno += 1
+        overlap_layout.addWidget(self.overlapZValueEntry)
+        overlap_layout.update()
         pc['pointcloud_overlap_z_entry'] = self.overlapZValueEntry
+
+        overlap_widget = QWidget()
+        overlap_widget.setLayout(overlap_layout)
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, overlap_widget)
+        widgetno+=1
 
         rotation_tooltip_text = "Rotation of the pointcloud in degrees."
 
+        rotation_layout = QHBoxLayout()
+        rotation_layout.setContentsMargins(0,0,0,0)
+
+        self.rotationLabel = QLabel("Rotation Angle", self.graphParamsGroupBox)
+        self.rotationLabel.setToolTip(rotation_tooltip_text)
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.rotationLabel)
+
         # Add Rotation X
         self.rotateXLabel = QLabel(self.graphParamsGroupBox)
-        self.rotateXLabel.setText("Rotation angle X")
+        self.rotateXLabel.setText("X: ")
         self.rotateXLabel.setToolTip(rotation_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.rotateXLabel)
+        rotation_layout.addWidget(self.rotateXLabel)
         self.rotateXValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateXValueEntry.setValidator(validator)
         self.rotateXValueEntry.setText("0.00")
         self.rotateXValueEntry.textChanged.connect(self.displaySubvolumePreview)
         self.rotateXValueEntry.setToolTip(rotation_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateXValueEntry)
-        widgetno += 1
+        rotation_layout.addWidget(self.rotateXValueEntry)
         pc['pointcloud_rotation_x_entry'] = self.rotateXValueEntry
 
         # Add Overlap Y
         self.rotateYLabel = QLabel(self.graphParamsGroupBox)
-        self.rotateYLabel.setText("Rotation angle Y")
+        self.rotateYLabel.setText("Y: ")
         self.rotateYLabel.setToolTip(rotation_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.rotateYLabel)
+        rotation_layout.addWidget(self.rotateYLabel)
         self.rotateYValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateYValueEntry.setValidator(validator)
         self.rotateYValueEntry.setText("0.00")
         self.rotateYValueEntry.setToolTip(rotation_tooltip_text)
         self.rotateYValueEntry.textChanged.connect(self.displaySubvolumePreview)
 
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateYValueEntry)
-        widgetno += 1
+        rotation_layout.addWidget(self.rotateYValueEntry)
         pc['pointcloud_rotation_y_entry'] = self.rotateYValueEntry
 
         # Add Overlap Z
         self.rotateZLabel = QLabel(self.graphParamsGroupBox)
-        self.rotateZLabel.setText("Rotation angle Z")
+        self.rotateZLabel.setText("Z: ")
         self.rotateZLabel.setToolTip(rotation_tooltip_text)
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, self.rotateZLabel)
+        rotation_layout.addWidget(self.rotateZLabel)
         self.rotateZValueEntry = QLineEdit(self.graphParamsGroupBox)
         self.rotateZValueEntry.setValidator(validator)
         self.rotateZValueEntry.setText("0.00")
         self.rotateZValueEntry.setToolTip(rotation_tooltip_text)
         self.rotateZValueEntry.textChanged.connect(self.displaySubvolumePreview)
 
-        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, self.rotateZValueEntry)
-        widgetno += 1
+        rotation_layout.addWidget(self.rotateZValueEntry)
+
         pc['pointcloud_rotation_z_entry'] = self.rotateZValueEntry
 
+        rotation_widget = QWidget()
+        rotation_widget.setLayout(rotation_layout)
+        self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, rotation_widget)
+        widgetno+=1
 
         # Add should extend checkbox
         self.erodeCheck = QCheckBox(self.graphParamsGroupBox)
@@ -4753,7 +4778,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
             # g = QByteArray.fromHex(bytes(self.config['geometry'], 'utf-8'))
             w = QByteArray.fromHex(bytes(self.config['window_state'], 'utf-8'))
             # self.restoreGeometry(g)
-            #self.restoreState(w)
+            self.restoreState(w)
 
         if 'pointcloud_loaded' in self.config: #whether a pointcloud was displayed when session saved
             self.pointCloudLoaded = self.config['pointcloud_loaded']
@@ -5235,8 +5260,6 @@ class VisualisationWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.parent = parent
         self.setMinimumSize(200,200)
-
-        self.setTabPosition(QtCore.Qt.AllDockWidgetAreas,QTabWidget.North)
 
 class VisualisationWidget(QtWidgets.QMainWindow):
     '''creates a window with a QCILViewerWidget as the central widget
