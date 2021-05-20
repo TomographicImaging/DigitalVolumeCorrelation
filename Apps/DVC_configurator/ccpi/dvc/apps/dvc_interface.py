@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
         self.threadpool = QThreadPool()
 
         self.temp_folder = None
+        
 
         self.setWindowTitle("Digital Volume Correlation v{}".format(__version__))
         DVCIcon = QtGui.QIcon()
@@ -121,7 +122,7 @@ class MainWindow(QMainWindow):
 
         #Save QAction
         save_action = QAction("Save", self)
-        save_action.triggered.connect(partial(self.CreateSaveWindow,"Cancel", lambda x: print(type(x))))
+        save_action.triggered.connect(partial(self.CreateSaveWindow,"Cancel"))
         self.file_menu.addAction(save_action)
 
         #New QAction
@@ -150,7 +151,7 @@ class MainWindow(QMainWindow):
         geometry = qApp.desktop().availableGeometry(self)
 
         border = 50
-        self.setGeometry(border, border,geometry.width()-2*border, geometry.height()-2*border)
+        self.setGeometry(border, border, geometry.width()-2*border, geometry.height()-2*border)
 
         self.e = ErrorObserver()
 
@@ -231,7 +232,7 @@ class MainWindow(QMainWindow):
 #Loading the DockWidgets:
     def CreateDockWindows(self):
         
-        self.setTabPosition(QtCore.Qt.AllDockWidgetAreas,QTabWidget.North)
+        self.setTabPosition(QtCore.Qt.AllDockWidgetAreas, QTabWidget.North)
 
         #Create widgets to view images in 2D and 3D and link them:
         self.vis_widget_2D = VisualisationWidget(self, viewer=viewer2D, interactorStyle=vlink.Linked2DInteractorStyle)#interactorStyle= CILInteractorStyle2D) #previously unliked for testing
@@ -273,7 +274,7 @@ class MainWindow(QMainWindow):
                 
         first_dock.raise_() # makes first panel the one that is open by default.
 
-        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea,self.viewer3D_dock)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.viewer3D_dock)
 
 
         # Make a window to house the right dockwidgets
@@ -352,6 +353,9 @@ class MainWindow(QMainWindow):
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, vs_widgets['coords_warning_label'])
 
         self.visualisation_setting_widgets = vs_widgets
+        for widget in vs_widgets.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
         
 
     def updateCoordinates(self):
@@ -498,6 +502,10 @@ It will be the first point in the file that is used as the reference point.")
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea,dockWidget)
 
         self.si_widgets = si_widgets
+
+        for widget in si_widgets.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
     
     def view_and_load_images(self):
         self.view_image()
@@ -817,7 +825,7 @@ It will be the first point in the file that is used as the reference point.")
         actor.GetProperty().SetPointSize(3)
         actor.GetProperty().SetColor(0., 1., 1.)
         actor.VisibilityOn()
-        actor.AddObserver("ModifiedEvent", lambda: print ("point actor modified"))
+        # actor.AddObserver("ModifiedEvent", lambda: print ("point actor modified"))
 
         # create a mapper/actor for the point cloud with a CubeSource and with vtkGlyph3D
         # which copies oriented and scaled glyph geometry to every input point
@@ -857,7 +865,7 @@ It will be the first point in the file that is used as the reference point.")
         # save reference
         self.transform = transform
         # rotate around the center of the image data
-        print("ROTATE: ", self.pointCloud_rotation[2])
+        # print("ROTATE: ", self.pointCloud_rotation[2])
         self.transform.RotateX(self.pointCloud_rotation[0])
         self.transform.RotateY(self.pointCloud_rotation[1])
         self.transform.RotateZ(self.pointCloud_rotation[2])
@@ -1099,6 +1107,10 @@ It is used as a global starting point and a translation reference."
         # save to instance
         self.registration_parameters = rp
 
+        for widget in rp.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
+
     def createRegistrationViewer(self):
         # print("Create reg viewer")
         #Get current orientation and slice of 2D viewer, registration viewer will be set up to have these
@@ -1111,7 +1123,7 @@ It is used as a global starting point and a translation reference."
         reg_viewer_dock = QDockWidget("Image Registration",self.RightDockWindow)
         reg_viewer_dock.setObjectName("2DRegView")
         reg_viewer_dock.setWidget(self.vis_widget_reg)
-        reg_viewer_dock.setMinimumHeight(self.size().height()*0.9)
+        #reg_viewer_dock.setMinimumHeight(self.size().height()*0.9)
 
 
         self.reg_viewer_dock = reg_viewer_dock
@@ -1149,10 +1161,11 @@ It is used as a global starting point and a translation reference."
                 self.help_label.setText(self.help_text[1])
                 if not hasattr(self, 'vis_widget_reg'):
                     # print("Creating reg viewer")
-                    self.createRegistrationViewer()
                     self.viewer2D_dock.setVisible(False)
                     self.viewer3D_dock.setVisible(False)
-                    
+                    self.help_dock.setMaximumHeight(self.size().height()*0.15)
+                    self.viewer_settings_dock.setMaximumHeight(self.size().height()*0.15)
+                    self.createRegistrationViewer()
                 else:
                     if self.vis_widget_reg.getImageData() != self.ref_image_data:
                         self.orientation = self.vis_widget_2D.frame.viewer.GetSliceOrientation()
@@ -1160,9 +1173,11 @@ It is used as a global starting point and a translation reference."
                         self.vis_widget_reg.setImageData(self.ref_image_data)
                         self.vis_widget_reg.displayImageData()
 
-                    self.reg_viewer_dock.setVisible(True)
                     self.viewer2D_dock.setVisible(False)
                     self.viewer3D_dock.setVisible(False)
+                    self.reg_viewer_dock.setVisible(True)
+                    self.help_dock.setMaximumHeight(self.size().height()*0.15)
+                    self.viewer_settings_dock.setMaximumHeight(self.size().height()*0.15)
 
             else:
                 if (hasattr(self, 'reg_viewer_dock')):
@@ -1827,7 +1842,7 @@ It is used as a global starting point and a translation reference."
         widgetno += 1
 
         mp_widgets['mask_downsampled_coords_warning'] = QLabel(groupBox)
-        mp_widgets['mask_downsampled_coords_warning'].setText("Note: if your image has been downsampled, the number of slices is in the coordinates\nof the downsampled image.")
+        mp_widgets['mask_downsampled_coords_warning'].setText("Note: if your image has been downsampled, the number of slices is in the coordinates of the downsampled image.")
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, mp_widgets['mask_downsampled_coords_warning'])
         widgetno += 1
 
@@ -1864,7 +1879,9 @@ It is used as a global starting point and a translation reference."
                                                     if mp_widgets['extendMaskCheck'].isChecked() \
                                                     else mp_widgets['submitButton'].setText("Create Mask"))
 
-
+        for widget in mp_widgets.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
         # Add elements to layout
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidget)
 
@@ -2481,6 +2498,11 @@ The first point is significant, as it is used as a global starting point and ref
         pc['pc_points_label'] = QLabel("Points in current pointcloud:")
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, pc['pc_points_label'])
         pc['pc_points_value'] = QLabel("0")
+
+        for widget in pc.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
+
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['pc_points_value'])
 
     def displaySubvolumePreview(self):
@@ -2592,7 +2614,7 @@ The first point is significant, as it is used as a global starting point and ref
                             viewer_widget.frame.viewer.getRenderer().AddActor(subvol_actor)
                         self.actors_3D ['subvol_preview_actor'] = subvol_actor
                     viewer_widget.frame.viewer.style.UpdatePipeline()
-                print("Added preview")
+                # print("Added preview")
         
 
     def updatePointCloudPanel(self):
@@ -2954,7 +2976,7 @@ The first point is significant, as it is used as a global starting point and ref
         try:
             points = np.loadtxt(self.roi)
         except ValueError as ve:
-            print (ve)
+            # print (ve)
             return
         self.pc_no_points = np.shape(points)[0]
         progress_callback.emit(50)
@@ -2976,7 +2998,7 @@ The first point is significant, as it is used as a global starting point and ref
             # should read the subvolume size and shape from the interface
             # the other info has no meaning.
             self.pointCloud_subvol_size = int(self.isoValueEntry.text())
-            print ("load pointcloud from external ", self.subvolumeShapeValue.currentIndex())
+            # print ("load pointcloud from external ", self.subvolumeShapeValue.currentIndex())
             if int(self.subvolumeShapeValue.currentIndex()) == 0:
                 self.pointCloud_shape = cilRegularPointCloudToPolyData.CUBE
             elif int(self.subvolumeShapeValue.currentIndex()) == 1:
@@ -3002,7 +3024,7 @@ The first point is significant, as it is used as a global starting point and ref
         # print("Set the values")
 
     def DisplayNumberOfPointcloudPoints(self):
-        print("Update DisplayNumberOfPointcloudPoints to ", self.pc_no_points)
+        # print("Update DisplayNumberOfPointcloudPoints to ", self.pc_no_points)
         self.pointcloud_parameters['pc_points_value'].setText(str(self.pc_no_points))
         self.result_widgets['pc_points_value'].setText(str(self.pc_no_points))
         self.rdvc_widgets['run_points_spinbox'].setMaximum(int(self.pc_no_points))
@@ -3737,6 +3759,10 @@ This parameter has a strong effect on computation time, so be careful."
 
         self.rdvc_widgets = rdvc_widgets
 
+        for widget in rdvc_widgets.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
+
     def show_run_groupbox(self):
         if self.rdvc_widgets['run_type_entry'].currentIndex() == 0:
             self.bulkRun_groupBox.hide()
@@ -4090,6 +4116,12 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidget)
         self.result_widgets = result_widgets
 
+        for widget in result_widgets.values():
+            if type(widget) == QLabel:
+                widget.setWordWrap(True)
+
+        
+
     def show_run_pcs(self):
         #show pointcloud files in list
         self.result_widgets['pc_entry'].clear()
@@ -4104,7 +4136,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
         for r, d, f in os.walk(directory):
             for _file in f:
-                print ("Looking at ", _file)
+                # print ("Looking at ", _file)
                 if _file.endswith(".roi") and _file.startswith("_"):
                     self.result_widgets['pc_entry'].addItem((_file.split('_')[-1]).split('.')[0])
 
@@ -4112,13 +4144,13 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                     file_name= _file[:-5]
                     file_path = directory + "/" + file_name
                     result = RunResults(file_path)
-                    print (result)
+                    # print (result)
                     self.result_list.append(result)
                     #print(result.subvol_points)
                     if str(result.subvol_points) not in points_list:
                         points_list.append(str(result.subvol_points))
                         #self.result_widgets['pc_entry'].addItem(str(result.subvol_size))
-                        print ("Adding to points_list ", points_list[-1])
+                        # print ("Adding to points_list ", points_list[-1])
 
         
         self.result_widgets['subvol_entry'].addItems(points_list)
@@ -4154,22 +4186,22 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                     self.PointCloudWorker("load pointcloud file")
 
                 else: 
-                    print("Result list", self.result_list, len(self.result_list))
+                    # print("Result list", self.result_list, len(self.result_list))
                     for result in self.result_list:
-                        print("Subvolume size match? ", result.subvol_size, subvol_size)
+                        # print("Subvolume size match? ", result.subvol_size, subvol_size)
                         if result.subvol_size == subvol_size:
-                            print ("YES")
-                            print("Subv points match? {} {}".format(result.subvol_points, subvol_points))
+                            # print ("YES")
+                            # print("Subv points match? {} {}".format(result.subvol_points, subvol_points))
                             if result.subvol_points == subvol_points:
-                                print ("YES")
+                                # print ("YES")
                                 run_file = result.disp_file
                                 run_file = os.path.join(results_folder , os.path.basename(run_file))
 
                                 self.displayVectors(run_file, 2)
-                            else:
-                                print ("NO")    
-                        else:
-                            print ("NO")
+                            # else:
+                            #     print ("NO")    
+                        # else:
+                        #     print ("NO")
 
 
 
@@ -4218,7 +4250,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         dialog.addWidget(qwidget,'','compress')
         
         self.save_button = QPushButton("Save")
-        print (event, type(event))
+        # print (event, type(event))
         if type(event) ==  QCloseEvent:
             self.SaveWindow.Cancel.clicked.connect(lambda: self.save_quit_just_quit())
             self.SaveWindow.Cancel.setText('Quit without saving')
@@ -4483,7 +4515,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
             self.progress_window.setLabelText("Closing")
             self.progress_window.setMaximum(100)
             self.progress_window.setValue(98)
-        print("removed temp", tempfile.tempdir)
+        # print("removed temp", tempfile.tempdir)
         shutil.rmtree(tempfile.tempdir)
         
         if hasattr(self, 'progress_window'):
@@ -4721,7 +4753,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
             # g = QByteArray.fromHex(bytes(self.config['geometry'], 'utf-8'))
             w = QByteArray.fromHex(bytes(self.config['window_state'], 'utf-8'))
             # self.restoreGeometry(g)
-            self.restoreState(w)
+            #self.restoreState(w)
 
         if 'pointcloud_loaded' in self.config: #whether a pointcloud was displayed when session saved
             self.pointCloudLoaded = self.config['pointcloud_loaded']
@@ -5202,6 +5234,7 @@ class VisualisationWindow(QtWidgets.QMainWindow):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.setMinimumSize(200,200)
 
         self.setTabPosition(QtCore.Qt.AllDockWidgetAreas,QTabWidget.North)
 
@@ -5286,19 +5319,13 @@ class VisualisationWidget(QtWidgets.QMainWindow):
         else:
             orientation = self.frame.viewer.GetSliceOrientation()
         
-        
-        if orientation == SLICE_ORIENTATION_XY:
-            axis = 'z'
-            interactor.SetKeyCode("z")
-        elif orientation == SLICE_ORIENTATION_XZ:
+        if orientation == SLICE_ORIENTATION_XZ:
             axis = 'y'
-            interactor.SetKeyCode("y")
         elif orientation == SLICE_ORIENTATION_YZ:
             axis = 'x'
-            interactor.SetKeyCode("x")
         else:
-            interactor.SetKeyCode("z")
             axis = 'z'
+        interactor.SetKeyCode(axis)
 
         if self.viewer == viewer2D:
             self.frame.viewer.style.OnKeyPress(interactor, 'KeyPressEvent')
