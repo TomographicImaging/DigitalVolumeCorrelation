@@ -217,7 +217,7 @@ class DVC_runner(object):
 
         # exe_file = os.path.abspath("dvc.exe")
         # TODO: change to something more general
-        exe_file = "dvc.exe"
+        exe_file = "dvc"
         #exe_file = "C:/Users/lhe97136/OneDrive - Science and Technology Facilities Council/Documents/Tomography/DVC_release/dvc.exe"
 
 

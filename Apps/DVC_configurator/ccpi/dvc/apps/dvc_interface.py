@@ -2689,7 +2689,7 @@ The first point is significant, as it is used as a global starting point and ref
         tmpdir = tempfile.gettempdir() 
         reader = vtk.vtkMetaImageReader()
         reader.AddObserver("ErrorEvent", self.e)
-        reader.SetFileName(os.path.join(tmpdir,"Masks\\latest_selection.mha"))
+        reader.SetFileName(os.path.join(tmpdir,"Masks","latest_selection.mha"))
         reader.Update()
 
         origin = reader.GetOutput().GetOrigin()
@@ -2752,7 +2752,7 @@ The first point is significant, as it is used as a global starting point and ref
             # save reference
             self.erode = erode
             self.erode_pars = {'selection_mtime':os.path.getmtime(
-                    os.path.join(tmpdir, "Masks\\latest_selection.mha"))}
+                    os.path.join(tmpdir, "Masks","latest_selection.mha"))}
         else:
             erode = self.erode
 
@@ -2796,7 +2796,7 @@ The first point is significant, as it is used as a global starting point and ref
                 run_erode = False
                 # test if mask is different from last one by checking the modification
                 # time
-                mtime = os.path.getmtime(os.path.join(tmpdir, "Masks\\latest_selection.mha"))
+                mtime = os.path.getmtime(os.path.join(tmpdir, "Masks","latest_selection.mha"))
                 if mtime != self.erode_pars['selection_mtime']:
                     #print("mask has changed")
                     run_erode = True
@@ -3047,7 +3047,7 @@ Try modifying the subvolume size before creating a new pointcloud, and make sure
                 tmpdir = tempfile.gettempdir()
                 reader = vtk.vtkMetaImageReader()
                 reader.AddObserver("ErrorEvent", self.e)
-                reader.SetFileName(os.path.join(tmpdir,"Masks\\latest_selection.mha"))
+                reader.SetFileName(os.path.join(tmpdir,"Masks","latest_selection.mha"))
                 reader.Update()
             v.setInputData2(self.reader.GetOutput()) 
             self.setup3DPointCloudPipeline()
@@ -4146,7 +4146,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
             else:
                 results_folder = os.path.join(tempfile.tempdir, "Results/_" + self.result_widgets['run_entry'].currentText())
-                self.roi = results_folder + "\\_" + str(subvol_size) + ".roi"
+                self.roi = os.path.join(results_folder ,"_" + str(subvol_size) + ".roi")
                 #print("New roi is", self.roi)
                 self.results_folder = results_folder
 
