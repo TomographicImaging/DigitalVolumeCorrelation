@@ -352,9 +352,9 @@ class MainWindow(QMainWindow):
         formLayout.setWidget(widgetno, QFormLayout.FieldRole, vs_widgets['coords_warning_label'])
 
         self.visualisation_setting_widgets = vs_widgets
-        for widget in vs_widgets.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in vs_widgets.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
         
 
     def updateCoordinates(self):
@@ -502,9 +502,9 @@ It will be the first point in the file that is used as the reference point.")
 
         self.si_widgets = si_widgets
 
-        for widget in si_widgets.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in si_widgets.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
     
     def view_and_load_images(self):
         self.view_image()
@@ -1106,9 +1106,9 @@ It is used as a global starting point and a translation reference."
         # save to instance
         self.registration_parameters = rp
 
-        for widget in rp.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in rp.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
 
     def createRegistrationViewer(self):
         # print("Create reg viewer")
@@ -1878,9 +1878,9 @@ It is used as a global starting point and a translation reference."
                                                     if mp_widgets['extendMaskCheck'].isChecked() \
                                                     else mp_widgets['submitButton'].setText("Create Mask"))
 
-        for widget in mp_widgets.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in mp_widgets.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
         # Add elements to layout
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidget)
 
@@ -2524,9 +2524,9 @@ The first point is significant, as it is used as a global starting point and ref
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.LabelRole, pc['pc_points_label'])
         pc['pc_points_value'] = QLabel("0")
 
-        for widget in pc.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in pc.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
 
         self.graphWidgetFL.setWidget(widgetno, QFormLayout.FieldRole, pc['pc_points_value'])
 
@@ -3784,9 +3784,9 @@ This parameter has a strong effect on computation time, so be careful."
 
         self.rdvc_widgets = rdvc_widgets
 
-        for widget in rdvc_widgets.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in rdvc_widgets.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
 
     def show_run_groupbox(self):
         if self.rdvc_widgets['run_type_entry'].currentIndex() == 0:
@@ -4141,9 +4141,9 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidget)
         self.result_widgets = result_widgets
 
-        for widget in result_widgets.values():
-            if type(widget) == QLabel:
-                widget.setWordWrap(True)
+        # for widget in result_widgets.values():
+        #     if type(widget) == QLabel:
+        #         widget.setWordWrap(True)
 
         
 
