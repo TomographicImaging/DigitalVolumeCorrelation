@@ -4191,6 +4191,10 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
     def closeEvent(self, event):
         self.CreateSaveWindow("Quit without Saving", event) 
+        if self.should_really_close:
+            event.accept()
+        else:
+            event.ignore()
     #@pysnooper.snoop()
     def CreateSaveWindow(self, cancel_text, event):
 
@@ -4232,6 +4236,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 
     def save_quit_accepted(self):
         #Load Saved Session
+        self.should_really_close = False
         compress = self.SaveWindow.widgets['compress_field'].isChecked()
         self.SaveWindow.close()
         self.SaveSession(self.SaveWindow.widgets['session_name_field'].text(), compress, None)
@@ -4242,8 +4247,10 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         self.SaveWindow.close()
         self.RemoveTemp(event) # remove tempdir for this session.
         # QMainWindow.closeEvent(self.parent, event)
+        self.should_really_close = True
         self.close()
     def save_quit_rejected(self):
+        self.should_really_close = False
         self.SaveWindow.close()
 
 
@@ -4459,6 +4466,8 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
             self.progress_window.setValue(100)
     
         self.SaveWindow.close()
+        self.should_really_close = True
+        self.close()
        
     def ZipDirectory(self, *args, **kwargs):
         directory, compress = args
