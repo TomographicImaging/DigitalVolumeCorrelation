@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
         
 #Setting up the session:
     def CreateWorkingTempFolder(self):
-        temp_folder = os.path.join(working_directory,'DVC_Sessions')
+        temp_folder = os.path.join(working_directory, 'DVC_Sessions')
         
         if not os.path.isdir(temp_folder):
             os.mkdir("DVC_Sessions")
@@ -1984,7 +1984,7 @@ It is used as a global starting point and a translation reference."
         # save the mask to a file in temp folder
         writer = vtk.vtkMetaImageWriter()
         tmpdir = tempfile.gettempdir()
-        writer.SetFileName(os.path.join(tmpdir, "Masks/latest_selection.mha"))
+        writer.SetFileName(os.path.join(tmpdir, "Masks", "latest_selection.mha"))
         self.mask_file = "Masks/latest_selection.mha"
 
         progress_callback.emit(90)
@@ -1992,10 +1992,10 @@ It is used as a global starting point and a translation reference."
         # if extend mask -> load temp saved mask
         if self.mask_parameters['extendMaskCheck'].isChecked():
             self.setStatusTip('Extending mask')
-            if os.path.exists(os.path.join(tmpdir, "Masks/latest_selection.mha")):
+            if os.path.exists(os.path.join(tmpdir, "Masks", "latest_selection.mha")):
                 # print  ("extending mask ", os.path.join(tmpdir, "Masks/latest_selection.mha"))
                 reader = vtk.vtkMetaImageReader()
-                reader.SetFileName(os.path.join(tmpdir, "Masks/latest_selection.mha"))
+                reader.SetFileName(os.path.join(tmpdir, "Masks", "latest_selection.mha"))
                 reader.Update()
 
                 math = vtk.vtkImageMathematics()
@@ -2067,11 +2067,11 @@ It is used as a global starting point and a translation reference."
         self.mask_reader.AddObserver("ErrorEvent", self.e)
         tmpdir = tempfile.gettempdir()
         if (load_session):
-            self.mask_reader.SetFileName(os.path.join(tmpdir, "Masks/latest_selection.mha"))
+            self.mask_reader.SetFileName(os.path.join(tmpdir, "Masks", "latest_selection.mha"))
             progress_callback.emit(40)
         else:
             filename = self.mask_parameters["masksList"].currentText()
-            self.mask_reader.SetFileName(os.path.join(tmpdir, "Masks/" + filename))
+            self.mask_reader.SetFileName(os.path.join(tmpdir, "Masks", filename))
             #print("MASK DETAILS")
             #print(self.mask_details)
             if filename in self.mask_details:
@@ -2092,7 +2092,7 @@ It is used as a global starting point and a translation reference."
 
         writer = vtk.vtkMetaImageWriter()
        
-        writer.SetFileName(os.path.join(tmpdir, "Masks/latest_selection.mha"))
+        writer.SetFileName(os.path.join(tmpdir, "Masks", "latest_selection.mha"))
         writer.SetInputConnection(self.mask_reader.GetOutputPort())
         progress_callback.emit(80)
         writer.Write()
@@ -2114,7 +2114,7 @@ It is used as a global starting point and a translation reference."
         if mask:
             if ".mha" in mask:
                 filename = os.path.basename(mask)
-                shutil.copyfile(mask, os.path.join(tempfile.tempdir, "Masks/" + filename))
+                shutil.copyfile(mask, os.path.join(tempfile.tempdir, "Masks", filename))
                 self.mask_parameters["masksList"].addItem(filename)
                 self.mask_parameters["masksList"].setCurrentText(filename)
                 self.clearMask()
@@ -3917,7 +3917,7 @@ This parameter has a strong effect on computation time, so be careful."
             run_config['point0'] = self.getPoint0ImageCoords()
             suffix_text = "run_config"
 
-            self.run_config_file = os.path.join(tempfile.tempdir, "Results/" +folder_name + "/_" + suffix_text + ".json")
+            self.run_config_file = os.path.join(tempfile.tempdir, "Results", folder_name, "_" + suffix_text + ".json")
 
             with open(self.run_config_file, "w+") as tmp:
                 json.dump(run_config, tmp)
@@ -4095,7 +4095,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         self.result_widgets['pc_entry'].clear()
         self.result_widgets['subvol_entry'].clear()
 
-        directory = os.path.join(tempfile.tempdir, "Results/_" + self.result_widgets['run_entry'].currentText())
+        directory = os.path.join(tempfile.tempdir, "Results", "_" + self.result_widgets['run_entry'].currentText())
         self.results_folder = directory
 
         file_list=[]
@@ -4145,7 +4145,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                 self.warningDialog("An error occurred with this run so the results could not be displayed.", "Error")
 
             else:
-                results_folder = os.path.join(tempfile.tempdir, "Results/_" + self.result_widgets['run_entry'].currentText())
+                results_folder = os.path.join(tempfile.tempdir, "Results", "_" + self.result_widgets['run_entry'].currentText())
                 self.roi = os.path.join(results_folder ,"_" + str(subvol_size) + ".roi")
                 #print("New roi is", self.roi)
                 self.results_folder = results_folder
@@ -4163,7 +4163,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                             if result.subvol_points == subvol_points:
                                 print ("YES")
                                 run_file = result.disp_file
-                                run_file = os.path.join(results_folder , os.path.basename(run_file))
+                                run_file = os.path.join(results_folder, os.path.basename(run_file))
 
                                 self.displayVectors(run_file, 2)
                             else:
@@ -4176,7 +4176,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
     def CreateGraphsWindow(self):
         #print("Create graphs")
         if self.result_widgets['run_entry'].currentText() is not "":
-            self.results_folder = os.path.join(tempfile.tempdir, "Results/_" + self.result_widgets['run_entry'].currentText())
+            self.results_folder = os.path.join(tempfile.tempdir, "Results", "_" + self.result_widgets['run_entry'].currentText())
         else:
             self.results_folder = None
 
@@ -4470,7 +4470,7 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
                 self.dvc_input_image[1][count] = os.path.join(os.path.abspath(tempfile.tempdir), self.config['dvc_input_image'][1][count]) 
             count+=1
 
-        results_folder = os.path.join(tempfile.tempdir, "Results/_" + self.result_widgets['run_entry'].currentText())
+        results_folder = os.path.join(tempfile.tempdir, "Results", "_" + self.result_widgets['run_entry'].currentText())
         self.results_folder = results_folder
    
     def CloseSaveWindow(self):
@@ -5165,7 +5165,7 @@ class SaveObjectWindow(QtWidgets.QWidget):
             #Load Saved Session
             #print("Write mask to file, then carry on")
             filename = self.textbox.text() + ".mha"
-            shutil.copyfile(os.path.join(tempfile.tempdir, self.parent.mask_file), os.path.join(tempfile.tempdir, "Masks/" + filename))
+            shutil.copyfile(os.path.join(tempfile.tempdir, self.parent.mask_file), os.path.join(tempfile.tempdir, "Masks", filename))
             self.parent.mask_parameters['masksList'].addItem(filename)
             self.parent.mask_details[filename] = self.parent.mask_details['current']
             #print(self.parent.mask_details)
