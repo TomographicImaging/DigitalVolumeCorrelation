@@ -4190,17 +4190,18 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
 #Dealing with saving sessions:
 
     def closeEvent(self, event):
-        self.CreateSaveWindow("Quit without Saving", event) 
-        if self.should_really_close:
-            event.accept()
-        else:
+        self.CreateSaveWindow("Quit without Saving", event)
+        self.threadpool.waitForDone()
+        if not hasattr(self, 'should_really_close') or not self.should_really_close:
             event.ignore()
+        else:
+            event.accept()
     #@pysnooper.snoop()
     def CreateSaveWindow(self, cancel_text, event):
 
         dialog = FormDialog(parent=self, title='Save Session')
         self.SaveWindow = dialog
-        self.SaveWindow.Ok.clicked.connect(lambda: self.save_quit_accepted())
+        
         self.SaveWindow.Ok.setText('Save')
         
 
@@ -4222,33 +4223,44 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
         dialog.addWidget(qwidget,'','compress')
         
         self.save_button = QPushButton("Save")
-        print (event, type(event))
+        # We have 2 instances of the window.
         if type(event) ==  QCloseEvent:
+            # This is the case where we are quitting the app and the window asks if we
+            # would like to save
             self.SaveWindow.Cancel.clicked.connect(lambda: self.save_quit_just_quit())
+            self.SaveWindow.Ok.clicked.connect(lambda: self.save_quit_accepted())
             self.SaveWindow.Cancel.setText('Quit without saving')
         else:
+            # This is the case where we are just choosing to 'Save' in the file menu
+            # so we never quit the app.
             self.SaveWindow.Cancel.clicked.connect(lambda: self.save_quit_rejected())
+            self.SaveWindow.Ok.clicked.connect(lambda: self.save_accepted())
             self.SaveWindow.Cancel.setText('Cancel')
         
         self.SaveWindow.exec()
 
-        
-
-    def save_quit_accepted(self):
-        #Load Saved Session
+    def save_accepted(self):
         self.should_really_close = False
         compress = self.SaveWindow.widgets['compress_field'].isChecked()
         self.SaveWindow.close()
         self.SaveSession(self.SaveWindow.widgets['session_name_field'].text(), compress, None)
+
+
+    def save_quit_accepted(self):
+        #Load Saved Session
+        self.should_really_close = True
+        compress = self.SaveWindow.widgets['compress_field'].isChecked()
+        self.SaveWindow.close()
+        self.SaveSession(self.SaveWindow.widgets['session_name_field'].text(), compress, QCloseEvent())
         
 
     def save_quit_just_quit(self):
         event = QCloseEvent()
         self.SaveWindow.close()
         self.RemoveTemp(event) # remove tempdir for this session.
-        # QMainWindow.closeEvent(self.parent, event)
         self.should_really_close = True
         self.close()
+
     def save_quit_rejected(self):
         self.should_really_close = False
         self.SaveWindow.close()
@@ -4467,7 +4479,6 @@ The dimensionality of the pointcloud can also be changed in the Point Cloud pane
     
         self.SaveWindow.close()
         self.should_really_close = True
-        self.close()
        
     def ZipDirectory(self, *args, **kwargs):
         directory, compress = args
@@ -4979,7 +4990,7 @@ Please move the file back to this location and reload the session, select a diff
 
 # Loading and Error windows:
     def progress(self, value):
-        #print("progress emitted")
+        # print("progress emitted")
         if int(value) > self.progress_window.value():
             self.progress_window.setValue(value)
 
