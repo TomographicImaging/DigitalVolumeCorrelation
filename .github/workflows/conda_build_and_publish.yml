@@ -1,0 +1,29 @@
+name: conda_build
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [ master ] # TODO: change to master when merge app
+    tags:
+      - '**'
+  pull_request:
+    branches: [ master ] # TODO: change to master when merge app
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - name: publish-to-conda
+      uses: paskino/conda-package-publish-action@master
+      with:
+        subDir: 'recipe'
+        channels: 'conda-forge'
+        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
+        publish: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
+        convert_win: false
+        convert_osx: false
