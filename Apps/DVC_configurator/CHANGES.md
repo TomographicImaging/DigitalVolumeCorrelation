@@ -1,6 +1,6 @@
 # ChangeLog
 
-##v21.0.1
+## v21.0.1
 * improvements to saving and closing app
 * check for platform, and adjust call to dvc core code
 
