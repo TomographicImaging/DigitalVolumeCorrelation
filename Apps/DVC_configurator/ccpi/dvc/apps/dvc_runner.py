@@ -72,7 +72,7 @@ def update_progress(main_window, process, total_points, required_runs, run_succe
     while(process.canReadLine()):
         #print("READ")
         string = process.readLine()  
-        line = str(string,"utf-8")
+        line = str(string.data(),"utf-8")
         
         global count
         count+=1
