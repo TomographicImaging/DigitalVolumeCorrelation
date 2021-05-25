@@ -817,7 +817,6 @@ It will be the first point in the file that is used as the reference point.")
         actor.GetProperty().SetPointSize(3)
         actor.GetProperty().SetColor(0., 1., 1.)
         actor.VisibilityOn()
-        # actor.AddObserver("ModifiedEvent", lambda: print ("point actor modified"))
 
         # create a mapper/actor for the point cloud with a CubeSource and with vtkGlyph3D
         # which copies oriented and scaled glyph geometry to every input point
