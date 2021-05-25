@@ -7,7 +7,7 @@ cp -r ${RECIPE_DIR}/../Wrappers/Python/ccpi ${SRC_DIR}/ccpi/ccpi
 cd ${SRC_DIR}/ccpi
 
 #:: issue cmake to create setup.py
-cmake ${RECIPE_DIR}/../../  \
+cmake ${RECIPE_DIR}/../  \
                         -DBUILD_PYTHON_WRAPPER=OFF\
                         -DCMAKE_BUILD_TYPE="Release"\
                         -DCMAKE_INSTALL_PREFIX=$PREFIX
