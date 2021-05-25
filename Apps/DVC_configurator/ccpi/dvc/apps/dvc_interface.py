@@ -1151,8 +1151,8 @@ It is used as a global starting point and a translation reference."
                     # print("Creating reg viewer")
                     self.viewer2D_dock.setVisible(False)
                     self.viewer3D_dock.setVisible(False)
-                    self.help_dock.setMaximumHeight(self.size().height()*0.15)
-                    self.viewer_settings_dock.setMaximumHeight(self.size().height()*0.15)
+                    self.help_dock.setMaximumHeight(self.size().height()*0.2)
+                    self.viewer_settings_dock.setMaximumHeight(self.size().height()*0.2)
                     self.createRegistrationViewer()
                 else:
                     if self.vis_widget_reg.getImageData() != self.ref_image_data:
@@ -1164,8 +1164,8 @@ It is used as a global starting point and a translation reference."
                     self.viewer2D_dock.setVisible(False)
                     self.viewer3D_dock.setVisible(False)
                     self.reg_viewer_dock.setVisible(True)
-                    self.help_dock.setMaximumHeight(self.size().height()*0.15)
-                    self.viewer_settings_dock.setMaximumHeight(self.size().height()*0.15)
+                    self.help_dock.setMaximumHeight(self.size().height()*0.2)
+                    self.viewer_settings_dock.setMaximumHeight(self.size().height()*0.2)
 
             else:
                 if (hasattr(self, 'reg_viewer_dock')):
