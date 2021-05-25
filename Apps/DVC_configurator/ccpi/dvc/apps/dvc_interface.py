@@ -972,6 +972,7 @@ It will be the first point in the file that is used as the reference point.")
 
         self.registration_panel = generateUIDockParameters(self, '2 - Manual Registration')
         dockWidget = self.registration_panel[0]
+        dockWidget.setObjectName("RegistrationPanel")
         groupBox = self.registration_panel[5]
         groupBox.setTitle('Registration Parameters')
         formLayout = self.registration_panel[6]
@@ -2179,6 +2180,7 @@ It is used as a global starting point and a translation reference."
 
         self.pointCloudDockWidget = QDockWidget(self)
         self.pointCloudDockWidget.setWindowTitle('4 - Point Cloud')
+        self.pointCloudDockWidget.setObjectName("PointCloudPanel")
         self.pointCloudDockWidgetContents = QWidget()
 
         self.pointCloudDockWidget.visibilityChanged.connect(partial(self.displayHelp, panel_no = 3))
