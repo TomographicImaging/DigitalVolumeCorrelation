@@ -1,6 +1,9 @@
 # ChangeLog
 
-## v**
+## v21.0.1
+* Update orienatation in manual registration, in line with v21.0.1 of the CILViewer
+
+## v21.0.0
 * change backend to PySide2
 * add dependency on eqt (package with some Qt threading and UI templates)
 
