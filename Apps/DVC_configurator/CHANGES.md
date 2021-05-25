@@ -1,6 +1,10 @@
 # ChangeLog
 
-## v**
+##v21.0.1
+* improvements to saving and closing app
+* check for platform, and adjust call to dvc core code
+
+## v21.0.0
 * change backend to PySide2
 * add dependency on eqt (package with some Qt threading and UI templates)
 
