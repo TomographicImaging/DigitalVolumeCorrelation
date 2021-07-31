@@ -649,7 +649,7 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	if (count == 0)
 	{
 		std::cout << "\n";
-		std::cout << "No points were read, and the Point Cloud file may be improperly formatted.\n";
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted.\n";
 		std::cout << "The expected format is plain text, tab (or other 'white space') delimited.\n";
 		std::cout << "Header info is OK as long as it does not match the format of a point description.\n";
 		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:\n\n";
@@ -662,6 +662,153 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	Point max_pt(max_x, max_y, max_z);
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
+
+	return 1;
+}
+/******************************************************************************/
+int DispRead::read_sort_file_cst_sv(std::string fname, std::vector<std::vector<int>>  &neigh) 
+{
+	// checked with Mac and Windows generated .sort.csv files
+	// working without eol checks
+	// Windows files have \r at end of line (ss.peek()) but explicit check not needed
+	// Windows file did generate an extra line with no points at end, caught with the col_count check
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
+
+	ifs.clear();
+	ifs.seekg(0, std::ios::beg);
+
+	std::string line;
+	int val;
+
+	int line_count = 0;
+	while (getline(ifs, line)) {
+		std::stringstream ss(line);
+		std::vector<int> int_vect = {};
+
+		int col_count = 0;
+		while (ss >> val) {
+			int_vect.emplace_back(val);
+			if(ss.peek() == ',') ss.ignore();
+			if(ss.peek() == ' ') ss.ignore();
+			if(ss.peek() == '\t') ss.ignore();
+			col_count += 1;
+		}
+
+		if (col_count > 0) {
+			neigh.emplace_back(int_vect);
+			line_count += 1;
+		}
+	}
+
+	// might change return if line_count = 0
+
+	return 1;
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, int &val) {
+
+	if(ss >> val) {
+		if(ss.peek() == ',') ss.ignore();
+		if(ss.peek() == ' ') ss.ignore();
+		if(ss.peek() == '\t') ss.ignore();
+		return 1;
+	} else {
+		return 0;
+	}
+
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, double &val) {
+
+	if(ss >> val) {
+		if(ss.peek() == ',') ss.ignore();
+		if(ss.peek() == ' ') ss.ignore();
+		if(ss.peek() == '\t') ss.ignore();
+		return 1;
+	} else {
+		return 0;
+	}
+
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, Point &val) {
+
+	double val_x, val_y, val_z;
+
+	if ( get_val(ss,val_x) && get_val(ss,val_y) && get_val(ss,val_z) ) {
+		val.move_to(val_x,val_y,val_z);
+		return 1;
+	} else {
+		return 0;
+	}
+
+}/******************************************************************************/
+int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis) {
+
+	// .disp file is:	n	x	y	z	status	objmin	u	v	w (int, 3xdouble->point, int, double, 3xdouble->point)
+	// ? define as a class and pass around that way?
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
+
+	ifs.clear();
+	ifs.seekg(0, std::ios::beg);
+
+	std::string line;
+
+	int num_col = 9;		// to check line read success
+	int line_count = 0;	
+	int loop_count = 0;
+
+	while (getline(ifs, line)) {
+		std::stringstream ss(line);
+
+		// use header line to judge whether or not this is a .disp file
+		if (loop_count == 0) {
+			if(ss.peek() != 'n') {
+				std::cout << "-> .disp file lacks proper header, check command line arguments" << std::endl;
+				return 0;
+			}
+		}
+
+		int ival1,ival2;
+		double dval;
+		Point pval1(0.0, 0.0, 0.0);
+		Point pval2(0.0, 0.0, 0.0);
+
+		int col_count = 0;
+
+		if (get_val(ss,ival1)) { // n
+			col_count += 1;
+		}
+
+		if (get_val(ss,pval1)) { // x,y,z
+			col_count += 3;
+		}
+
+		if (get_val(ss,ival2)) { // status
+			col_count += 1;
+		}
+
+		if (get_val(ss,dval)) { // objmin
+			col_count += 1;
+		} 
+
+		if (get_val(ss,pval2)) { // u,v,w
+			col_count += 3;
+		}
+
+		if (col_count == num_col) {
+			label.emplace_back(ival1);
+			pos.emplace_back(pval1);
+			status.emplace_back(ival2);
+			objmin.emplace_back(dval);
+			dis.emplace_back(pval2);
+			line_count += 1;
+		}
+
+		loop_count += 1;
+	}
 
 	return 1;
 }
@@ -944,6 +1091,8 @@ int InputRead::result_header(std::string fname, int num_params)
 
 	res_file << "\t" << "u" << "\t" << "v" << "\t" << "w";
 
+	// changed .disp output to just include displacements
+	/*
 	if (num_params > 3) res_file << "\t" << "phi" << "\t" << "the" << "\t" << "psi";
 
 	if (num_params > 6)
@@ -951,6 +1100,7 @@ int InputRead::result_header(std::string fname, int num_params)
 		res_file << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz";
 		res_file << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz";
 	}
+	*/
 
 	res_file << "\n";
 
@@ -971,7 +1121,19 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 
 	res_file << std::fixed << std::setprecision(6);
 
-	for (int i=0; i<result.size(); i++) res_file << "\t" << result[i];
+	// this prints full search params, disp, rotation, strain if used
+	/*
+	for (int i=0; i<result.size(); i++)
+	{
+		res_file << "\t" << result[i];
+	} 
+	*/
+
+	// this prints just the dispalcements
+	for (int i=0; i<3; i++)
+	{
+		res_file << "\t" << result[i];
+	} 
 
 	res_file << "\n";
 
