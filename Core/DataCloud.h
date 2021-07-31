@@ -54,7 +54,7 @@ struct ResultRecord
 	double obj_min;			// value at minumum
 	
 	std::vector<double> par_min;	// parameters at min [ndof]
-	
+
 };
 
 /******************************************************************************/
@@ -64,7 +64,14 @@ public:
 	DataCloud();
 	
 	void organize_cloud(RunControl *run);
-//	DataCloud(InputRead *in);
+
+	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
+	// needs points and labels already available, generates order and neigh
+	void sort_order_neighbors();
+	int nbr_num_save() const {return nbr_num_save_default;}
+
+	// write out neighbors as a .sort file
+	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh);
 	
 	// in order of appearance in the point cloud input file, [npts]
 	std::vector<Point> points;
@@ -77,40 +84,36 @@ public:
 	
 	// indices of neighbors of a search point
 	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
-						// [nnbr] may vary by point
 	
+	// vector of result records for a point
 	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
 	
-	
-	
-	
-	// trial idea ... create subgroups within order based on resorting
-	// sub_groups contain indices of points in the main list
-	// could subdivide points into fixed-number groups, with last one smaller
-	// could subdivide in groups of fixed BoundBox size for interpolator use
-	std::vector< std::vector<int> > sub_groups;	// [ngrp][nppg]
-							// [nppg] may vary
-	std::vector<Cloud> sub_clouds;	// probably better
-	// volume in vox^3
-	void split_by_volume(std::vector<DualSort> indx_dist, double vol_limit);
-	// end trial
-	
-	
-	
-	int n_n_m() const {return neigh_num_min;}
-	int n_n_p() const {return neigh_num_par;}
-	double n_d_p() const {return neigh_dst_par;}
+	//
+	// results from the STRAIN calculation executable
+	//
 
+	// Engineering strain components and principals
+	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+	
+	// Lagrangian strain components and principals
+	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
+
+	// displacement components computed at cloud locations from the volume fitting process
+	std::vector< std::vector<double> > dis_vfit;	// u,v,w
+
+	// strain window radius (without half the subvol size) computed at cloud locations
+	std::vector<double> sw_rad;
+
+	// for variable neighborhood approaches, num of pts in the strain window
+	std::vector<int> pts_in_sw;
 
 private:
 	
-	int start_point_label;		// label of first point to process
+//	int start_point_label;		// label of first point to process
 	int start_point_index;		// index corresponding to label
-	
-	int neigh_num_min;		// minimum number for strain calc
-	int neigh_num_par;		// number of neighbors parameter
-	double neigh_dst_par;		// distance range parameter
 
+	int nbr_num_save_default;	// default number used for .sort file, set in constructor
+	
 };
 /******************************************************************************/
 
