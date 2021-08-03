@@ -1,7 +1,7 @@
 # Changelog
 
 ## v21.1.0
-* Add strain calculation
+* Add strain calculation: command line executable "strain"
 * Fix missing DLLs error on windows
 
 ## v21.0.0
