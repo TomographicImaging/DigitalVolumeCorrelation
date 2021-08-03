@@ -51,6 +51,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	std::cout << "Running dvc built from core_updates branch" << std::endl;
+
+
 	InputRead in;
 
 	std::string help("help");
@@ -128,6 +131,15 @@ int main(int argc, char *argv[])
 	}
 
 	// check to see if the command line argument is an accessible file
+
+	// check and process command line flags
+	
+	int map_label;
+	bool map_on = false;
+	if (in.find_flag("-map", argc, argv, map_label)) {	
+		map_on = true;
+		std:;cout << std::endl << "** mapping point with label " << map_label << std::endl;
+	}
 
 	std::string fname(argv[1]);
 	if(!in.input_file_accessible(fname)) return 0;
@@ -245,7 +257,7 @@ int main(int argc, char *argv[])
 
 		try
 		{
-			optimize.process_point(trg, n, &data);
+			optimize.process_point(trg, n, map_on, map_label, &data);
 		}
 		catch (Point_Good)
 		{
