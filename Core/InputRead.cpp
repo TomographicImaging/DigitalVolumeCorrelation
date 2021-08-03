@@ -2,6 +2,111 @@
 #include "InputRead.h"
 
 /******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[]) 
+{
+	// loop through current arg list, if flag found, remove from list and return true
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[], int &val) 
+{
+	// look for command line flag followed by a single integer argument
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stoi(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;						// return true
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[], double &val) 
+{
+	// look for command line flag followed by a single float-double argument
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stod(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;		// return success
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+
+/******************************************************************************/
+int InputRead::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
+{
+	// clear extraneous flags
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(pos, len, flag) == 0) {
+			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/******************************************************************************/
 std::vector<std::string> InputRead::line_to_vect(std::string line)
 {
 	std::vector<std::string> vect;

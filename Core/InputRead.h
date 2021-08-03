@@ -76,6 +76,11 @@ public:
 
 	std::ifstream input_file;
 
+	int find_flag(std::string flag, int &argc, char *argv[]);
+	int find_flag(std::string flag, int &argc, char *argv[], int &val);
+	int find_flag(std::string flag, int &argc, char *argv[], double &val);
+	int find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]);
+
 	int input_file_accessible(std::string fname);
 
 	int input_file_read(RunControl *run);

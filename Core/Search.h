@@ -79,7 +79,7 @@ public:
 	std::vector<double> par_min;	// parameter vector at optimum
 	double obj_min;			// objective function value at optimum
 
-	void process_point(int t, int n, DataCloud *srch_data, int test = 0);
+	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test = 0);
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
@@ -97,7 +97,10 @@ public:
 	std::vector< std::vector<double> > obj_Hess_at(const std::vector<double> x);
 
 	// translation grid style global search
-	void trgrid_global(double displ_max, double basin_rad, int n);
+	void trgrid_global(double displ_max, double basin_rad, int n, bool out_as_raw);
+
+	// map objective function for translations surrounding a parameter vector, up to dispalcement max with adjustable increment
+	void map_objective_function(double half_range, int num_each_dim);
 
 	// randomized points style global search
 	void random_global(double displ_max, double basin_rad);

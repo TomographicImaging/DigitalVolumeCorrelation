@@ -73,7 +73,7 @@ Search::~Search()
 
 }
 /******************************************************************************/
-void Search::process_point(int t, int n, DataCloud *srch_data, int test)
+void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test)
 {
 	// n is the index of the current search point
 	Point srch_pt = srch_data->points[n];
@@ -110,7 +110,22 @@ void Search::process_point(int t, int n, DataCloud *srch_data, int test)
 	// coarse search step
 	// this is probably going to phase out, except perhaps for global start
 	// also useful for objective function mapping
-	trgrid_global(rc->disp_max, rc->basin_radius, n);
+
+	// trap point for objective function mapping and convergence trace
+
+	if (map_flag && (srch_data->labels[n] == map_id)) {
+		std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
+
+		// if just mapping, don;t want to update the parameter vector
+
+		double half_range = 0.5*rc->disp_max;	// multiplier must be <= 1.0
+
+		int num_each_dim = 25;
+		map_objective_function(half_range, num_each_dim);
+	}
+
+	// if using as part of a search the parameter vector is updated
+	trgrid_global(rc->disp_max, rc->basin_radius, n, false);
 	//	random_global(rc->disp_max, rc->basin_radius);
 
 /*******************/
@@ -912,21 +927,31 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 
 }
 /******************************************************************************/
-void Search::trgrid_global(double displ_max, double basin_radius, int n)
+void Search::trgrid_global(double displ_max, double basin_radius, int n, bool out_as_raw)
 {
+
+	if (out_as_raw) {
+		std::cout << std::endl << "** in trigrid_global with out_as_raw true and point number in cloud  " << n << std::endl;
+		// return;
+	}
+
 	// use basin_fraction as a basis for controlloing the resolution of the global search
 	// 0.0 < basin_fraction <= 1.0, check on input
 	// full float version, very slow with tricubic, much faster with trilinear
 
 	// check for opt out of coarse search
-	if (basin_radius == 0.0) return;
+	if ((out_as_raw == false) && basin_radius == 0.0) return;
+
+	// temp!
+	if (out_as_raw) basin_radius = 2.0;
 
 	int num_inc = displ_max/basin_radius;
 	double inc = displ_max/num_inc;
 	int num_pts = (2*num_inc+1)*(2*num_inc+1)*(2*num_inc+1);
 
 	// objective function mapping
-	// std::vector<double> obj_vals(num_pts,0.0);
+	// change to appended array instead of full size allocate
+	std::vector<double> obj_vals(num_pts,0.0);
 	//
 	int ndof = 3;	// just search global with translation dof's
 
@@ -944,6 +969,9 @@ void Search::trgrid_global(double displ_max, double basin_radius, int n)
 	for (int z=-num_inc; z<=num_inc; z++)
 	for (int y=-num_inc; y<=num_inc; y++)
 	for (int x=-num_inc; x<=num_inc; x++) {
+
+		std::cout << "count/num_pts = " << count << "/" << num_pts << std::endl;
+
 
 // for output subvol checks
 //	for (int z=0; z<=0; z++)
@@ -968,7 +996,8 @@ void Search::trgrid_global(double displ_max, double basin_radius, int n)
 //
 
 		// objective function mapping
-		// obj_vals[count] = obj_val;
+		if (out_as_raw) 
+			obj_vals[count] = obj_val;
 		//
 
 		if (obj_val < obj_min) {
@@ -988,13 +1017,12 @@ void Search::trgrid_global(double displ_max, double basin_radius, int n)
 	par_min[1] += (double)min_y*inc;
 	par_min[2] += (double)min_z*inc;
 
-	return;
+	// return;
 
 	// objective function mapping, need basin_radius on
 	// optional output block, write as a raw 8-bit image volume
-/*
-	if (n == 0)
-	std::cout << "\n\n mapping start point objective function \n\n";
+
+	if (out_as_raw) 
 	{
 		int ncp = 2*num_inc+1;
 
@@ -1020,9 +1048,81 @@ void Search::trgrid_global(double displ_max, double basin_radius, int n)
 		ofs.close();
 	}
 	return;
-*/
+
 }
 /******************************************************************************/
+
+void Search::map_objective_function(double half_range, int num_each_dim) {
+
+	std::cout << std::endl << "** in map_objective_function, range, num = " << half_range << ", " << num_each_dim << std::endl;
+
+	double inc = (2.0*half_range)/num_each_dim;
+	int ndof = 3;
+	double obj_val = 0.0;
+	int total_num = num_each_dim*num_each_dim*num_each_dim;
+
+	std::vector<double> par_cur(ndof,0.0);
+	std::vector<double> obj_vals(total_num,0.0);
+
+	double obj_min = std::numeric_limits<double>::max();	// for scaling output
+	double obj_max = std::numeric_limits<double>::min();	// for scaling output
+
+	int count = 0;
+	for (int i=0; i<num_each_dim; i++) {
+		double delx = -half_range + i*inc;
+		for (int j=0; j<num_each_dim; j++) {
+			double dely = -half_range + j*inc;
+			for (int k=0; k<num_each_dim; k++) {
+				double delz = -half_range + k*inc;
+
+				par_cur[0] = par_min[0] + delx;
+				par_cur[1] = par_min[1] + dely;
+				par_cur[2] = par_min[2] + delz;
+
+				try {obj_val = obj_val_at(par_cur);}
+				catch (Range_Fail) {throw Range_Fail();}
+
+				obj_vals[count] = obj_val;
+
+				if (obj_val < obj_min) obj_min = obj_val;
+				if (obj_val > obj_max) obj_max = obj_val;
+
+				std::cout << count << " of " << total_num  << " is " << obj_val << std::endl;
+
+				count += 1;
+			}
+		}
+	}
+
+	// write as raw image file
+	int ncp = num_each_dim;
+
+	std::ofstream ofs;
+	ofs.open("global_echo.raw", std::ofstream::out | std::ofstream::binary);
+	if (!ofs)std::cout <<"\n-> Can't open " << "global_echo.raw" << "\n\n";
+
+	char *row_seg;
+	row_seg = new char [ncp];	// storage space for bytes write
+
+	count = 0;
+	for (int i=0; i<ncp; i++) {
+		for (int j=0; j<ncp; j++) {
+			for (int k=0; k<ncp; k++) {
+
+					double scaled = 255*((obj_vals[count]-obj_min)/(obj_max-obj_min));
+					row_seg[k] = (char)scaled;
+
+					count += 1;
+				}
+				ofs.write (row_seg, ncp);	// write an int scaled row
+		}
+	}
+		ofs.close();
+	
+	return;
+}
+/******************************************************************************/
+
 void Search::random_global(double displ_max, double basin_radius)
 // figure out the number of points implied by a translation grid search of the same scope
 // then search a random set of that many points distributed through the same spatial region

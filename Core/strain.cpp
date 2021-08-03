@@ -14,6 +14,7 @@ StrainCalc::StrainCalc ()
 	objmin_thresh_def = 1.0;		// default is no thresholding
 }
 /******************************************************************************/
+/*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[]) 
 {
 	// loop through current arg list, if flag found, remove from list and return true
@@ -30,9 +31,13 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
 	}
 	return 0;
 }
+*/
 /******************************************************************************/
+/*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val) 
 {
+	// look for command line flag followed by a single integer argument
+
 	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
 		std::string argstr(argv[i]);
 		if (argstr.compare(flag) == 0) {			// found the flag
@@ -61,9 +66,13 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 	}
 	return 0;
 }
+*/
 /******************************************************************************/
+/*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val) 
 {
+	// look for command line flag followed by a single float-double argument
+
 	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
 		std::string argstr(argv[i]);
 		if (argstr.compare(flag) == 0) {			// found the flag
@@ -92,7 +101,9 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val
 	}
 	return 0;
 }
+*/
 /******************************************************************************/
+/*
 int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
 {
 	// clear extraneous flags
@@ -110,7 +121,9 @@ int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, c
 	}
 	return 0;
 }
+*/
 /******************************************************************************/
+
 int main(int argc, char *argv[])
 {
 	std::cout << std::endl;
@@ -140,6 +153,8 @@ int main(int argc, char *argv[])
 	bool out_Estr = false;
 	bool out_Lstr = true;
 	bool out_dgrd = false;
+
+	InputRead in;
 
 	// command entered with no arguments
 	if (argc == 1)
@@ -179,17 +194,17 @@ int main(int argc, char *argv[])
 	// look for the flag, adjust run settings, then take it out and adjust argc and argv accordingly
 
 	// run control settings
-	if (strain.find_flag("-sw", argc, argv, ndp)) {	// strain window number of points
+	if (in.find_flag("-sw", argc, argv, ndp)) {	// strain window number of points
 		if (ndp < ndp_min) ndp = ndp_min;
 		if (ndp > ndp_max) ndp = ndp_max;
 	} 
 
-	if (strain.find_flag("-t", argc, argv, objt)) { // objmin threshold
+	if (in.find_flag("-t", argc, argv, objt)) { // objmin threshold
 		if (objt < objt_min) objt = objt_min;
 		if (objt > objt_max) objt = objt_max;	
 	} 
 
-	if (strain.find_flag("-r", argc, argv)) {		// use strain window refill option
+	if (in.find_flag("-r", argc, argv)) {		// use strain window refill option
 		refill = true;
 	}
 
@@ -197,35 +212,35 @@ int main(int argc, char *argv[])
 	// code later uses an automated method based on cloud point position data
 	// leaving these flags in place but not listing in "no arg" output for now
 	
-	if (strain.find_flag("-xy", argc, argv)) {		// do 2d strain calc for xy plane point cloud
+	if (in.find_flag("-xy", argc, argv)) {		// do 2d strain calc for xy plane point cloud
 		xy_only = true;
 	}
 
-	if (strain.find_flag("-yz", argc, argv)) {		// do 2d strain calc for yz plane point cloud
+	if (in.find_flag("-yz", argc, argv)) {		// do 2d strain calc for yz plane point cloud
 		yz_only = true;
 	}
 
-	if (strain.find_flag("-zx", argc, argv)) {		// do 2d strain calc for yz plane point cloud
+	if (in.find_flag("-zx", argc, argv)) {		// do 2d strain calc for yz plane point cloud
 		zx_only = true;
 	}
 
 	// output file control
 	// the default output is Lagrangian strains
-	if (strain.find_flag("-E", argc, argv)) {
+	if (in.find_flag("-E", argc, argv)) {
 		out_Estr = true;
 	}
 
-	if (strain.find_flag("-D", argc, argv)) {
+	if (in.find_flag("-D", argc, argv)) {
 		out_dgrd = true;
 	}
 
-	if (strain.find_flag("-A", argc, argv)) {
+	if (in.find_flag("-A", argc, argv)) {
 		out_Estr = true;
 		out_dgrd = true;
 	}
 
 	// clear any extraneous flags, find_flag writes an output message if found
-	strain.find_flag(0, 1, "-", argc, argv);
+	in.find_flag(0, 1, "-", argc, argv);
 
 	// argc and argv now contain just possible input file names
 	// look for a readable file as the first argument, set as .disp file
