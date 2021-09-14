@@ -5,14 +5,25 @@ package:
 build:
   preserve_egg_dir: False
   number: 1
+  missing_dso_whitelist:
+    - /lib64/libc.so.6            # [linux]
+    - /lib64/libm.so.6            # [linux]
+    - /lib64/libpthread.so.0      # [linux]
+    - /lib64/ld-linux-x86-64.so.2 # [linux]
 
 requirements:
   build:
     - cmake
     - openmp # [osx]
+    - libgcc-ng     # [linux]
+    - libstdcxx-ng  # [linux]
+    - _openmp_mutex # [linux]
 
   run:
     - openmp # [osx]
+    - libgcc-ng     # [linux]
+    - libstdcxx-ng  # [linux]
+    - _openmp_mutex # [linux]
 	
 about:
   home: http://www.ccpi.ac.uk
