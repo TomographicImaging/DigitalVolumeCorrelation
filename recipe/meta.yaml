@@ -8,6 +8,7 @@ build:
 
 requirements:
   build:
+    - cmake
     - openmp # [osx]
 
   run:
