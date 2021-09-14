@@ -8,13 +8,10 @@ build:
 
 requirements:
   build:
-    - setuptools
-    - boost >=1.65
-    - boost-cpp >=1.65
-    - cmake >=3.9
+    - openmp # [osx]
 
   run:
-    - boost >=1.65
+    - openmp # [osx]
 	
 about:
   home: http://www.ccpi.ac.uk
