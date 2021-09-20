@@ -13,14 +13,15 @@ build:
 
 requirements:
   build:
-    - cmake
-    - openmp # [osx]
+    - cmake         # [not osx]
+    - cmake >=3.16  # [osx]
+    - openmp        # [osx]
     - libgcc-ng     # [linux]
     - libstdcxx-ng  # [linux]
     - _openmp_mutex # [linux]
 
   run:
-    - openmp # [osx]
+    - openmp        # [osx]
     - libgcc-ng     # [linux]
     - libstdcxx-ng  # [linux]
     - _openmp_mutex # [linux]
