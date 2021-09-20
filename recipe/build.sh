@@ -5,12 +5,6 @@ if [ `python -c "from __future__ import print_function; import platform; print (
 then 
   echo "Darwin"; 
   
-  # cmake ${RECIPE_DIR}/../  \
-  #                       -DBUILD_PYTHON_WRAPPER=OFF\
-  #                       -DCMAKE_BUILD_TYPE="Release"\
-  #                       -DCMAKE_INSTALL_PREFIX=$PREFIX
-  #                       -DOPENMP_CXX_INCLUDE_DIR=${CONDA_PREFIX}/include \
-  #                       -DOPENMP_LIBRARIES=${CONDA_PREFIX}/lib
   cmake ${RECIPE_DIR}/../ -DCONDA_BUILD=ON \
                         -DBUILD_PYTHON_WRAPPER=OFF \
                         -DCMAKE_BUILD_TYPE="Release"\
