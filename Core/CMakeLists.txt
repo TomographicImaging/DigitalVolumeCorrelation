@@ -14,6 +14,12 @@
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+   file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+endif()
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h.in ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+
+
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
     message(FATAL_ERROR "Require at least gcc-4.7")
 endif()

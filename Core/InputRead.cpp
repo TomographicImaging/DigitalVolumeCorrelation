@@ -828,7 +828,7 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "\n";
 
 	file << "Created:  1 Jan 2014\n";
-	file << "Revised:  " << DAY_REV << " " << MONTH_REV << " " << YEAR_REV << "\n";
+	file << "Revised:  " << REV_DATE << std::endl;
 	file << "version:  " << VERSION << "\n";
 	file << "\n";
 
@@ -974,6 +974,12 @@ int InputRead::print_input_example(std::ofstream &file, std::string pool)
 
 	return 1;
 }
+/******************************************************************************/
+int InputRead::print_current_version(){
+	std::cout << "CCPi Digital Volume Correlation version: " << VERSION << std::endl;
+	return 0;
+}
+
 /******************************************************************************/
 int InputRead::echo_input(RunControl *run)
 {

@@ -38,10 +38,7 @@
 
 //	Revised:
 
-#define DAY_REV 25
-#define MONTH_REV "Nov"
-#define YEAR_REV 2017
-	
-#define VERSION 1.30
+#define VERSION "@dvc_version@"
+#define REV_DATE "@rev_date@" 
 
 #endif
