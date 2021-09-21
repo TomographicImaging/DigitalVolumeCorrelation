@@ -1,3 +1,0 @@
-	#include <string>
-    std::string 	rev_date = "@rev_date@";
-	std::string 	version = "@dvc_version@";

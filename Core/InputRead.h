@@ -42,10 +42,6 @@
 
 #include "CCPiDefines.h"
 
-
-extern std::string version;
-extern std::string rev_date;	
-
 extern const int input_line_ok;
 extern const int keywd_missing;
 extern const int param_invalid;

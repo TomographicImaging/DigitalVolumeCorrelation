@@ -4,10 +4,6 @@
 
 #include <string>
 
-// #include "version.h"
-std::string 	rev_date = "2021-09-21";
-std::string 	version = "v21.1.0-5-g77951b2";
-
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
