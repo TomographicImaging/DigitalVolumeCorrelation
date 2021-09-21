@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 	std::string help("help");
 	std::string example("example");
 	std::string manual("manual");
+	std::string pversion("version");
 
 	bool first_point = true;
 
@@ -99,6 +100,10 @@ int main(int argc, char *argv[])
 		dvc_man.seekp(0, dvc_man.beg);
 		dvc_man.close();
 		return 0;
+	}
+
+	if (argv[1] == pversion){
+		return in.print_current_version();
 	}
 
 	// check to see if the command line argument is an accessible file

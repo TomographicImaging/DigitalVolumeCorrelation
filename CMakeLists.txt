@@ -18,6 +18,24 @@ else()
   cmake_minimum_required(VERSION 3.1.3)
 endif()
 
+# get the current version and date
+execute_process(COMMAND git describe 
+                RESULT_VARIABLE worked 
+                OUTPUT_VARIABLE dvc_version
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (NOT worked EQUAL 0)
+  message(FATAL_ERROR "git describe returned ${worked}")
+endif()
+execute_process(COMMAND git show -s --format=%cd --date=short 
+                RESULT_VARIABLE worked 
+                OUTPUT_VARIABLE rev_date
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (NOT worked EQUAL 0)
+  message(FATAL_ERROR "git describe returned ${worked}")
+endif()
+
 project(cildvc LANGUAGES CXX)
 
 set (CMAKE_CXX_STANDARD 11)

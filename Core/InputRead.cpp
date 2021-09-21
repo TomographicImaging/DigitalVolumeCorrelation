@@ -828,8 +828,8 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "\n";
 
 	file << "Created:  1 Jan 2014\n";
-	file << "Revised:  " << DAY_REV << " " << MONTH_REV << " " << YEAR_REV << "\n";
-	file << "version:  " << VERSION << "\n";
+	file << "Revised:  " << rev_date << std::endl;
+	file << "version:  " << version << "\n";
 	file << "\n";
 
 	file << "The dvc code is written in c++ with portability and simple compilation in mind.\n";
@@ -974,6 +974,12 @@ int InputRead::print_input_example(std::ofstream &file, std::string pool)
 
 	return 1;
 }
+/******************************************************************************/
+int InputRead::print_current_version(){
+	std::cout << "CCPi Digital Volume Correlation version: " << version << std::endl;
+	return 0;
+}
+
 /******************************************************************************/
 int InputRead::echo_input(RunControl *run)
 {

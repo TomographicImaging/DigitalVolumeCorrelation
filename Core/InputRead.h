@@ -37,16 +37,15 @@
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
+
 //
 
 #include "CCPiDefines.h"
 
-// Global variable access
-extern double version;
-extern int day_rev;
-extern std::string month_rev;
-extern int year_rev;
-	
+
+extern std::string version;
+extern std::string rev_date;	
+
 extern const int input_line_ok;
 extern const int keywd_missing;
 extern const int param_invalid;
@@ -186,6 +185,7 @@ public:
 	int print_manual_section(std::ofstream &file, std::string pool);
 	int print_manual_output(std::ofstream &file);
 	int print_input_example(std::ofstream &file, std::string pool);
+	int print_current_version();
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
 	int append_time_date(std::string fname, std::string label, time_t dt);
