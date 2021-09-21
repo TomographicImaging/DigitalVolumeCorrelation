@@ -1,10 +1,13 @@
 package:
   name: ccpi-dvc
-  version: 21.1.0
+  version: {{ environ.get('GIT_DESCRIBE_TAG','v')[1:] }}
+
+source:
+  path: ..
 
 build:
   preserve_egg_dir: False
-  number: 1
+  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0)}}
   missing_dso_whitelist:
     - /lib64/libc.so.6            # [linux]
     - /lib64/libm.so.6            # [linux]
