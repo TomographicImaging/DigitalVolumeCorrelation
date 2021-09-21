@@ -18,14 +18,9 @@ if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
     message(FATAL_ERROR "Require at least gcc-4.7")
 endif()
 
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
+add_definitions(${OpenMP_CXX_FLAGS})
 
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    #set (CMAKE_CXX_FLAGS "${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
 
 if (WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DCCPi_EXPORTS")
@@ -49,13 +44,26 @@ SET (DVC_SRCS ${DVC_SRCS}
 	)
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
+
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0") 
+  set (OpenMP_EXE_LINKER_FLAGS OpenMP::OpenMP_CXX)
+else()
+  message(WARNING "Your CMake version is old. OpenMP linking flags  might be incorrect.")
+  # need to explicitly set this. Definitely for gcc, hopefully also for other systems.
+  # See https://gitlab.kitware.com/cmake/cmake/issues/15392
+  set (OpenMP_EXE_LINKER_FLAGS ${OpenMP_C_FLAGS})
+endif()
+
 # add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
 # TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
 target_include_directories(cildvc_static PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
     $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 )
-target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
+# target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
+target_link_libraries(cildvc_static ${OpenMP_EXE_LINKER_FLAGS} )
+
+
 
 # executables
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
