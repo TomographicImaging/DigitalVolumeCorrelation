@@ -1,5 +1,10 @@
 #include "strain.h"
 
+/*
+Testing branch pushing and pulling between local repos (e.g. Mac, Linux)
+This comment inserted on core_updates branch, Linux repo, 11 Feb 2022.
+*/
+
 /******************************************************************************/
 StrainCalc::StrainCalc ()
 {
@@ -15,7 +20,7 @@ StrainCalc::StrainCalc ()
 }
 /******************************************************************************/
 /*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[]) 
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
 {
 	// loop through current arg list, if flag found, remove from list and return true
 
@@ -34,7 +39,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
 */
 /******************************************************************************/
 /*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val) 
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 {
 	// look for command line flag followed by a single integer argument
 
@@ -50,7 +55,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 					argc -= 2;
 					return 1;						// return true
 				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
 					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
 						argv[j] = argv[j+1];
 					}
@@ -58,7 +63,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 					std::cout << "argument after " << flag << " not valid" << std::endl;
 					return 0;
 				}
-			}	
+			}
 			// no next argument on command line, notify and pull flag
 			std::cout << "no argument after " << flag << " flag" << std::endl;
 			argc -= 1;
@@ -69,7 +74,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 */
 /******************************************************************************/
 /*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val) 
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val)
 {
 	// look for command line flag followed by a single float-double argument
 
@@ -85,7 +90,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val
 					argc -= 2;
 					return 1;		// return success
 				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
 					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
 						argv[j] = argv[j+1];
 					}
@@ -93,7 +98,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val
 					std::cout << "argument after " << flag << " not valid" << std::endl;
 					return 0;
 				}
-			}	
+			}
 			// no next argument on command line, notify and pull flag
 			std::cout << "no argument after " << flag << " flag" << std::endl;
 			argc -= 1;
@@ -104,7 +109,7 @@ int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val
 */
 /******************************************************************************/
 /*
-int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
+int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[])
 {
 	// clear extraneous flags
 
@@ -131,7 +136,7 @@ int main(int argc, char *argv[])
 	StrainCalc strain;		// instantiate StrainCalc object to set fixed run parameters and default values
 	DataCloud data;			// instantiate DataCloud object to access .sort file settings and set up storage
 
-	int ndp_min = strain.ndp_min();	
+	int ndp_min = strain.ndp_min();
 	int ndp_max = data.nbr_num_save();		// this coordinates with .sort file management
 	int ndp = strain.ndp_def();
 
@@ -168,7 +173,7 @@ int main(int argc, char *argv[])
 		std::cout << "strain dvc.disp.csv dvc.sort.csv" << std::endl;
 		std::cout << "  • use dvc output file dvc.disp.csv and sort file dvc.sort.csv, use default run settings"  << std::endl;
 		std::cout << "  • use either a .sort file created during the dvc run or one created during an initial strain run"  << std::endl;
-		
+
 		std::cout << std::endl << "Default settings:" << std::endl;
 		std::cout << "strain window = " << strain.ndp_def() << " points (min = " << strain.ndp_min() << ", max = " << data.nbr_num_save() << ")" << std::endl;
 		std::cout << "  • reset with -sw flag" << std::endl;
@@ -197,12 +202,12 @@ int main(int argc, char *argv[])
 	if (in.find_flag("-sw", argc, argv, ndp)) {	// strain window number of points
 		if (ndp < ndp_min) ndp = ndp_min;
 		if (ndp > ndp_max) ndp = ndp_max;
-	} 
+	}
 
 	if (in.find_flag("-t", argc, argv, objt)) { // objmin threshold
 		if (objt < objt_min) objt = objt_min;
-		if (objt > objt_max) objt = objt_max;	
-	} 
+		if (objt > objt_max) objt = objt_max;
+	}
 
 	if (in.find_flag("-r", argc, argv)) {		// use strain window refill option
 		refill = true;
@@ -211,7 +216,7 @@ int main(int argc, char *argv[])
 	// this manually sets to a 2d coordinate plane analysis
 	// code later uses an automated method based on cloud point position data
 	// leaving these flags in place but not listing in "no arg" output for now
-	
+
 	if (in.find_flag("-xy", argc, argv)) {		// do 2d strain calc for xy plane point cloud
 		xy_only = true;
 	}
@@ -244,7 +249,7 @@ int main(int argc, char *argv[])
 
 	// argc and argv now contain just possible input file names
 	// look for a readable file as the first argument, set as .disp file
-	if (argc > 1) 
+	if (argc > 1)
 	{
 		fname_disp = argv[1];
 		std::ifstream input_disp;
@@ -278,7 +283,7 @@ int main(int argc, char *argv[])
 		std::ifstream input_sort_read;
 		input_sort_read.open(fname_sort_read.c_str());
 		if (input_sort_read.good())
-		{			
+		{
 			do_sort_read = true;
 		} else {
 			std::cout << "-> cannot find .sort file " << fname_sort_read << std::endl;
@@ -303,10 +308,10 @@ int main(int argc, char *argv[])
 	// now move on to the .sort file
 	// two options here:
 	//	1. establish neighbors by sorting the point cloud
-	//	2. read in an existing .sort file 
+	//	2. read in an existing .sort file
 
 	// read option
-	if (do_sort_read) { 
+	if (do_sort_read) {
 		disp.read_sort_file_cst_sv(fname_sort_read,data.neigh);
 		std::cout << "using sort file: " << fname_sort_read << std::endl;
 	}
@@ -380,14 +385,14 @@ int main(int argc, char *argv[])
 	std::cout << "nsort_pts =" << nsort_pts << std::endl;
 	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
 
-	// 
+	//
 	// strain calculation begins here
 	//
 
 	// model used for fitting, 3D quadratic polynomial
-	//    m  = c0 
+	//    m  = c0
 	//       + c1*x + c2*y + c3*z
-	//       + c4*x^2 + c5*y^2 + c6*z^2 
+	//       + c4*x^2 + c5*y^2 + c6*z^2
 	//       + c7*x*y + c8*y*z + c9*x*z
 
 	std::vector<Eigen::MatrixXd> DG_all_pts = {};	// store for possible output
@@ -398,7 +403,7 @@ int main(int argc, char *argv[])
 		std::vector<int> nbr_ind = data.neigh[i];
 
 		// find matrix scaling factor and load neighborhood vectors npos and ndis for current point
-		// using the distance to the current point (neighborhood center) for scaling 
+		// using the distance to the current point (neighborhood center) for scaling
 		Point origin(0.0, 0.0, 0.0);
 		double distance = data.points[i].pt_dist(origin);
 		double scale = 1.0/distance;
@@ -417,11 +422,11 @@ int main(int argc, char *argv[])
 		if (!refill) {
 			int indx = 0;
 			for (unsigned int j=0; j<ndp; j++) {
-				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {			
+				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
 					npos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-					ndis.push_back(sdis);				
+					ndis.push_back(sdis);
 				}
 				indx += 1;	// generally would use j but the while loop version needs to count
 			}
@@ -429,12 +434,12 @@ int main(int argc, char *argv[])
 			int indx = 0;
 			int np = 0;
 			while ( (np < ndp) && (indx < ndp_max) ) {
-				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {			
+				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
 					npos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-					ndis.push_back(sdis);		
-					np += 1;		
+					ndis.push_back(sdis);
+					np += 1;
 				}
 				indx += 1;
 			}
@@ -442,7 +447,7 @@ int main(int argc, char *argv[])
 
 		// if no points in neigh then pts_in_sw becomes zero
 		data.pts_in_sw.push_back(npos.size());
- 
+
 		if (npos.size() == 0) {
 			data.sw_rad.emplace_back(0.0);
 
@@ -497,7 +502,7 @@ int main(int argc, char *argv[])
 				Xm(j,9) = 0.0;
 
 				dvs(j,0) = 0.0;
-			}			
+			}
 
 			if (zx_only) {			// zero out y terms
 				Xm(j,2) = 0.0;
@@ -578,7 +583,7 @@ int main(int argc, char *argv[])
 				lam[1] = lam[2];
 			}
 			lam[2] = 0.0;
-		}		
+		}
 		str = {ST(0,0),ST(1,1),ST(2,2),ST(0,1),ST(1,2),ST(0,2),lam[0],lam[1],lam[2]};
 		data.Lstrain.push_back(str);
 	}
