@@ -135,22 +135,24 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 		std::cout << "\n-> Can't open " << voxfname << "\n\n"; return;
 	}
 
-	// long ints needed for proper indexing into big (>4gb) files
-	long vox_wide = vox_box->iwide();
-	long vox_high = vox_box->ihigh();
+	// size_t used for safe indexing in big files
+	size_t vox_wide = vox_box->iwide();
+	size_t vox_high = vox_box->ihigh();
 
-	long est_box_min_x = est_box->min().ix();
-	long est_box_min_y = est_box->min().iy();
-	long est_box_min_z = est_box->min().iz();
+	size_t est_box_min_x = est_box->min().ix();
+	size_t est_box_min_y = est_box->min().iy();
+	size_t est_box_min_z = est_box->min().iz();
 
-	long voxls_in_row = est_box->iwide();
-	long bytes_in_row = bytes_per * voxls_in_row;
-	   	 
-	char *block_buffer = new char[est_box->itall() * est_box->ihigh() * bytes_in_row];	// storage space for bytes read
+	size_t voxls_in_row = est_box->iwide();
+
+	size_t bytes_in_row = bytes_per * voxls_in_row;
+	
+	size_t size = (size_t)est_box->itall() * (size_t)est_box->ihigh() * bytes_in_row;
+	char * block_buffer = new char[size];	// storage space for bytes read
 	char * row_seg = &block_buffer[0];
 
 	//read in block
-	long file_pos = 0;
+	size_t file_pos = 0;
 
 	for (int is = 0; is < est_box->itall(); is++)
 	{
