@@ -416,6 +416,15 @@ InputRead::InputRead()
 	kwh_subvol_aspect.help.append("\n");
 	manual.push_back(kwh_subvol_aspect);
 
+	kwh_num_points_to_process.word.assign("num_points_to_process");
+	kwh_num_points_to_process.exam.assign("-1");
+	kwh_num_points_to_process.reqd.assign("no");
+	kwh_num_points_to_process.pool.assign("opt_tune");
+	kwh_num_points_to_process.hint.assign("### Number of points in the point cloud to process");
+	kwh_num_points_to_process.help.assign("   Defines the maximum number of points in the point cloud to process.\n");
+	kwh_num_points_to_process.help.append("   If unset, or set to -1, it will process all points in the point cloud.\n");
+	kwh_num_points_to_process.help.append("\n");
+	manual.push_back(kwh_num_points_to_process);
 /*
 	kwh_fine_srch.word.assign("fine_search");
 	kwh_fine_srch.exam.assign("bfgs");
@@ -556,6 +565,12 @@ int InputRead::input_file_read(RunControl *run)
 
 	run->subvol_aspect.resize(3, 1.0);
 	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
+	
+	// this is a silly max, but we accommodate every request!
+	int max_points_to_process = 2147483647;
+	if (parse_line_min_max(kwh_num_points_to_process, -1, max_points_to_process, run->num_points_to_process, true) != input_line_ok) return 0;
+
+	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
 
 	// check image volumes
 	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth + (unsigned long) run->vol_wide *  (unsigned long) run->vol_high * (unsigned long) run->vol_tall * (unsigned long) (run->vol_bit_depth / 8);

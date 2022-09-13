@@ -116,6 +116,8 @@ struct RunControl
 
 	int disp_max;
 	int num_srch_dof;
+
+	unsigned int num_points_to_process;
 	
 	Objfcn_Type obj_fcn;
 	Interp_Type int_typ;
