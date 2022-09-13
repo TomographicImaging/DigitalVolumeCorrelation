@@ -1,5 +1,8 @@
 # Changelog
 
+## 22.0.0
+* add num_points_to_process to the config file to limit the points to be processed.
+
 ## v21.2.0
 * added version from github repo
 * added build for MacOSX
