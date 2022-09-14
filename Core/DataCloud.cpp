@@ -33,6 +33,7 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 		sorted_pc_file << std::endl;
 	}
 */
+
 	for (unsigned int i=0; i<save_neigh.size(); i++) {
 		for (unsigned int j=0; j<save_neigh[i].size(); j++) {
 			if (j>0) {sorted_pc_file << ",";}
