@@ -31,7 +31,6 @@
 #include <iomanip>
 #include <sstream>
 #include <limits>
-#include <climits>
 #include <cstdlib>
 
 // adjust Makefile if changes made here
