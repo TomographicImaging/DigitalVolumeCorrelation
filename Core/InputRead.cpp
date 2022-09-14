@@ -567,7 +567,7 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
 	
 	// this is a silly max, but we accommodate every request!
-	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
+	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, false) != input_line_ok) return 0;
 
 	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
 
