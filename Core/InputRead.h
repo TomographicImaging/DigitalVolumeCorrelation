@@ -171,6 +171,7 @@ public:
 	int parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<std::string> vals, std::string &arg1, bool req);
 	int parse_line_min_max(key_word_help kwh, int min, int max, int &arg1, bool req);
+	int parse_line_min_max(key_word_help kwh, unsigned int min, unsigned int max, unsigned int& arg1, bool req);
 	int parse_line_min_max(key_word_help kwh, double min, double max, double &arg1, bool req);
 	int parse_line_min_max_rel(key_word_help kwh, double min, double max, double &arg1, double &arg2, bool req);	
 	int parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim, std::vector<double> &vect_val, bool req);
