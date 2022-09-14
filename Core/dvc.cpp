@@ -204,8 +204,12 @@ int main(int argc, char *argv[])
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
 
 	auto point_time_start = std::chrono::steady_clock::now();
-
-	for (unsigned int i=0; i<data.points.size(); i++) {
+	
+	unsigned int N = data.points.size();
+	if ((run.num_points_to_process > 1) && (run.num_points_to_process < N)) {
+		N = run.num_points_to_process;
+	}
+	for (unsigned int i=0; i<N; i++) {
 
 		// this is the index of the point being processed
 		int n = data.order[i];

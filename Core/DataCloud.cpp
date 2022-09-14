@@ -19,7 +19,7 @@ DataCloud::DataCloud ()
 	
 }
 /******************************************************************************/
-void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh, unsigned int num_points_to_process)
+void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh)
 {
 	std::cout << "Saving sorted pointcloud" << std::endl;
 
@@ -33,11 +33,8 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 		sorted_pc_file << std::endl;
 	}
 */
-	unsigned int N = save_neigh.size();
-	if ( (num_points_to_process > 1) && (num_points_to_process < N) ) {
-		N = num_points_to_process;
-	}
-	for (unsigned int i=0; i<N; i++) {
+	
+	for (unsigned int i=0; i< save_neigh.size(); i++) {
 		for (unsigned int j=0; j<save_neigh[i].size(); j++) {
 			if (j>0) {sorted_pc_file << ",";}
 			sorted_pc_file << save_neigh[i][j];
@@ -130,7 +127,7 @@ void DataCloud::organize_cloud(RunControl *run)
 	sort_order_neighbors();
 
 	// write sort file
-	write_sort_file(run->pts_fname, neigh, run->num_points_to_process);
+	write_sort_file(run->pts_fname, neigh);
 
 	// this is where the integration with dvc executable occurs through results storage
 	// *** create storage for results of searches and initialize

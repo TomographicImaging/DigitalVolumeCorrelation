@@ -71,7 +71,7 @@ public:
 	int nbr_num_save() const {return nbr_num_save_default;}
 
 	// write out neighbors as a .sort file
-	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh, unsigned int num_points_to_process);
+	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh);
 	
 	// in order of appearance in the point cloud input file, [npts]
 	std::vector<Point> points;
