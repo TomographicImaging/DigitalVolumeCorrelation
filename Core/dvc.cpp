@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 		// this is the index of the point being processed
 		int n = data.order[i];
 
-		std::cout << i << "/" << data.points.size() << " " ;
+		std::cout << i << "/" << N << " " ;
 		std::cout << data.labels[n] << "\t";
 		std::cout << std::setprecision(3) << std::fixed;
 		std::cout << data.points[n].x() << " ";
@@ -292,8 +292,11 @@ int main(int argc, char *argv[])
 
 	// re-write output in point cloud order, from stored results
 	in.result_header(run.res_fname, optimize.par_min.size());
-	for (unsigned int i=0; i<data.points.size(); i++)
-		in.append_result(run.res_fname, data.labels[i], data.points[i], data.results[trg][i].status, data.results[trg][i].obj_min, data.results[trg][i].par_min);
+	for (unsigned int i = 0; i < N; i++) {
+		// this is the index of the point being processed
+		int n = data.order[i];
+		in.append_result(run.res_fname, data.labels[n], data.points[n], data.results[trg][n].status, data.results[trg][n].obj_min, data.results[trg][n].par_min);
+	}
 
 	in.echo_input(&run);
 	in.append_time_date(run.sta_fname, "Run start:\t", dts);
