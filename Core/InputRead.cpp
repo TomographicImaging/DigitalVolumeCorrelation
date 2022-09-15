@@ -425,6 +425,15 @@ InputRead::InputRead()
 	kwh_num_points_to_process.help.append("   If unset, or set to 0, it will process all points in the point cloud.\n");
 	kwh_num_points_to_process.help.append("\n");
 	manual.push_back(kwh_num_points_to_process);
+
+	kwh_starting_point.word.assign("starting_point");
+	kwh_starting_point.exam.assign("0.0 0.0 0.0");
+	kwh_starting_point.reqd.assign("no");
+	kwh_starting_point.pool.assign("opt_tune");
+	kwh_starting_point.hint.assign("### x,y,z location of starting point for DVC analysis\n");
+	kwh_starting_point.help.assign("   If not set, the first point in the point cloud will be used as starting point\n");
+	kwh_starting_point.help.append("\n");
+	manual.push_back(kwh_starting_point);
 /*
 	kwh_fine_srch.word.assign("fine_search");
 	kwh_fine_srch.exam.assign("bfgs");
@@ -566,8 +575,15 @@ int InputRead::input_file_read(RunControl *run)
 	run->subvol_aspect.resize(3, 1.0);
 	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
 	
+	run->starting_point.resize(3, std::nan(""));
+	std::vector<double> starting_point_limit(3);
+	starting_point_limit[0] = (double)run->vol_wide;
+	starting_point_limit[1] = (double)run->vol_high;
+	starting_point_limit[2] = (double)run->vol_tall;
+	if (parse_line_dvect(kwh_starting_point, starting_point_limit, run->starting_point, false) == param_invalid) return 0;
+
 	// this is a silly max, but we accommodate every request!
-	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, false) != input_line_ok) return 0;
+	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
 
 	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
 

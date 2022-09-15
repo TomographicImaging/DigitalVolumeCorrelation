@@ -67,7 +67,7 @@ public:
 
 	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
 	// needs points and labels already available, generates order and neigh
-	void sort_order_neighbors();
+	void sort_order_neighbors(Point starting_point);
 	int nbr_num_save() const {return nbr_num_save_default;}
 
 	// write out neighbors as a .sort file

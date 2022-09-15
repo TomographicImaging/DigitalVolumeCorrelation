@@ -129,6 +129,7 @@ struct RunControl
 	std::vector<double> rigid_trans;
 	double basin_radius;
 	std::vector<double> subvol_aspect;
+	std::vector<double> starting_point;
 
 	std::string fine_srch;
 };
