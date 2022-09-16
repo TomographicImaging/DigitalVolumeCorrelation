@@ -60,6 +60,9 @@ else()
   set (OpenMP_EXE_LINKER_FLAGS ${OpenMP_C_FLAGS})
 endif()
 
+# add dependency on the eigen target
+add_dependencies(cildvc_static eigen)
+
 # add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
 # TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
 target_include_directories(cildvc_static PUBLIC
