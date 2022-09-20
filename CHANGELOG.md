@@ -2,6 +2,7 @@
 
 ## v22.0.0
 * Removed unused and old Python Wrapper code
+* Add strain executable to install target
 
 ## v21.2.0
 * added version from github repo
