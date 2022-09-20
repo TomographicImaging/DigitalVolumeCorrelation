@@ -1,6 +1,8 @@
 # Changelog
 
 ## v22.0.0
+
+* Removed Eigen library from the source code. Eigen is downloaded from https://github.com/vais-ral/Eigen3 at build time.
 * Removed unused and old Python Wrapper code
 * Add strain executable to install target
 

@@ -6,7 +6,6 @@ then
   echo "Darwin"; 
   
   cmake ${RECIPE_DIR}/../ -DCONDA_BUILD=ON \
-                        -DBUILD_PYTHON_WRAPPER=OFF \
                         -DCMAKE_BUILD_TYPE="Release"\
                         -DLIBRARY_LIB=$CONDA_PREFIX/lib \
                         -DLIBRARY_INC=$CONDA_PREFIX \
@@ -16,7 +15,6 @@ then
 else 
   echo "something else"; 
   cmake ${RECIPE_DIR}/../  \
-                        -DBUILD_PYTHON_WRAPPER=OFF\
                         -DCMAKE_BUILD_TYPE="Release"\
                         -DCMAKE_INSTALL_PREFIX=$PREFIX
 fi

@@ -29,7 +29,7 @@ Here an example of build on Linux:
 git clone https://github.com/vais-ral/CCPi-DVC.git
 mkdir build
 cd build
-cmake ../CCPi-DVC -DCONDA_BUILD=OFF -DBUILD_PYTHON_WRAPPER=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>
+cmake ../CCPi-DVC -DCONDA_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>
 make install
 ```
 
