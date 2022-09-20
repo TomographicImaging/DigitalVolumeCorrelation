@@ -1,5 +1,9 @@
 # Changelog
 
+## v22.0.0
+
+* remove Eigen library from the source code and downloads it at CMake time. Use https://github.com/vais-ral/Eigen3
+
 ## v21.2.0
 * added version from github repo
 * added build for MacOSX
