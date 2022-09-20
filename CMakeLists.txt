@@ -42,7 +42,6 @@ set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 
-option (BUILD_PYTHON_WRAPPER "Build Python Wrappers" OFF)
 option (CONDA_BUILD "Conda Build" OFF)
 set (CMAKE_BUILD_TYPE "Release")
 
@@ -55,9 +54,3 @@ endif()
 message(STATUS "DVC will be installed in " ${INSTALL_BIN_DIR})
 
 add_subdirectory(Core)
-
-
-
-if (BUILD_PYTHON_WRAPPER)
-  add_subdirectory(Wrappers/Python)
-endif()
