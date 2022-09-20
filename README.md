@@ -20,7 +20,6 @@ Flags used during configuration
 |:---|:----|:----|
 | `CMAKE_CXX_STANDARD` | string | Defaults to `98`. There are performance issues with `C++11`.
 | `CMAKE_INSTALL_PREFIX` | path | your favourite install directory |
-| `PYTHON_DEST_DIR` | path | python modules install directory (default `${CMAKE_INSTALL_PREFIX}/python`) |
 | `CONDA_BUILD`| bool | `ON\|OFF` whether it is installed with `setup.py install`|
 |`BUILD_TEST` | bool | `ON\|OFF` whether to build the test mode|
 
