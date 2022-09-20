@@ -2,7 +2,7 @@
 
 ## v22.0.0
 
-* remove Eigen library from the source code and downloads it at CMake time. Use https://github.com/vais-ral/Eigen3
+* Removed Eigen library from the source code. Eigen is downloaded from https://github.com/vais-ral/Eigen3 at build time.
 
 ## v21.2.0
 * added version from github repo
