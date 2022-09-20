@@ -1,5 +1,8 @@
 # Changelog
 
+## v22.0.0
+* Removed unused and old Python Wrapper code
+
 ## v21.2.0
 * added version from github repo
 * added build for MacOSX
