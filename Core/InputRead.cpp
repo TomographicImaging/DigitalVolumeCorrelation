@@ -416,6 +416,24 @@ InputRead::InputRead()
 	kwh_subvol_aspect.help.append("\n");
 	manual.push_back(kwh_subvol_aspect);
 
+	kwh_num_points_to_process.word.assign("num_points_to_process");
+	kwh_num_points_to_process.exam.assign("0");
+	kwh_num_points_to_process.reqd.assign("no");
+	kwh_num_points_to_process.pool.assign("opt_tune");
+	kwh_num_points_to_process.hint.assign("### Number of points in the point cloud to process");
+	kwh_num_points_to_process.help.assign("   Defines the maximum number of points in the point cloud to process.\n");
+	kwh_num_points_to_process.help.append("   If unset, or set to 0, it will process all points in the point cloud.\n");
+	kwh_num_points_to_process.help.append("\n");
+	manual.push_back(kwh_num_points_to_process);
+
+	kwh_starting_point.word.assign("starting_point");
+	kwh_starting_point.exam.assign("0.0 0.0 0.0");
+	kwh_starting_point.reqd.assign("no");
+	kwh_starting_point.pool.assign("opt_tune");
+	kwh_starting_point.hint.assign("### x,y,z location of starting point for DVC analysis\n");
+	kwh_starting_point.help.assign("   If not set, the first point in the point cloud will be used as starting point\n");
+	kwh_starting_point.help.append("\n");
+	manual.push_back(kwh_starting_point);
 /*
 	kwh_fine_srch.word.assign("fine_search");
 	kwh_fine_srch.exam.assign("bfgs");
@@ -556,6 +574,18 @@ int InputRead::input_file_read(RunControl *run)
 
 	run->subvol_aspect.resize(3, 1.0);
 	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
+	
+	run->starting_point.resize(3, std::nan(""));
+	std::vector<double> starting_point_limit(3);
+	starting_point_limit[0] = (double)run->vol_wide;
+	starting_point_limit[1] = (double)run->vol_high;
+	starting_point_limit[2] = (double)run->vol_tall;
+	if (parse_line_dvect(kwh_starting_point, starting_point_limit, run->starting_point, false) == param_invalid) return 0;
+
+	// this is a silly max, but we accommodate every request!
+	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
+
+	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
 
 	// check image volumes
 	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth + (unsigned long) run->vol_wide *  (unsigned long) run->vol_high * (unsigned long) run->vol_tall * (unsigned long) (run->vol_bit_depth / 8);
@@ -1392,6 +1422,35 @@ int InputRead::parse_line_min_max(key_word_help kwh, int min, int max, int &arg1
 
 	return param_invalid;
 }
+/******************************************************************************/
+int InputRead::parse_line_min_max(key_word_help kwh, unsigned int min, unsigned int max, unsigned int& arg1, bool req)
+// check that int argument is between min and max inclusive
+{
+	std::string keyline;
+
+	if (!get_line_with_keyword(kwh.word, keyline, req))
+		return keywd_missing;
+
+	std::istringstream io_keyline;
+	std::string word;
+	unsigned int int1;
+
+	io_keyline.str(keyline);
+
+	io_keyline >> word >> int1;
+
+	if ((int1 >= min) && (int1 <= max))
+	{
+		arg1 = int1;
+		return 1;
+	}
+
+	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
+	std::cout << kwh.hint << "\n\n" << kwh.help;
+
+	return param_invalid;
+}
+
 /******************************************************************************/
 int InputRead::parse_line_min_max(key_word_help kwh, double min, double max, double &arg1, bool req)
 // check that int argument is between min and max inclusive

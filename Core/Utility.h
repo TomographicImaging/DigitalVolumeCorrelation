@@ -116,6 +116,8 @@ struct RunControl
 
 	int disp_max;
 	int num_srch_dof;
+
+	unsigned int num_points_to_process;
 	
 	Objfcn_Type obj_fcn;
 	Interp_Type int_typ;
@@ -127,6 +129,7 @@ struct RunControl
 	std::vector<double> rigid_trans;
 	double basin_radius;
 	std::vector<double> subvol_aspect;
+	std::vector<double> starting_point;
 
 	std::string fine_srch;
 };

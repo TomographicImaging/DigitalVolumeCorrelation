@@ -114,6 +114,8 @@ public:
 	key_word_help kwh_rigid_trans;
 	key_word_help kwh_basin_radius;
 	key_word_help kwh_subvol_aspect;
+	key_word_help kwh_num_points_to_process;
+	key_word_help kwh_starting_point;
 
 
 	key_word_help kwh_fine_srch;		// not implemented
@@ -170,6 +172,7 @@ public:
 	int parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<std::string> vals, std::string &arg1, bool req);
 	int parse_line_min_max(key_word_help kwh, int min, int max, int &arg1, bool req);
+	int parse_line_min_max(key_word_help kwh, unsigned int min, unsigned int max, unsigned int& arg1, bool req);
 	int parse_line_min_max(key_word_help kwh, double min, double max, double &arg1, bool req);
 	int parse_line_min_max_rel(key_word_help kwh, double min, double max, double &arg1, double &arg2, bool req);	
 	int parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim, std::vector<double> &vect_val, bool req);

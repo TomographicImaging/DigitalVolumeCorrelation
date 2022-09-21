@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
 	// sort option
 	if (!do_sort_read) {
 		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
-		data.sort_order_neighbors();
+		data.sort_order_neighbors(data.points[0]);
 		data.write_sort_file(fname_base,data.neigh);
 	}
 
