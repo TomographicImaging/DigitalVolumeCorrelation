@@ -13,7 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#   Author(s): Laura Murgatroyd
+#   Author(s): Laura Murgatroyd (UKRI-STFC)
 
 name: conda_build
 

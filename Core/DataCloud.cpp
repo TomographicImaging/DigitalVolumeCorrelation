@@ -14,9 +14,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Author(s): Brian Bay,
-           Shrikanth Nagella,
-		   Edoardo Pasca,
+Author(s): Brian Bay (OSU)
+           Shrikanth Nagella (UKRI-STFC)
+		   Edoardo Pasca (UKRI-STFC)
 */
 /*
 DataCloud will organize search point information: the location of the point, any

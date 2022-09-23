@@ -13,8 +13,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#   Author(s): Edoardo Pasca,
-#              Brian Bay
+#   Author(s): Edoardo Pasca (UKRI-STFC)
+#              Brian Bay (OSU)
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 

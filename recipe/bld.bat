@@ -13,8 +13,8 @@
 ::   See the License for the specific language governing permissions and
 ::   limitations under the License.
 ::
-::   Author(s): Edoardo Pasca,
-::              Laura Murgatroyd
+::   Author(s): Edoardo Pasca (UKRI-STFC)
+::              Laura Murgatroyd (UKRI-STFC)
 
 mkdir "%SRC_DIR%\ccpi"
 cd %SRC_DIR%/ccpi

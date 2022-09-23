@@ -13,9 +13,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-#   Author(s): Edoardo Pasca,
-#              Gemma Fardell, 
-#              Brian Bay
+#   Author(s): Edoardo Pasca (UKRI-STFC),
+#              Gemma Fardell (UKRI-STFC), 
+#              Brian Bay (OSU)
 
 if(APPLE)
   cmake_minimum_required(VERSION 3.16)
