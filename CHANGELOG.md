@@ -1,6 +1,7 @@
 # Changelog
 
 ## 22.0.0
+* Added headers to all files
 * add num_points_to_process to the config file to limit the points to be processed.
 * add starting_point to the config file to set the x,y,z location of the starting point for DVC analysis
 * Removed Eigen library from the source code. Eigen is downloaded from https://github.com/vais-ral/Eigen3 at build time.
