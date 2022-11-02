@@ -1,5 +1,8 @@
 # Changelog
 
+## 22.x.x
+* Use v2.0.0 of conda build action
+
 ## 22.0.0
 * add num_points_to_process to the config file to limit the points to be processed.
 * add starting_point to the config file to set the x,y,z location of the starting point for DVC analysis
