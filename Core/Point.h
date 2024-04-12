@@ -1,27 +1,28 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
 
-/**
-# -*- coding: utf-8 -*-
-#   This work is part of the Core Imaging Library developed by
-#   Visual Analytics and Imaging System Group of the Science Technology
-#   Facilities Council, STFC
+Copyright 2018 Oregon State University
+Copyright 2018 United Kingdom Research and Innovation
 
-#   Copyright (C) 2018 CCPi
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-#   Code is derived from code developed by Prof. Brian Bay
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Shrikanth Nagella (UKRI-STFC)
 */
+
+
 /* Storage of a 3D point. The point itself is stored as a double, with (x,y,z)
 coordinates available through (.x,.y,.z) member functions. The point is also
 split by the constructor and stored as an integer portion (.ix,.iy,.iz) and

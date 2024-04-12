@@ -1,4 +1,6 @@
-#   Copyright (C) 2018 CCPi
+
+#   Copyright 2018 Oregon State University
+#   Copyright 2018 United Kingdom Research and Innovation
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -12,6 +14,9 @@
 #
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#   Author(s): Edoardo Pasca (UKRI-STFC)
+#              Brian Bay (OSU)
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
