@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 Author(s): Brian Bay (OSU)
-           Shrikanth Nagella (UKRI-STFC)
+           Srikanth Nagella (UKRI-STFC)
            Edoardo Pasca (UKRI-STFC)
 */
 #ifndef DATACLOUD_H
