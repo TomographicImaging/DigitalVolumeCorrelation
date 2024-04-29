@@ -1,6 +1,7 @@
 # Changelog
 
 ## v24.0.0
+* First public release
 * Change license from Apache 2.0 to GPL v3.0
 * Added headers to all files
 
