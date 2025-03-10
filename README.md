@@ -18,7 +18,7 @@ Flags used during configuration
 
 | CMake flag | type | meaning |
 |:---|:----|:----|
-| `CMAKE_CXX_STANDARD` | string | Defaults to `98`. There are performance issues with `C++11`.
+| `CMAKE_CXX_STANDARD` | string | Defaults to `C++11`.
 | `CMAKE_INSTALL_PREFIX` | path | your favourite install directory |
 | `CONDA_BUILD`| bool | `ON\|OFF` whether it is installed with `setup.py install`|
 |`BUILD_TEST` | bool | `ON\|OFF` whether to build the test mode|
