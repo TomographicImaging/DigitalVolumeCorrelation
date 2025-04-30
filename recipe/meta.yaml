@@ -26,24 +26,26 @@ source:
 
 build:
   preserve_egg_dir: False
-  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0)}}
+  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 1)}}
   missing_dso_whitelist:
     - /lib64/libc.so.6            # [linux]
-    - /lib64/libm.so.6            # [linux]
     - /lib64/libpthread.so.0      # [linux]
     - /lib64/ld-linux-x86-64.so.2 # [linux]
 
 requirements:
   build:
-    - cmake         # [not osx]
-    - cmake >=3.16  # [osx]
-    - openmp        # [osx]
+    - python
+    - cmake         
+    - {{ compiler('cxx') }}
+    - llvm-openmp   # [osx]
+    - openlibm 
     - libgcc-ng     # [linux]
     - libstdcxx-ng  # [linux]
     - _openmp_mutex # [linux]
 
   run:
-    - openmp        # [osx]
+    - llvm-openmp   # [osx]
+    - openlibm
     - libgcc-ng     # [linux]
     - libstdcxx-ng  # [linux]
     - _openmp_mutex # [linux]
