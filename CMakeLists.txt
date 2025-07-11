@@ -20,9 +20,9 @@
 
 
 if(APPLE)
-  cmake_minimum_required(VERSION 3.16)
+  cmake_minimum_required(VERSION 3.16...4.1)
 else()
-  cmake_minimum_required(VERSION 3.1.3)
+  cmake_minimum_required(VERSION 3.1.3...4.1)
 endif()
 
 # get the current version and date
