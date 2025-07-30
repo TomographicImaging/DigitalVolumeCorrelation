@@ -27,29 +27,17 @@ source:
 build:
   preserve_egg_dir: False
   number: {{ environ.get('GIT_DESCRIBE_NUMBER', 1)}}
-  missing_dso_whitelist:
-    - /lib64/libc.so.6            # [linux]
-    - /lib64/libpthread.so.0      # [linux]
-    - /lib64/ld-linux-x86-64.so.2 # [linux]
 
 requirements:
   build:
     - python
-    - cmake         
+    - cmake
     - {{ compiler('cxx') }}
-    - llvm-openmp   # [osx]
-    - openlibm 
-    - libgcc-ng     # [linux]
-    - libstdcxx-ng  # [linux]
-    - _openmp_mutex # [linux]
+    - llvm-openmp
 
   run:
-    - llvm-openmp   # [osx]
-    - openlibm
-    - libgcc-ng     # [linux]
-    - libstdcxx-ng  # [linux]
-    - _openmp_mutex # [linux]
-	
+    - llvm-openmp
+
 about:
   home: http://www.ccpi.ac.uk
   license:  BSD license
