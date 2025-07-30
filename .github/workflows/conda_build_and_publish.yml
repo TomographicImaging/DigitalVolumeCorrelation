@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15, windows-2022]
+        os: [ubuntu-22.04]
     steps:
     - uses: actions/checkout@v1
     - name: publish-to-conda
