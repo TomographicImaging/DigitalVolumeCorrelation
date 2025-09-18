@@ -1,6 +1,6 @@
 # GitHub Actions
 
-## Building the Conda Package: [conda_build_and_publish](https://github.com/vais-ral/CCPi-DVC/blob/master/.github/workflows/conda_build_and_publish.yml)
+## Building the Conda Package: [conda_build_and_publish](https://github.com/TomographicImaging/DigitalVolumeCorrelation/blob/master/.github/workflows/conda_build_and_publish.yml)
 This github action builds and tests the conda package, by using the [conda-package-publish-action](https://github.com/paskino/conda-package-publish-action)
 
 When pushing to master *all* variants are built and tested.

@@ -26,7 +26,7 @@ Flags used during configuration
 Here an example of build on Linux:
 
 ```bash
-git clone https://github.com/vais-ral/CCPi-DVC.git
+git clone https://github.com/TomographicImaging/DigitalVolumeCorrelation
 mkdir build
 cd build
 cmake ../CCPi-DVC -DCONDA_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>

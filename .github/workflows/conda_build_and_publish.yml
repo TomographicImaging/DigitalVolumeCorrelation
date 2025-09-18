@@ -11,8 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [ubuntu] # [ubuntu, macos, windows]
-        python-version: [3.8, 3.9, 3.10, 3.11, 3.12, 3.13]
+        os: [ubuntu, macos, windows]
     steps:
     - uses: actions/checkout@v5
       with: {fetch-depth: 0}
@@ -20,7 +19,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
     - uses: conda-incubator/setup-miniconda@v3
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.12
         mamba-version: "*"
         channels: conda-forge
         conda-remove-defaults: "true"
