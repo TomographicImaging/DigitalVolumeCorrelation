@@ -1,48 +1,42 @@
-#   Copyright 2018 Oregon State University
-#   Copyright 2018 United Kingdom Research and Innovation
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-#   Author(s): Laura Murgatroyd (UKRI-STFC)
-
-name: conda_build
-
+name: build
 on:
-  release:
-    types: [published]
+  release: {types: [published]}
   push:
-    branches: [ master ]
-    tags:
-      - '**'
-  pull_request:
-    branches: [ master ]
-
+    branches: [master]
+    tags: ['**']
+  pull_request: {branches: [master]}
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  conda:
+    defaults: {run: {shell: 'bash -el {0}'}}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu] # [ubuntu, macos, windows]
+        python-version: [3.8, 3.9, 3.10, 3.11, 3.12, 3.13]
     steps:
-    - uses: actions/checkout@v1
-    - name: publish-to-conda
-      uses: TomographicImaging/conda-package-publish-action@v2
+    - uses: actions/checkout@v5
+      with: {fetch-depth: 0}
+    - if: matrix.os == 'windows'
+      uses: ilammy/msvc-dev-cmd@v1
+    - uses: conda-incubator/setup-miniconda@v3
       with:
-        subDir: 'recipe'
-        channels: '-c conda-forge --override-channels'
-        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
-        publish: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
-        test_all: ${{(github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')) || (github.ref == 'refs/heads/master')}}
-        convert_win: false
-        convert_osx: false
+        python-version: ${{ matrix.python-version }}
+        mamba-version: "*"
+        channels: conda-forge
+        conda-remove-defaults: "true"
+    - run: conda install boa conda-verify
+    - name: conda build & test
+      run: conda mambabuild -c conda-forge --override-channels --output-folder dist recipe
+    - if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      name: anaconda upload -c ccpi
+      run: |
+        conda install anaconda-client
+        anaconda -v -t ${{ secrets.CCPI_CONDA_TOKEN }} upload --force --label ${{ startsWith(github.ref, 'refs/tags') && 'main' || 'dev' }} dist/*/*.tar.bz2
+    - if: startsWith(github.ref, 'refs/tags')
+      name: conda upload -c tomography.stfc.ac.uk/conda
+      run: |
+        echo '${{ secrets.STFC_SSH_KEY }}' > ./key
+        chmod 600 ./key
+        rsync -e 'ssh -o StrictHostKeyChecking=no -i ./key' -R dist/*/*.tar.bz2 '${{ secrets.STFC_SSH_HOST }}:${{ secrets.STFC_SSH_CONDA_DIR }}'
+        ssh -o StrictHostKeyChecking=no -i ./key ${{ secrets.STFC_SSH_HOST }} \
+          'bash -lic "conda index --bz2 --zst --run-exports --channeldata --rss -n ccpi ${{ secrets.STFC_SSH_CONDA_DIR }}"'
