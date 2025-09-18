@@ -1,4 +1,23 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
 
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Edoardo Pasca (UKRI-STFC)   
+*/
 #include "Search.h"
 
 /******************************************************************************/
@@ -8,8 +27,8 @@ Search::Search(RunControl *run)
 
 	bytes_per = run->vol_bit_depth/8;
 	subv_rad = (run->subvol_size)/2.0;	// easier to use than subvol_size
-	if (run->sub_geo == cube) subv_num = pow(ceil(pow((double)run->subvol_npts,1.0/3.0)),3.0);
-	if (run->sub_geo == sphere) subv_num = run->subvol_npts;
+	if (run->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)run->subvol_npts,1.0/3.0)),3.0);
+	if (run->sub_geo == Subvol_Type::sphere) subv_num = run->subvol_npts;
 
 	// establish pointer to function set in input file
 	if (run->obj_fcn == SAD) {
@@ -90,7 +109,7 @@ void Search::process_point(int t, int n, DataCloud *srch_data, int test)
 		}
 	}
 
-	if (rc->sub_geo == cube) {
+	if (rc->sub_geo == Subvol_Type::cube) {
 		Point sub_min = srch_pt;
 		sub_min.move_by(-subv_rad*rc->subvol_aspect[0], -subv_rad*rc->subvol_aspect[1], -subv_rad*rc->subvol_aspect[2]);
 		Point sub_max = srch_pt;

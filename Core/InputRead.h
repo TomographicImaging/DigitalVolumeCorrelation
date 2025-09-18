@@ -1,24 +1,22 @@
-/**
-# -*- coding: utf-8 -*-
-#   This work is part of the Core Imaging Library developed by
-#   Visual Analytics and Imaging System Group of the Science Technology
-#   Facilities Council, STFC
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
 
-#   Copyright 2018 CCPi
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-#       http://www.apache.org/licenses/LICENSE-2.0
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-
-#   Code is derived from code developed by Prof. Brian Bay
+Author(s): Brian Bay (OSU)
+           Edoardo Pasca (UKRI-STFC)
 */
 #ifndef INPUTREAD_H
 #define INPUTREAD_H
@@ -37,16 +35,11 @@
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
+
 //
 
 #include "CCPiDefines.h"
 
-// Global variable access
-extern double version;
-extern int day_rev;
-extern std::string month_rev;
-extern int year_rev;
-	
 extern const int input_line_ok;
 extern const int keywd_missing;
 extern const int param_invalid;
@@ -72,7 +65,6 @@ class CCPI_EXPORT InputRead
 public:
 
 	InputRead();
-
 	~InputRead();
 
 	std::ifstream input_file;
@@ -120,6 +112,8 @@ public:
 	key_word_help kwh_rigid_trans;
 	key_word_help kwh_basin_radius;
 	key_word_help kwh_subvol_aspect;
+	key_word_help kwh_num_points_to_process;
+	key_word_help kwh_starting_point;
 
 
 	key_word_help kwh_fine_srch;		// not implemented
@@ -176,6 +170,7 @@ public:
 	int parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<std::string> vals, std::string &arg1, bool req);
 	int parse_line_min_max(key_word_help kwh, int min, int max, int &arg1, bool req);
+	int parse_line_min_max(key_word_help kwh, unsigned int min, unsigned int max, unsigned int& arg1, bool req);
 	int parse_line_min_max(key_word_help kwh, double min, double max, double &arg1, bool req);
 	int parse_line_min_max_rel(key_word_help kwh, double min, double max, double &arg1, double &arg2, bool req);	
 	int parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim, std::vector<double> &vect_val, bool req);
@@ -187,12 +182,29 @@ public:
 	int print_manual_section(std::ofstream &file, std::string pool);
 	int print_manual_output(std::ofstream &file);
 	int print_input_example(std::ofstream &file, std::string pool);
+	int print_current_version();
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
 	int append_time_date(std::string fname, std::string label, time_t dt);
 
 	int result_header(std::string fname, int num_params);
 	int append_result(std::string fname, int n, Point pt, const int status, double obj_min, std::vector<double> result);
+
+private:
+
+};
+/******************************************************************************/
+class CCPI_EXPORT DispRead: public InputRead
+{
+public:
+
+	int read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis);
+
+	int read_sort_file_cst_sv(std::string fname, std::vector<std::vector<int>>  &neigh);	// comma, space, or tab seperated variable
+
+	int get_val(std::stringstream &ss, int &val);
+	int get_val(std::stringstream &ss, double &val);
+	int get_val(std::stringstream &ss, Point &val);
 
 private:
 

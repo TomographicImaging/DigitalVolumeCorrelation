@@ -1,4 +1,23 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
 
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Edoardo Pasca (UKRI-STFC)
+*/
 #include "InputRead.h"
 
 /******************************************************************************/
@@ -416,6 +435,24 @@ InputRead::InputRead()
 	kwh_subvol_aspect.help.append("\n");
 	manual.push_back(kwh_subvol_aspect);
 
+	kwh_num_points_to_process.word.assign("num_points_to_process");
+	kwh_num_points_to_process.exam.assign("0");
+	kwh_num_points_to_process.reqd.assign("no");
+	kwh_num_points_to_process.pool.assign("opt_tune");
+	kwh_num_points_to_process.hint.assign("### Number of points in the point cloud to process");
+	kwh_num_points_to_process.help.assign("   Defines the maximum number of points in the point cloud to process.\n");
+	kwh_num_points_to_process.help.append("   If unset, or set to 0, it will process all points in the point cloud.\n");
+	kwh_num_points_to_process.help.append("\n");
+	manual.push_back(kwh_num_points_to_process);
+
+	kwh_starting_point.word.assign("starting_point");
+	kwh_starting_point.exam.assign("0.0 0.0 0.0");
+	kwh_starting_point.reqd.assign("no");
+	kwh_starting_point.pool.assign("opt_tune");
+	kwh_starting_point.hint.assign("### x,y,z location of starting point for DVC analysis\n");
+	kwh_starting_point.help.assign("   If not set, the first point in the point cloud will be used as starting point\n");
+	kwh_starting_point.help.append("\n");
+	manual.push_back(kwh_starting_point);
 /*
 	kwh_fine_srch.word.assign("fine_search");
 	kwh_fine_srch.exam.assign("bfgs");
@@ -556,6 +593,18 @@ int InputRead::input_file_read(RunControl *run)
 
 	run->subvol_aspect.resize(3, 1.0);
 	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
+	
+	run->starting_point.resize(3, std::nan(""));
+	std::vector<double> starting_point_limit(3);
+	starting_point_limit[0] = (double)run->vol_wide;
+	starting_point_limit[1] = (double)run->vol_high;
+	starting_point_limit[2] = (double)run->vol_tall;
+	if (parse_line_dvect(kwh_starting_point, starting_point_limit, run->starting_point, false) == param_invalid) return 0;
+
+	// this is a silly max, but we accommodate every request!
+	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
+
+	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
 
 	// check image volumes
 	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth + (unsigned long) run->vol_wide *  (unsigned long) run->vol_high * (unsigned long) run->vol_tall * (unsigned long) (run->vol_bit_depth / 8);
@@ -649,7 +698,7 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	if (count == 0)
 	{
 		std::cout << "\n";
-		std::cout << "No points were read, and the Point Cloud file may be improperly formatted.\n";
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted.\n";
 		std::cout << "The expected format is plain text, tab (or other 'white space') delimited.\n";
 		std::cout << "Header info is OK as long as it does not match the format of a point description.\n";
 		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:\n\n";
@@ -662,6 +711,153 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	Point max_pt(max_x, max_y, max_z);
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
+
+	return 1;
+}
+/******************************************************************************/
+int DispRead::read_sort_file_cst_sv(std::string fname, std::vector<std::vector<int>>  &neigh) 
+{
+	// checked with Mac and Windows generated .sort.csv files
+	// working without eol checks
+	// Windows files have \r at end of line (ss.peek()) but explicit check not needed
+	// Windows file did generate an extra line with no points at end, caught with the col_count check
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
+
+	ifs.clear();
+	ifs.seekg(0, std::ios::beg);
+
+	std::string line;
+	int val;
+
+	int line_count = 0;
+	while (getline(ifs, line)) {
+		std::stringstream ss(line);
+		std::vector<int> int_vect = {};
+
+		int col_count = 0;
+		while (ss >> val) {
+			int_vect.emplace_back(val);
+			if(ss.peek() == ',') ss.ignore();
+			if(ss.peek() == ' ') ss.ignore();
+			if(ss.peek() == '\t') ss.ignore();
+			col_count += 1;
+		}
+
+		if (col_count > 0) {
+			neigh.emplace_back(int_vect);
+			line_count += 1;
+		}
+	}
+
+	// might change return if line_count = 0
+
+	return 1;
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, int &val) {
+
+	if(ss >> val) {
+		if(ss.peek() == ',') ss.ignore();
+		if(ss.peek() == ' ') ss.ignore();
+		if(ss.peek() == '\t') ss.ignore();
+		return 1;
+	} else {
+		return 0;
+	}
+
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, double &val) {
+
+	if(ss >> val) {
+		if(ss.peek() == ',') ss.ignore();
+		if(ss.peek() == ' ') ss.ignore();
+		if(ss.peek() == '\t') ss.ignore();
+		return 1;
+	} else {
+		return 0;
+	}
+
+}
+/******************************************************************************/
+int DispRead::get_val(std::stringstream &ss, Point &val) {
+
+	double val_x, val_y, val_z;
+
+	if ( get_val(ss,val_x) && get_val(ss,val_y) && get_val(ss,val_z) ) {
+		val.move_to(val_x,val_y,val_z);
+		return 1;
+	} else {
+		return 0;
+	}
+
+}/******************************************************************************/
+int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis) {
+
+	// .disp file is:	n	x	y	z	status	objmin	u	v	w (int, 3xdouble->point, int, double, 3xdouble->point)
+	// ? define as a class and pass around that way?
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);	// file open checked in calling routine
+
+	ifs.clear();
+	ifs.seekg(0, std::ios::beg);
+
+	std::string line;
+
+	int num_col = 9;		// to check line read success
+	int line_count = 0;	
+	int loop_count = 0;
+
+	while (getline(ifs, line)) {
+		std::stringstream ss(line);
+
+		// use header line to judge whether or not this is a .disp file
+		if (loop_count == 0) {
+			if(ss.peek() != 'n') {
+				std::cout << "-> .disp file lacks proper header, check command line arguments" << std::endl;
+				return 0;
+			}
+		}
+
+		int ival1,ival2;
+		double dval;
+		Point pval1(0.0, 0.0, 0.0);
+		Point pval2(0.0, 0.0, 0.0);
+
+		int col_count = 0;
+
+		if (get_val(ss,ival1)) { // n
+			col_count += 1;
+		}
+
+		if (get_val(ss,pval1)) { // x,y,z
+			col_count += 3;
+		}
+
+		if (get_val(ss,ival2)) { // status
+			col_count += 1;
+		}
+
+		if (get_val(ss,dval)) { // objmin
+			col_count += 1;
+		} 
+
+		if (get_val(ss,pval2)) { // u,v,w
+			col_count += 3;
+		}
+
+		if (col_count == num_col) {
+			label.emplace_back(ival1);
+			pos.emplace_back(pval1);
+			status.emplace_back(ival2);
+			objmin.emplace_back(dval);
+			dis.emplace_back(pval2);
+			line_count += 1;
+		}
+
+		loop_count += 1;
+	}
 
 	return 1;
 }
@@ -681,7 +877,7 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "\n";
 
 	file << "Created:  1 Jan 2014\n";
-	file << "Revised:  " << DAY_REV << " " << MONTH_REV << " " << YEAR_REV << "\n";
+	file << "Revised:  " << REV_DATE << std::endl;
 	file << "version:  " << VERSION << "\n";
 	file << "\n";
 
@@ -828,6 +1024,12 @@ int InputRead::print_input_example(std::ofstream &file, std::string pool)
 	return 1;
 }
 /******************************************************************************/
+int InputRead::print_current_version(){
+	std::cout << "CCPi Digital Volume Correlation version: " << VERSION << std::endl;
+	return 0;
+}
+
+/******************************************************************************/
 int InputRead::echo_input(RunControl *run)
 {
 	std::ofstream sta_file(run->sta_fname.c_str(), std::ios_base::out);
@@ -944,6 +1146,8 @@ int InputRead::result_header(std::string fname, int num_params)
 
 	res_file << "\t" << "u" << "\t" << "v" << "\t" << "w";
 
+	// changed .disp output to just include displacements
+	/*
 	if (num_params > 3) res_file << "\t" << "phi" << "\t" << "the" << "\t" << "psi";
 
 	if (num_params > 6)
@@ -951,6 +1155,7 @@ int InputRead::result_header(std::string fname, int num_params)
 		res_file << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz";
 		res_file << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz";
 	}
+	*/
 
 	res_file << "\n";
 
@@ -971,7 +1176,19 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 
 	res_file << std::fixed << std::setprecision(6);
 
-	for (int i=0; i<result.size(); i++) res_file << "\t" << result[i];
+	// this prints full search params, disp, rotation, strain if used
+	/*
+	for (int i=0; i<result.size(); i++)
+	{
+		res_file << "\t" << result[i];
+	} 
+	*/
+
+	// this prints just the dispalcements
+	for (int i=0; i<3; i++)
+	{
+		res_file << "\t" << result[i];
+	} 
 
 	res_file << "\n";
 
@@ -1224,6 +1441,35 @@ int InputRead::parse_line_min_max(key_word_help kwh, int min, int max, int &arg1
 
 	return param_invalid;
 }
+/******************************************************************************/
+int InputRead::parse_line_min_max(key_word_help kwh, unsigned int min, unsigned int max, unsigned int& arg1, bool req)
+// check that int argument is between min and max inclusive
+{
+	std::string keyline;
+
+	if (!get_line_with_keyword(kwh.word, keyline, req))
+		return keywd_missing;
+
+	std::istringstream io_keyline;
+	std::string word;
+	unsigned int int1;
+
+	io_keyline.str(keyline);
+
+	io_keyline >> word >> int1;
+
+	if ((int1 >= min) && (int1 <= max))
+	{
+		arg1 = int1;
+		return 1;
+	}
+
+	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
+	std::cout << kwh.hint << "\n\n" << kwh.help;
+
+	return param_invalid;
+}
+
 /******************************************************************************/
 int InputRead::parse_line_min_max(key_word_help kwh, double min, double max, double &arg1, bool req)
 // check that int argument is between min and max inclusive

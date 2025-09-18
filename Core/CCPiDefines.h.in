@@ -15,36 +15,28 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Author(s): Brian Bay (OSU)
-           Srikanth Nagella (UKRI-STFC)
-           Edoardo Pasca (UKRI-STFC)
+Author(s): Srikanth Nagella (UKRI-STFC)
+           Edoardo Pasca (UKRI-STFC) 
 */
-#ifndef DVC_H
-#define DVC_H
 
-#include <string>
+#ifndef CCPIDEFINES_H
+#define CCPIDEFINES_H
 
-#include <stdlib.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <iomanip>
-#include <sstream>
-#include <vector>
-#include <limits>
-#include <cstdlib>
-#include <chrono>
-#include <cmath>
-#include <stdint.h>
-#include <omp.h>
-#include <thread>
-
-#include "InputRead.h"
-#include "DataCloud.h"
-#include "Search.h"
-#include "Utility.h"
-
-
+#if defined(_WIN32) || defined(__WIN32__)
+  #if defined(cilDVC_EXPORTS) ||  defined(CCPiNexusWidget_EXPORTS) || defined(CCPi_EXPORTS)//  add by CMake 
+    #define  CCPI_EXPORT __declspec(dllexport)
+    #define EXPIMP_TEMPLATE
+  #else
+    #define  CCPI_EXPORT __declspec(dllimport)
+    #define EXPIMP_TEMPLATE extern
+  #endif 
+#elif defined(linux) || defined(__linux) || defined(__APPLE__)
+ #define CCPI_EXPORT
 #endif
 
+//	Revised:
 
+#define VERSION "@dvc_version@"
+#define REV_DATE "@rev_date@" 
+
+#endif

@@ -1,25 +1,23 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
 
-/**
-# -*- coding: utf-8 -*-
-#   This work is part of the Core Imaging Library developed by
-#   Visual Analytics and Imaging System Group of the Science Technology
-#   Facilities Council, STFC
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-#   Copyright 2018 CCPi
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#       http://www.apache.org/licenses/LICENSE-2.0
-
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-
-#   Code is derived from code developed by Prof. Brian Bay
+Author(s): Brian Bay (OSU)
+           Srikanth Nagella (UKRI-STFC)
+           Edoardo Pasca (UKRI-STFC)
 */
 #ifndef DATACLOUD_H
 #define DATACLOUD_H
@@ -54,7 +52,7 @@ struct ResultRecord
 	double obj_min;			// value at minumum
 	
 	std::vector<double> par_min;	// parameters at min [ndof]
-	
+
 };
 
 /******************************************************************************/
@@ -64,7 +62,14 @@ public:
 	DataCloud();
 	
 	void organize_cloud(RunControl *run);
-//	DataCloud(InputRead *in);
+
+	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
+	// needs points and labels already available, generates order and neigh
+	void sort_order_neighbors(Point starting_point);
+	int nbr_num_save() const {return nbr_num_save_default;}
+
+	// write out neighbors as a .sort file
+	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh);
 	
 	// in order of appearance in the point cloud input file, [npts]
 	std::vector<Point> points;
@@ -77,40 +82,36 @@ public:
 	
 	// indices of neighbors of a search point
 	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
-						// [nnbr] may vary by point
 	
+	// vector of result records for a point
 	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
 	
-	
-	
-	
-	// trial idea ... create subgroups within order based on resorting
-	// sub_groups contain indices of points in the main list
-	// could subdivide points into fixed-number groups, with last one smaller
-	// could subdivide in groups of fixed BoundBox size for interpolator use
-	std::vector< std::vector<int> > sub_groups;	// [ngrp][nppg]
-							// [nppg] may vary
-	std::vector<Cloud> sub_clouds;	// probably better
-	// volume in vox^3
-	void split_by_volume(std::vector<DualSort> indx_dist, double vol_limit);
-	// end trial
-	
-	
-	
-	int n_n_m() const {return neigh_num_min;}
-	int n_n_p() const {return neigh_num_par;}
-	double n_d_p() const {return neigh_dst_par;}
+	//
+	// results from the STRAIN calculation executable
+	//
 
+	// Engineering strain components and principals
+	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+	
+	// Lagrangian strain components and principals
+	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
+
+	// displacement components computed at cloud locations from the volume fitting process
+	std::vector< std::vector<double> > dis_vfit;	// u,v,w
+
+	// strain window radius (without half the subvol size) computed at cloud locations
+	std::vector<double> sw_rad;
+
+	// for variable neighborhood approaches, num of pts in the strain window
+	std::vector<int> pts_in_sw;
 
 private:
 	
-	int start_point_label;		// label of first point to process
+//	int start_point_label;		// label of first point to process
 	int start_point_index;		// index corresponding to label
-	
-	int neigh_num_min;		// minimum number for strain calc
-	int neigh_num_par;		// number of neighbors parameter
-	double neigh_dst_par;		// distance range parameter
 
+	int nbr_num_save_default;	// default number used for .sort file, set in constructor
+	
 };
 /******************************************************************************/
 

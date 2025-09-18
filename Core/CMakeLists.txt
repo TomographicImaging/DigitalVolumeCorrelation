@@ -1,31 +1,38 @@
-#   Copyright 2018 CCPi
+
+#   Copyright 2018 Oregon State University
+#   Copyright 2018 United Kingdom Research and Innovation
 #
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
 #
-#       http://www.apache.org/licenses/LICENSE-2.0
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
 #
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#   Author(s): Edoardo Pasca (UKRI-STFC)
+#              Brian Bay (OSU)
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+   file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+endif()
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h.in ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+
 
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
     message(FATAL_ERROR "Require at least gcc-4.7")
 endif()
 
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
+add_definitions(${OpenMP_CXX_FLAGS})
 
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    #set (CMAKE_CXX_FLAGS "${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
 
 if (WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DCCPi_EXPORTS")
@@ -49,20 +56,46 @@ SET (DVC_SRCS ${DVC_SRCS}
 	)
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
-add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
-#TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
-target_include_directories(cildvc_static PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
-	)
 
-target_include_directories(cildvc_shared PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
-	)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0") 
+  set (OpenMP_EXE_LINKER_FLAGS OpenMP::OpenMP_CXX)
+else()
+  message(WARNING "Your CMake version is old. OpenMP linking flags  might be incorrect.")
+  # need to explicitly set this. Definitely for gcc, hopefully also for other systems.
+  # See https://gitlab.kitware.com/cmake/cmake/issues/15392
+  set (OpenMP_EXE_LINKER_FLAGS ${OpenMP_C_FLAGS})
+endif()
+
+# add dependency on the eigen target
+add_dependencies(cildvc_static eigen)
+
+# add_library(cildvc_shared "SHARED" ${DVC_SRCS} )
+# TARGET_LINK_LIBRARIES (cilDVC Eigen3::Eigen)
+target_include_directories(cildvc_static PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
+    $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+)
+# target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
+target_link_libraries(cildvc_static ${OpenMP_EXE_LINKER_FLAGS} )
+
+
+
+# executables
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
-#TARGET_LINK_LIBRARIES (dvc cilDVC Eigen3::Eigen)
+
 target_link_libraries (dvc cildvc_static)
 include_directories(dvc PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR} )
+	${CMAKE_CURRENT_SOURCE_DIR} 
+        $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+)
+
+add_executable (strain ${CMAKE_CURRENT_SOURCE_DIR}/strain.cpp )
+
+target_link_libraries (strain cildvc_static)
+include_directories(strain PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR} 
+    $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+)
 
 if(BUILD_TEST)
   add_subdirectory(tests)
@@ -85,15 +118,12 @@ set(INSTALL_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include)
 
-install(TARGETS dvc
+install(TARGETS dvc strain
 	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
        )
 
-install(TARGETS cildvc_shared
-	LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
-	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-	)
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/Core/wip
-	DESTINATION ${INSTALL_BIN_DIR})
+if(BUILD_TEST)
+  install(TARGETS tests
+  RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
+  )
+endif()

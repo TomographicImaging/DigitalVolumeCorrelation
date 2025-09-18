@@ -1,0 +1,48 @@
+#   Copyright 2018 Oregon State University
+#   Copyright 2018 United Kingdom Research and Innovation
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#   Author(s): Laura Murgatroyd (UKRI-STFC)
+
+name: conda_build
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [ master ]
+    tags:
+      - '**'
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - name: publish-to-conda
+      uses: TomographicImaging/conda-package-publish-action@v2
+      with:
+        subDir: 'recipe'
+        channels: '-c conda-forge --override-channels'
+        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
+        publish: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
+        test_all: ${{(github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')) || (github.ref == 'refs/heads/master')}}
+        convert_win: false
+        convert_osx: false

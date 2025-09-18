@@ -1,3 +1,24 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Srikanth Nagella (UKRI-STFC)
+           Edoardo Pasca (UKRI-STFC)
+*/
 #include "dvc.h"
 
 /******************************************************************************/
@@ -35,6 +56,7 @@ int main(int argc, char *argv[])
 	std::string help("help");
 	std::string example("example");
 	std::string manual("manual");
+	std::string pversion("version");
 
 	bool first_point = true;
 
@@ -99,6 +121,10 @@ int main(int argc, char *argv[])
 		dvc_man.seekp(0, dvc_man.beg);
 		dvc_man.close();
 		return 0;
+	}
+
+	if (argv[1] == pversion){
+		return in.print_current_version();
 	}
 
 	// check to see if the command line argument is an accessible file
@@ -199,13 +225,17 @@ int main(int argc, char *argv[])
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
 
 	auto point_time_start = std::chrono::steady_clock::now();
-
-	for (unsigned int i=0; i<data.points.size(); i++) {
+	
+	unsigned int N = data.points.size();
+	if ((run.num_points_to_process > 1) && (run.num_points_to_process < N)) {
+		N = run.num_points_to_process;
+	}
+	for (unsigned int i=0; i<N; i++) {
 
 		// this is the index of the point being processed
 		int n = data.order[i];
 
-		std::cout << i << "/" << data.points.size() << " " ;
+		std::cout << i << "/" << N << " " ;
 		std::cout << data.labels[n] << "\t";
 		std::cout << std::setprecision(3) << std::fixed;
 		std::cout << data.points[n].x() << " ";
@@ -281,11 +311,13 @@ int main(int argc, char *argv[])
 
 	auto dtf = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-
 	// re-write output in point cloud order, from stored results
 	in.result_header(run.res_fname, optimize.par_min.size());
-	for (unsigned int i=0; i<data.points.size(); i++)
-		in.append_result(run.res_fname, data.labels[i], data.points[i], data.results[trg][i].status, data.results[trg][i].obj_min, data.results[trg][i].par_min);
+	for (unsigned int i = 0; i < N; i++) {
+		// this is the index of the point being processed
+		int n = data.order[i];
+		in.append_result(run.res_fname, data.labels[n], data.points[n], data.results[trg][n].status, data.results[trg][n].obj_min, data.results[trg][n].par_min);
+	}
 
 	in.echo_input(&run);
 	in.append_time_date(run.sta_fname, "Run start:\t", dts);
@@ -304,6 +336,14 @@ int main(int argc, char *argv[])
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)" << endl;
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)" << endl;
 	sta_file << std::endl;
+
+
+/*
+	// run strain calculation
+	std::cout << endl << endl << "strain calculation" << endl;
+
+	StrainCalc strain;
+*/
 
 	return 0;
 }
