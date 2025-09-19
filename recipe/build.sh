@@ -24,8 +24,7 @@ if [ `python -c "from __future__ import print_function; import platform; print (
 then
   echo "Darwin";
 
-  cmake ${RECIPE_DIR}/../ -DCONDA_BUILD=ON \
-                        -DCMAKE_BUILD_TYPE="Release"\
+  cmake ${RECIPE_DIR}/../ -DCMAKE_BUILD_TYPE="Release"\
                         -DLIBRARY_LIB=$CONDA_PREFIX/lib \
                         -DLIBRARY_INC=$CONDA_PREFIX \
                         -DCMAKE_INSTALL_PREFIX=$PREFIX\
