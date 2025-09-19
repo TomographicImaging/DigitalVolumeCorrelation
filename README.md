@@ -1,5 +1,9 @@
-# CCPi-DVC
-Digital Volume Correlation
+# Digital Volume Correlation
+The Digital Volume Correlation is based on Brian Bay's code from:
+* Bay, B.K., Smith, T.S., Fyhrie, D.P., Saad, M., 1999. Digital volume correlation: Three-dimensional strain mapping using x-ray tomography. Experimental Mechanics 39, 217–226.
+
+Please cite the article and the repository if you use this code in your research.
+
 
 | Master | Development | Anaconda binaries |
 |--------|-------------|-------------------|
