@@ -98,11 +98,7 @@ include_directories(strain PUBLIC
 )
 
 if(BUILD_TEST)
-  add_executable (tests ${CMAKE_CURRENT_SOURCE_DIR}/tests.cpp )
-  #TARGET_LINK_LIBRARIES (tests cilDVC Eigen3::Eigen)
-  target_link_libraries (tests cildvc_static)
-  include_directories(tests PUBLIC
-  	${CMAKE_CURRENT_SOURCE_DIR} )
+  add_subdirectory(tests)
 endif()
 
 # BKB: commenting out next 2 lines for make of Core to work
