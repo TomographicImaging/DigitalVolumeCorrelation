@@ -28,6 +28,11 @@ build:
   preserve_egg_dir: False
   number: {{ environ.get('GIT_DESCRIBE_NUMBER', 1)}}
 
+test:
+  files:
+    - Core/tests/datacloud_input.txt
+    - Core/tests/grid_input.roi
+
 requirements:
   build:
     - python
