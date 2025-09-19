@@ -3,7 +3,7 @@
 ## v25.0.0
 * First public release
 * Added headers to all files
-* Added unit test framework with conda and GitHub Actions
+* Added unit test framework with conda and GitHub Actions on Linux, Windows and Mac arm64
 
 ## v22.0.0
 * add num_points_to_process to the config file to limit the points to be processed.
