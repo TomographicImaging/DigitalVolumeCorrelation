@@ -13,7 +13,7 @@ Please cite the article and the repository if you use this code in your research
 
 The package comes as a [CMake](https://cmake.org) project so you will need CMake (v.>=3) to configure it. Additionally you will need a C compiler, `make` (on linux). The toolkit comes with an executable `dvc` which may be used directly. We provide wrappers for Python.
 
-1. Clone this repository to a directory, i.e. `CCPi-DVC`,
+1. Clone this repository to a directory, i.e. `DigitalVolumeCorrelation`,
 2. create a build directory.
 3. Issue `cmake` to configure (or `cmake-gui`, or `ccmake`, or `cmake3`). Use additional flags to fine tune the configuration.
 
@@ -32,7 +32,7 @@ Here an example of build on Linux:
 git clone https://github.com/TomographicImaging/DigitalVolumeCorrelation
 mkdir build
 cd build
-cmake ../CCPi-DVC -DCONDA_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>
+cmake ../DigitalVolumeCorrelation -DCONDA_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>
 make install
 ```
 
