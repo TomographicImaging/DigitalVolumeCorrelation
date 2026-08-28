@@ -1,21 +1,48 @@
+#   Copyright 2018 Oregon State University
+#   Copyright 2018 United Kingdom Research and Innovation
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#   Author(s): Edoardo Pasca (UKRI-STFC)
+#              Laura Murgatroyd (UKRI-STFC)
+
 package:
   name: ccpi-dvc
-  version: 21.0.0
+  version: {{ environ.get('GIT_DESCRIBE_TAG','v')[1:] }}
+
+source:
+  path: ..
 
 build:
   preserve_egg_dir: False
-  number: 1
+  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 1)}}
+
+test:
+  files:
+    - Core/tests/datacloud_input.txt
+    - Core/tests/grid_input.roi
 
 requirements:
   build:
-    - setuptools
-    - boost >=1.65
-    - boost-cpp >=1.65
-    - cmake >=3.9
+    - python
+    - cmake
+    - {{ compiler('cxx') }}
+    - llvm-openmp
 
   run:
-    - boost >=1.65
-	
+    - llvm-openmp
+
 about:
   home: http://www.ccpi.ac.uk
   license:  BSD license

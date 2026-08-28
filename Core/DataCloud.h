@@ -1,25 +1,23 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
 
-/**
-# -*- coding: utf-8 -*-
-#   This work is part of the Core Imaging Library developed by
-#   Visual Analytics and Imaging System Group of the Science Technology
-#   Facilities Council, STFC
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-#   Copyright 2018 CCPi
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#       http://www.apache.org/licenses/LICENSE-2.0
-
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-
-#   Code is derived from code developed by Prof. Brian Bay
+Author(s): Brian Bay (OSU)
+           Srikanth Nagella (UKRI-STFC)
+           Edoardo Pasca (UKRI-STFC)
 */
 #ifndef DATACLOUD_H
 #define DATACLOUD_H
@@ -67,7 +65,7 @@ public:
 
 	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
 	// needs points and labels already available, generates order and neigh
-	void sort_order_neighbors();
+	void sort_order_neighbors(Point starting_point);
 	int nbr_num_save() const {return nbr_num_save_default;}
 
 	// write out neighbors as a .sort file

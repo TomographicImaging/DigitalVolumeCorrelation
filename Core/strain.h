@@ -1,3 +1,24 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Edoardo Pasca (UKRI-STFC)
+		   
+*/
 
 #ifndef DVC_H
 #define DVC_H
@@ -7,22 +28,7 @@
 /******************************************************************************/
 /******************************************************************************/
 
-
-//
-//	dvc.cpp
-//
-//	Copyright 2014 Brian K. Bay (computer code and all documentation)
-//
-//	Created:  1 Jan 2014
-
-//	Revised:
-
-	int 		day_rev = 25;
-	std::string 	month_rev = "Nov";
-	int 		year_rev = 2017;
 	
-	double version = 1.30;
-//
 /******************************************************************************/
 /******************************************************************************/
 

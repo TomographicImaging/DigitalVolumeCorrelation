@@ -1,3 +1,25 @@
+/*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Edoardo Pasca (UKRI-STFC)
+
+*/
+
 #include "strain.h"
 
 /*
@@ -327,7 +349,7 @@ int main(int argc, char *argv[])
 	// sort option
 	if (!do_sort_read) {
 		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
-		data.sort_order_neighbors();
+		data.sort_order_neighbors(data.points[0]);
 		data.write_sort_file(fname_base,data.neigh);
 	}
 

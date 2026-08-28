@@ -1,4 +1,25 @@
 /*
+Copyright 2018 United Kingdom Research and Innovation
+Copyright 2018 Oregon State University
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Author(s): Brian Bay (OSU)
+           Srikanth Nagella (UKRI-STFC)
+           Edoardo Pasca (UKRI-STFC)
+*/
+/*
 DataCloud will organize search point information: the location of the point, any
 pre-search information (e.g. starting ponit estimates, results of previous
 searches, etc.). Results of a current search (numerical and categorical) are
@@ -45,7 +66,7 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 	sorted_pc_file.close();
 }
 /******************************************************************************/
-void DataCloud::sort_order_neighbors()
+void DataCloud::sort_order_neighbors(Point starting_point)
 {
 	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
 
@@ -54,7 +75,8 @@ void DataCloud::sort_order_neighbors()
 //	for (int i=0; i<labels.size(); i++)
 //		if (labels[i] == start_point_label) start_point_index = i;
 
-	start_point_index = 0;	// start with first point in the list, regardless of the label
+
+	//start_point_index = 0;	// start with first point in the list, regardless of the label
 	
 	// *** estblish search order based on distance from start_point
 	
@@ -63,7 +85,7 @@ void DataCloud::sort_order_neighbors()
 	std::vector<DualSort> indx_dist(points.size());
 	for (int i=0; i<points.size(); i++) {
 		indx_dist[i].index = i;
-		indx_dist[i].value = points[start_point_index].pt_dist(points[i]);
+		indx_dist[i].value = starting_point.pt_dist(points[i]);
 	}
 	std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
 	
@@ -123,8 +145,14 @@ void DataCloud::sort_order_neighbors()
 /******************************************************************************/
 void DataCloud::organize_cloud(RunControl *run)
 {
+	// logic to determine if a starting point is given or I should use the default
+	Point starting_point = this->points[0];
+	std::vector<double> nan_starting_point = { std::nan(""), std::nan(""), std::nan("")  };
+	if (nan_starting_point != run->starting_point) {
+		starting_point = Point(run->starting_point[0], run->starting_point[1], run->starting_point[2]);
+	}
 	// establish point processing order and neighborhoods
-	sort_order_neighbors();
+	sort_order_neighbors(starting_point);
 
 	// write sort file
 	write_sort_file(run->pts_fname, neigh);

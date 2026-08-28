@@ -1,0 +1,53 @@
+###############################################################################
+#																	
+#
+#		example dvc process control file		
+#
+#
+###############################################################################
+
+# all lines beginning with a # character are ignored
+# some parameters are conditionally required, depending on the setting of other parameters
+# for example, if subvol_thresh is off, the threshold description parameters are not required
+
+### file names
+reference_filename	reference.npy	### reference tomography image volume   
+correlate_filename	correlate.npy	### correlation tomography image volume 
+
+point_cloud_filename	grid_input.roi	### file of search point locations
+output_filename	42kpoints_out	### base name for output files
+
+### description of the image data files, all must be the same size and structure
+
+vol_bit_depth		8			### 8 or 16
+vol_hdr_lngth		96			### fixed-length header size, may be zero
+vol_wide		20			### width in pixels of each slice
+vol_high		30			### height in pixels of each slice
+vol_tall		40			### number of slices in the stack
+
+### parameters defining the subvolumes that will be created at each search point
+
+subvol_geom		sphere			### cube, sphere
+subvol_size		10			### side length or diameter, in voxels
+subvol_npts		8000			### number of points to distribute within the subvol
+
+subvol_thresh		off			### on or off, evaluate subvolumes based on threshold
+#   gray_thresh_min	27			### lower limit of a gray threshold range if subvol_thresh is on
+#   gray_thresh_max	127			### upper limit of a gray threshold range if subvol_thresh is on
+#   min_vol_fract	0.2			### only search if subvol fraction is greater than
+
+### required parameters defining the basic the search process
+
+disp_max		3			### in voxels, used for range checking and global search limits
+num_srch_dof		6			### 3, 6, or 12
+obj_function		znssd			### sad, ssd, zssd, nssd, znssd 
+interp_type		tricubic		### trilinear, tricubic
+
+### optional parameters tuning and refining the search process
+
+rigid_trans		3.0 4.0 0.0		### rigid body offset of target volume, in voxels
+basin_radius		0.0			### coarse-search resolution, in voxels, 0.0 = none
+subvol_aspect		1.0 1.0 1.0		### subvolume aspect ratio
+
+num_points_to_process 10
+
