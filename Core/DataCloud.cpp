@@ -95,7 +95,7 @@ void DataCloud::sort_order_neighbors(Point starting_point)
 	// *** get neighbors for each point	
 
 	neigh.resize(points.size());
-	std::vector<std::vector<int>> save_neigh = {};
+	std::vector<std::vector<int>> save_neigh = {};	// not sure what save_neigh does, perhaps old
 	save_neigh.resize(points.size());
 	
 #pragma omp parallel
@@ -143,6 +143,62 @@ void DataCloud::sort_order_neighbors(Point starting_point)
    
 }
 /******************************************************************************/
+void DataCloud::sort_neighbors_kdtree(Point starting_point)
+{
+	std::cout << "kdtree sorting ..." << std::endl;
+
+	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
+
+	// estblish search order based on distance from start_point
+	// this is a standard search as the start_point is a 3d spatial coodinate, which may not be a cloud point
+	
+	order.resize(points.size());
+
+	std::vector<DualSort> indx_dist(points.size());
+	for (int i=0; i<points.size(); i++) {
+		indx_dist[i].index = i;
+		indx_dist[i].value = starting_point.pt_dist(points[i]);
+	}
+	std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
+	
+	for (int i=0; i<points.size(); i++) {
+		order[i] = indx_dist[i].index;
+	}
+
+	// use KDtree to find neighbor indices of all points
+	
+	// transfer point data into the kdtree Point3D structure
+	std::vector<Point3D> cloud;
+	for (int i = 0; i < (int)points.size(); ++i) {
+		Point3D p;
+		p.x = points[i].x();
+		p.y = points[i].y();
+		p.z = points[i].z();
+		p.index = i;
+		cloud.push_back(p);
+	}
+
+	// instantiate KDTree
+	KDTree tree(cloud);
+
+	// parse the nearest neighbor sorting
+	neigh.resize(points.size());
+	#pragma omp parallel for
+	for (int i = 0; i < (int)points.size(); ++i) {
+
+		// sort neighbors for each point in the cloud
+        auto neighbors = tree.kNearest(i, neigh_num_save);
+
+		// auto loop over neighbors, each element referenced as n, extract indices, store in neigh
+        for (const auto& n : neighbors) {
+			neigh[i].push_back(n.index);
+        }
+	}
+
+	std::cout << "... finished" << std::endl;
+}
+/******************************************************************************/
+
 void DataCloud::organize_cloud(RunControl *run)
 {
 	// logic to determine if a starting point is given or I should use the default
@@ -151,9 +207,13 @@ void DataCloud::organize_cloud(RunControl *run)
 	if (nan_starting_point != run->starting_point) {
 		starting_point = Point(run->starting_point[0], run->starting_point[1], run->starting_point[2]);
 	}
-	// establish point processing order and neighborhoods
-	sort_order_neighbors(starting_point);
+	// establish point processing order and neighborhoods using brute force search (original method)
+	//sort_order_neighbors(starting_point);
+	// write sort file
+	//write_sort_file(run->pts_fname, neigh);
 
+	// establish point processing order and neighborhoods using kdtree approach (much faster)
+	sort_neighbors_kdtree(starting_point);
 	// write sort file
 	write_sort_file(run->pts_fname, neigh);
 
