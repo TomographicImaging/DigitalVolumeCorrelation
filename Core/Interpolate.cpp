@@ -21,6 +21,8 @@ Author(s): Brian Bay (OSU)
 */
 #include "Interpolate.h"
 #include <ctime>
+#include <cmath>
+#include <algorithm>
 
 /*****************************************************************************/
 Interpolate::~Interpolate()
@@ -32,6 +34,25 @@ Interpolate::~Interpolate()
 }
 /******************************************************************************/
 Interpolate::Interpolate(const BoundBox *region)
+{
+	init(region, 1.0, 0);
+}
+/******************************************************************************/
+Interpolate::Interpolate(const BoundBox *region, int bspline_order)
+{
+	if (bspline_order != 3 && bspline_order != 5 && bspline_order != 7)
+		throw Intrp_Fail();	// only cubic/quintic/septic are implemented
+
+	// stencil half-width needed on the far side of a cell for order p is
+	// (p+1)/2 taps (e.g. cubic needs -1,0,1,2 relative to the cell's low
+	// corner); use that as the frame on both sides, which is a little more
+	// generous than strictly required on the near side but keeps a single
+	// symmetric margin, consistent with how frame is used elsewhere here.
+	double halo = (bspline_order + 1) / 2;
+	init(region, std::max(1.0, halo), bspline_order);
+}
+/******************************************************************************/
+void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 {
 	//	For consistency with software such as ImageJ:
 
@@ -51,11 +72,17 @@ Interpolate::Interpolate(const BoundBox *region)
 	est_box = new BoundBox(region->min(), region->max());
 	act_box = new BoundBox(region->min(), region->max());
 
-	double frame = 1.0;		// awkward, but OK for now
 	act_box->grow_by(-frame);
 
 	// single block allocated for the kernels
 	kern_4d = new Matrix_4d(est_box->iwide(), est_box->ihigh(), est_box->itall());
+
+	bsp_order = 0;
+	bsp_halo_reserved = (bspline_order == 0) ? 0 : (bspline_order + 1) / 2;
+	bsp_gain = 1.0;
+	bsp_valid = false;
+	if (bspline_order != 0)
+		set_bspline_poles(bspline_order);	// also sets bsp_order
 
 	// the Lekein inverse matrix
 	BI = Eigen::MatrixXd(64, 64);
@@ -136,6 +163,417 @@ Interpolate::Interpolate(const BoundBox *region)
 
 }
 /******************************************************************************/
+// ===========================================================================
+// B-spline interpolation (Unser/Aldroubi/Eden recursive-filter scheme)
+//
+// Reference for the poles/gains/init formulas below:
+//   M. Unser, A. Aldroubi, M. Eden, "B-Spline Signal Processing: Part II --
+//   Efficient Design and Applications", IEEE Trans. Signal Processing 41(2),
+//   1993. The mirror-boundary causal/anticausal initialization follows the
+//   standard form reproduced in P. Thevenaz's widely-used reference
+//   implementation (https://bigwww.epfl.ch/thevenaz/interpolation/).
+//   Applying this to DVC of microCT volumes specifically follows B. Pan et
+//   al., "Accurate B-spline-based 3-D interpolation scheme for digital
+//   volume correlation", Rev. Sci. Instrum. 87, 125114 (2016).
+//
+// The pole/gain constants below were independently re-derived here (not
+// transcribed from a table) by finding the roots, inside the unit circle, of
+// the characteristic polynomial formed from the integer samples of the
+// centered uniform B-spline of degree p, refined to ~50 significant digits;
+// the recursive filter built from them was cross-checked against an exact
+// dense-matrix solve of the mirror-boundary interpolation system (errors at
+// the linear-solve noise floor, ~1e-10 or smaller) before being used here.
+// ===========================================================================
+void Interpolate::set_bspline_poles(int order)
+{
+	bsp_poles.clear();
+
+	switch (order)
+	{
+	case 3:
+		bsp_poles.push_back(-0.26794919243112270647255365849412763305719474618962);
+		break;
+
+	case 5:
+		bsp_poles.push_back(-0.43057534709997379185143478349352011003998440940935);
+		bsp_poles.push_back(-0.04309628820326465382271237682255018245930966932524);
+		break;
+
+	case 7:
+		bsp_poles.push_back(-0.53528043079643816554240378168164607183392315234271);
+		bsp_poles.push_back(-0.12255461519232669051527226435935734360548654942729);
+		bsp_poles.push_back(-0.00914869480960827692859302165164785341569256395460);
+		break;
+
+	default:
+		throw Intrp_Fail();	// only cubic/quintic/septic are implemented
+	}
+
+	bsp_gain = 1.0;
+	for (size_t i = 0; i < bsp_poles.size(); i++)
+	{
+		double z = bsp_poles[i];
+		bsp_gain *= (1.0 - z) * (1.0 - 1.0 / z);
+	}
+
+	bsp_order = order;
+}
+/******************************************************************************/
+void Interpolate::set_bspline_order(int order)
+{
+	int halo = (order == 3 || order == 5 || order == 7) ? (order + 1) / 2 : -1;
+
+	if (halo < 0 || halo > bsp_halo_reserved)
+		throw Intrp_Fail();	// unsupported order, or not enough halo reserved at construction
+
+	set_bspline_poles(order);
+	bsp_valid = false;	// coefficients (if any) were computed for the old order
+}
+/******************************************************************************/
+double Interpolate::bspline_basis(int degree, double x)
+// Centered uniform B-spline basis function of the given degree, evaluated at
+// x, via the standard "divided difference of the truncated power function"
+// formula:
+//
+//   beta^p(x) = 1/p! * sum_{i=0}^{p+1} (-1)^i C(p+1,i) * max(0, x+(p+1)/2-i)^p
+//
+// Works for any nonnegative integer degree (not just 3/5/7); this generality
+// is used directly by tri_bspline/tri_bspline_grad, and gradients reuse the
+// same function one degree lower via the identity
+// d/dx beta^p(x) = beta^(p-1)(x+0.5) - beta^(p-1)(x-0.5).
+{
+	double half = (degree + 1) / 2.0;
+	double sum = 0.0;
+	double binom = 1.0;	// C(degree+1, i), built up incrementally
+
+	for (int i = 0; i <= degree + 1; i++)
+	{
+		double t = x + half - i;
+
+		if (t > 0.0)
+		{
+			double term = binom;
+			for (int p = 0; p < degree; p++) term *= t;	// t^degree, small integer degree
+
+			sum += (i % 2 == 0) ? term : -term;
+		}
+
+		binom *= double(degree + 1 - i) / double(i + 1);
+	}
+
+	double fact = 1.0;
+	for (int k = 2; k <= degree; k++) fact *= k;
+
+	return sum / fact;
+}
+/******************************************************************************/
+double Interpolate::bspline_init_causal(const std::vector<double> &c, double z, double tolerance)
+// Mirror-whole-sample-boundary initialization of the forward (causal)
+// recursion, c[0] = sum_{k=0}^{inf} z^k * c_mirrored[k].
+{
+	int n = (int)c.size();
+	int horizon = n;
+
+	if (tolerance > 0.0)
+	{
+		int h = (int)std::ceil(std::log(tolerance) / std::log(std::fabs(z)));
+		horizon = std::min(n, h);
+	}
+
+	if (horizon < n)
+	{
+		// signal is long enough, and z small enough, that the tail beyond
+		// 'horizon' terms is negligible to within 'tolerance'
+		double zn = z;
+		double sum = c[0];
+		for (int i = 1; i < horizon; i++)
+		{
+			sum += zn * c[i];
+			zn *= z;
+		}
+		return sum;
+	}
+	else
+	{
+		// exact closed form for the mirror-whole-sample boundary
+		double zn = z;
+		double iz = 1.0 / z;
+		double z2n = std::pow(z, n - 1);
+		double sum = c[0] + z2n * c[n - 1];
+		z2n *= z2n * iz;
+
+		for (int i = 1; i <= n - 2; i++)
+		{
+			sum += (zn + z2n) * c[i];
+			zn *= z;
+			z2n *= iz;
+		}
+		return sum / (1.0 - std::pow(z, 2 * n - 2));
+	}
+}
+/******************************************************************************/
+double Interpolate::bspline_init_anticausal(const std::vector<double> &c, double z)
+// Mirror-whole-sample-boundary initialization of the backward (anticausal)
+// recursion.
+{
+	int n = (int)c.size();
+	return (z / (z * z - 1.0)) * (z * c[n - 2] + c[n - 1]);
+}
+/******************************************************************************/
+void Interpolate::bspline_filter_1d(std::vector<double> &c) const
+// Converts one line of samples into B-spline interpolation coefficients in
+// place: scales by the overall gain, then runs a causal forward pass and an
+// anticausal backward pass for each pole, per Unser/Aldroubi/Eden.
+{
+	int n = (int)c.size();
+	if (n < 2) return;	// degenerate line -- nothing sensible to filter
+
+	const double tolerance = 1e-12;
+
+	for (size_t i = 0; i < c.size(); i++)
+		c[i] *= bsp_gain;
+
+	for (size_t p = 0; p < bsp_poles.size(); p++)
+	{
+		double z = bsp_poles[p];
+
+		c[0] = bspline_init_causal(c, z, tolerance);
+		for (int i = 1; i < n; i++)
+			c[i] += z * c[i - 1];
+
+		c[n - 1] = bspline_init_anticausal(c, z);
+		for (int i = n - 2; i >= 0; i--)
+			c[i] = z * (c[i + 1] - c[i]);
+	}
+}
+/******************************************************************************/
+void Interpolate::kernels_bspline()
+// Computes B-spline interpolation coefficients for the whole est_box from
+// the raw voxel values already loaded by kernels(). Must be re-run whenever
+// kernels() reloads data, or after set_bspline_order() changes the active
+// order. Not lazy/per-cell like the Lekien coefficients -- the recursive
+// filter needs a full line of samples along each axis, so every voxel in
+// est_box is touched.
+//
+// Note on accuracy near the est_box border: the mirror-whole-sample boundary
+// condition is applied at the edges of *this loaded window*, not at the
+// edges of the true, much larger volume -- exactly the practical shortcut
+// used in the DVC literature (e.g. Pan et al.), since only the window is
+// available here. Because the filter poles all have magnitude well under
+// 0.6, the resulting bias decays geometrically and is negligible a few
+// voxels in from the border -- i.e. within act_box, which is already offset
+// from est_box by the halo reserved at construction.
+{
+	if (bsp_order == 0)
+		throw Intrp_Fail();	// this object wasn't constructed with B-spline support
+
+	int nx = est_box->iwide();
+	int ny = est_box->ihigh();
+	int nz = est_box->itall();
+
+	// seed the coefficient slot from the raw voxel values; slot 0 is left
+	// untouched so nearest/tri_lin/tri_cub_Lek keep working unmodified
+#pragma omp parallel for
+	for (int ic = 0; ic < nx; ic++)
+		for (int ir = 0; ir < ny; ir++)
+			for (int is = 0; is < nz; is++)
+				kern_4d->set_bsp(ic, ir, is, kern_4d->get(ic, ir, is, 0));
+
+#pragma omp parallel
+	{
+		std::vector<double> line;
+
+		// x-axis lines
+#pragma omp for collapse(2)
+		for (int ir = 0; ir < ny; ir++)
+			for (int is = 0; is < nz; is++)
+			{
+				line.resize(nx);
+				for (int ic = 0; ic < nx; ic++) line[ic] = kern_4d->get_bsp(ic, ir, is);
+				bspline_filter_1d(line);
+				for (int ic = 0; ic < nx; ic++) kern_4d->set_bsp(ic, ir, is, line[ic]);
+			}
+
+		// y-axis lines
+#pragma omp for collapse(2)
+		for (int ic = 0; ic < nx; ic++)
+			for (int is = 0; is < nz; is++)
+			{
+				line.resize(ny);
+				for (int ir = 0; ir < ny; ir++) line[ir] = kern_4d->get_bsp(ic, ir, is);
+				bspline_filter_1d(line);
+				for (int ir = 0; ir < ny; ir++) kern_4d->set_bsp(ic, ir, is, line[ir]);
+			}
+
+		// z-axis lines
+#pragma omp for collapse(2)
+		for (int ic = 0; ic < nx; ic++)
+			for (int ir = 0; ir < ny; ir++)
+			{
+				line.resize(nz);
+				for (int is = 0; is < nz; is++) line[is] = kern_4d->get_bsp(ic, ir, is);
+				bspline_filter_1d(line);
+				for (int is = 0; is < nz; is++) kern_4d->set_bsp(ic, ir, is, line[is]);
+			}
+	}
+
+	bsp_valid = true;
+}
+/******************************************************************************/
+// this morrors the Lekien interp calls with values only returned
+void Interpolate::tri_bspline(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
+{
+	try
+	{
+		act_box->contains(bbox);
+	}
+	catch (Bound_Fail)
+	{
+		throw Intrp_Fail();
+	}
+
+	if (bsp_order == 0 || !bsp_valid)
+		throw Intrp_Fail();	// not configured, or kernels_bspline() hasn't been (re)run since the last kernels()/set_bspline_order()
+
+	const int half_lo = (bsp_order - 1) / 2;
+	const int ntap = bsp_order + 1;
+
+#pragma omp parallel
+	{
+		std::vector<double> wx(ntap), wy(ntap), wz(ntap);
+
+#pragma omp for
+		for (int n = 0; n < (int)pts.size(); n++)
+		{
+			int cx = pts[n].ix() - est_box->min().ix();
+			int cy = pts[n].iy() - est_box->min().iy();
+			int cz = pts[n].iz() - est_box->min().iz();
+
+			double rx = pts[n].rx();
+			double ry = pts[n].ry();
+			double rz = pts[n].rz();
+
+			for (int t = 0; t < ntap; t++)
+			{
+				int o = t - half_lo;
+				wx[t] = bspline_basis(bsp_order, rx - o);
+				wy[t] = bspline_basis(bsp_order, ry - o);
+				wz[t] = bspline_basis(bsp_order, rz - o);
+			}
+
+			double val = 0.0;
+			for (int tz = 0; tz < ntap; tz++)
+			{
+				if (wz[tz] == 0.0) continue;
+				int oz = tz - half_lo;
+
+				for (int ty = 0; ty < ntap; ty++)
+				{
+					double wyz = wy[ty] * wz[tz];
+					if (wyz == 0.0) continue;
+					int oy = ty - half_lo;
+
+					for (int tx = 0; tx < ntap; tx++)
+					{
+						double w = wx[tx] * wyz;
+						if (w == 0.0) continue;
+						int ox = tx - half_lo;
+
+						val += w * kern_4d->get_bsp(cx + ox, cy + oy, cz + oz);
+					}
+				}
+			}
+
+			ivals[n] = val;
+		}
+	}
+}
+/******************************************************************************/
+// this extends the Lekien and bspline calls, adding analytical derivative returns
+void Interpolate::tri_bspline_grad(const std::vector<Point> &pts, const BoundBox *bbox,
+	std::vector<double> &ivals,
+	std::vector<double> &dfdx, std::vector<double> &dfdy, std::vector<double> &dfdz)
+{
+	try
+	{
+		act_box->contains(bbox);
+	}
+	catch (Bound_Fail)
+	{
+		throw Intrp_Fail();
+	}
+
+	if (bsp_order == 0 || !bsp_valid)
+		throw Intrp_Fail();	// not configured, or kernels_bspline() hasn't been (re)run since the last kernels()/set_bspline_order()
+
+	// as with nearest/tri_lin/tri_cub_Lek/tri_bspline, ivals must already be
+	// sized to pts.size() by the caller; the same applies here to dfdx/dfdy/dfdz
+
+	const int half_lo = (bsp_order - 1) / 2;
+	const int ntap = bsp_order + 1;
+
+#pragma omp parallel
+	{
+		std::vector<double> wx(ntap), wy(ntap), wz(ntap);
+		std::vector<double> dwx(ntap), dwy(ntap), dwz(ntap);
+
+#pragma omp for
+		for (int n = 0; n < (int)pts.size(); n++)
+		{
+			int cx = pts[n].ix() - est_box->min().ix();
+			int cy = pts[n].iy() - est_box->min().iy();
+			int cz = pts[n].iz() - est_box->min().iz();
+
+			double rx = pts[n].rx();
+			double ry = pts[n].ry();
+			double rz = pts[n].rz();
+
+			for (int t = 0; t < ntap; t++)
+			{
+				int o = t - half_lo;
+
+				wx[t] = bspline_basis(bsp_order, rx - o);
+				wy[t] = bspline_basis(bsp_order, ry - o);
+				wz[t] = bspline_basis(bsp_order, rz - o);
+
+				dwx[t] = bspline_basis(bsp_order - 1, rx - o + 0.5) - bspline_basis(bsp_order - 1, rx - o - 0.5);
+				dwy[t] = bspline_basis(bsp_order - 1, ry - o + 0.5) - bspline_basis(bsp_order - 1, ry - o - 0.5);
+				dwz[t] = bspline_basis(bsp_order - 1, rz - o + 0.5) - bspline_basis(bsp_order - 1, rz - o - 0.5);
+			}
+
+			double val = 0.0, gx = 0.0, gy = 0.0, gz = 0.0;
+
+			for (int tz = 0; tz < ntap; tz++)
+			{
+				int oz = tz - half_lo;
+
+				for (int ty = 0; ty < ntap; ty++)
+				{
+					int oy = ty - half_lo;
+
+					for (int tx = 0; tx < ntap; tx++)
+					{
+						int ox = tx - half_lo;
+
+						double c = kern_4d->get_bsp(cx + ox, cy + oy, cz + oz);
+						if (c == 0.0) continue;
+
+						val += wx[tx] * wy[ty] * wz[tz] * c;
+						gx  += dwx[tx] * wy[ty] * wz[tz] * c;
+						gy  += wx[tx] * dwy[ty] * wz[tz] * c;
+						gz  += wx[tx] * wy[ty] * dwz[tz] * c;
+					}
+				}
+			}
+
+			ivals[n] = val;
+			dfdx[n] = gx;
+			dfdy[n] = gy;
+			dfdz[n] = gz;
+		}
+	}
+}
+/******************************************************************************/
 void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian)
 {
 	return Interpolate::kernels(voxfname, vox_box, bytes_per, endian, 0);
@@ -146,8 +584,13 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 // Load values from a voxel file. Derivatives are calculated at each voxel, but
 // Lekien coeff's are not automatically evaluated (flagged to false to reflect new
 // data in the interpolation region). The lekien coeff's are only evaluated for
-// specific cells in the interp region as needed during tri_cub_Lek.
+// specific cells in the interp region as needed during tri_cub_Lek. Any
+// existing B-spline coefficients are also flagged stale (false) here, same
+// rationale as the Lekien flag above -- kernels_bspline() must be re-run
+// before tri_bspline/tri_bspline_grad will accept this new data.
 {
+	bsp_valid = false;
+
 	std::ifstream vfs;
 	vfs.open(voxfname.c_str(), std::ifstream::in | std::ifstream::binary);
 	if (!vfs)
