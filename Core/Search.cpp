@@ -133,14 +133,15 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	// trap point for objective function mapping and convergence trace
 
 	if (map_flag && (srch_data->labels[n] == map_id)) {
-		std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
+		// std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
 
 		// if just mapping, don;t want to update the parameter vector
 
-		double half_range = 0.5*rc->disp_max;	// multiplier must be <= 1.0
+		// double half_range = 0.5*rc->disp_max;	// multiplier must be <= 1.0
+		double half_range = 1.0*rc->disp_max;	// multiplier must be <= 1.0
 
-		int num_each_dim = 25;
-		map_objective_function(half_range, num_each_dim);
+		int num_each_dim = 100;
+		map_objective_function(map_id, half_range, num_each_dim);
 	}
 
 	// if using as part of a search the parameter vector is updated
@@ -1070,10 +1071,9 @@ void Search::trgrid_global(double displ_max, double basin_radius, int n, bool ou
 
 }
 /******************************************************************************/
+void Search::map_objective_function(int map_id, double half_range, int num_each_dim) {
 
-void Search::map_objective_function(double half_range, int num_each_dim) {
-
-	std::cout << std::endl << "** in map_objective_function, range, num = " << half_range << ", " << num_each_dim << std::endl;
+	std::cout << std::endl << "* objective function mapping point " << map_id << ", span = " << 2.0*half_range << " voxels, sampling points = " << num_each_dim << std::endl;
 
 	double inc = (2.0*half_range)/num_each_dim;
 	int ndof = 3;
@@ -1086,7 +1086,12 @@ void Search::map_objective_function(double half_range, int num_each_dim) {
 	double obj_min = std::numeric_limits<double>::max();	// for scaling output
 	double obj_max = std::numeric_limits<double>::min();	// for scaling output
 
+	double total_num_pts = num_each_dim * num_each_dim * num_each_dim;
+	double status_percent_inc = 10;
+
 	int count = 0;
+	double status_percent_current = status_percent_inc;
+	int past_current_limit = 0;
 	for (int i=0; i<num_each_dim; i++) {
 		double delx = -half_range + i*inc;
 		for (int j=0; j<num_each_dim; j++) {
@@ -1106,8 +1111,14 @@ void Search::map_objective_function(double half_range, int num_each_dim) {
 				if (obj_val < obj_min) obj_min = obj_val;
 				if (obj_val > obj_max) obj_max = obj_val;
 
-				std::cout << count << " of " << total_num  << " is " << obj_val << std::endl;
-
+				if (count > total_num_pts * (status_percent_current/100)) {
+					past_current_limit += 1;
+					if (past_current_limit == 1) {
+						std::cout << "map progress: " << status_percent_current  << "% " << std::endl;
+						status_percent_current = status_percent_current + status_percent_inc;
+						past_current_limit = 0;
+					}
+				}
 				count += 1;
 			}
 		}

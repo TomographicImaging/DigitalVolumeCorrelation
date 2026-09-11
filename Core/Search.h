@@ -98,7 +98,7 @@ public:
 	void trgrid_global(double displ_max, double basin_rad, int n, bool out_as_raw);
 
 	// map objective function for translations surrounding a parameter vector, up to dispalcement max with adjustable increment
-	void map_objective_function(double half_range, int num_each_dim);
+	void map_objective_function(int map_id, double half_range, int num_each_dim);
 
 	// randomized points style global search
 	void random_global(double displ_max, double basin_rad);
