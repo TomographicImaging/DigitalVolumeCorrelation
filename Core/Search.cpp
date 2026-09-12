@@ -91,7 +91,7 @@ Search::Search(RunControl *run)
 	//    Interpolate's own constructor reserve the halo on top of that.
 	if (run->int_typ == tri_bspline)
 	{
-		const int bspline_order_cfg = 3;	// cubic; TODO: wire to an input/config option if quintic/septic is ever needed
+		const int bspline_order_cfg = 3;	// cubic (3); TODO: wire to an input/config option if quintic(5)/septic(7) is ever needed
 
 		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
 
