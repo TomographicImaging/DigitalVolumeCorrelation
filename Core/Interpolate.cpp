@@ -77,10 +77,7 @@ void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 	// single block allocated for the kernels
 	kern_4d = new Matrix_4d(est_box->iwide(), est_box->ihigh(), est_box->itall());
 
-	// this can be 3, 5, or 7 (cubic, quartic, quintic) - make an input option in future
-	bsp_order = 3;
-	//kernels_bspline();
-
+	bsp_order = 0;
 	bsp_halo_reserved = (bspline_order == 0) ? 0 : (bspline_order + 1) / 2;
 	bsp_gain = 1.0;
 	bsp_valid = false;
@@ -426,36 +423,21 @@ void Interpolate::kernels_bspline()
 // this morrors the Lekien interp calls with values only returned
 void Interpolate::tri_bspline(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
 {
-	
-	//std::cout << std::endl << "in tri_bspline" << std::endl;
-	//printf("bspline_order() = %d\n", bspline_order());
-	//printf("bspline_ready() = %d\n", bspline_ready());
-	
-	//printf("act_box: (%g,%g,%g) - (%g,%g,%g)\n", act_box->min().x(), act_box->min().y(), act_box->min().z(),act_box->max().x(), act_box->max().y(), act_box->max().z());
-	//printf("bbox:    (%g,%g,%g) - (%g,%g,%g)\n", bbox->min().x(), bbox->min().y(), bbox->min().z(), bbox->max().x(), bbox->max().y(), bbox->max().z());
-
-
-
 	try
 	{
 		act_box->contains(bbox);
 	}
 	catch (Bound_Fail)
 	{
-		printf("*** threw from act_box->contains(bbox) ***\n");
 		throw Intrp_Fail();
 	}
 
 	if (bsp_order == 0 || !bsp_valid)
-	{
-		printf("*** threw from the bsp_order/bsp_valid check ***\n");
-		throw Intrp_Fail();
-	}
-
-
+		throw Intrp_Fail();	// not configured, or kernels_bspline() hasn't been (re)run since the last kernels()/set_bspline_order()
 
 	const int half_lo = (bsp_order - 1) / 2;
 	const int ntap = bsp_order + 1;
+	const bool fast_cubic = (bsp_order == 3);	// closed-form weights, no bspline_basis() calls
 
 #pragma omp parallel
 	{
@@ -472,33 +454,38 @@ void Interpolate::tri_bspline(const std::vector<Point> &pts, const BoundBox *bbo
 			double ry = pts[n].ry();
 			double rz = pts[n].rz();
 
-			for (int t = 0; t < ntap; t++)
+			if (fast_cubic)
 			{
-				int o = t - half_lo;
-				wx[t] = bspline_basis(bsp_order, rx - o);
-				wy[t] = bspline_basis(bsp_order, ry - o);
-				wz[t] = bspline_basis(bsp_order, rz - o);
+				cubic_bspline_weights(rx, wx.data());
+				cubic_bspline_weights(ry, wy.data());
+				cubic_bspline_weights(rz, wz.data());
+			}
+			else
+			{
+				for (int t = 0; t < ntap; t++)
+				{
+					int o = t - half_lo;
+					wx[t] = bspline_basis(bsp_order, rx - o);
+					wy[t] = bspline_basis(bsp_order, ry - o);
+					wz[t] = bspline_basis(bsp_order, rz - o);
+				}
 			}
 
 			double val = 0.0;
 			for (int tz = 0; tz < ntap; tz++)
 			{
-				if (wz[tz] == 0.0) continue;
 				int oz = tz - half_lo;
 
 				for (int ty = 0; ty < ntap; ty++)
 				{
 					double wyz = wy[ty] * wz[tz];
-					if (wyz == 0.0) continue;
 					int oy = ty - half_lo;
 
 					for (int tx = 0; tx < ntap; tx++)
 					{
-						double w = wx[tx] * wyz;
-						if (w == 0.0) continue;
 						int ox = tx - half_lo;
 
-						val += w * kern_4d->get_bsp(cx + ox, cy + oy, cz + oz);
+						val += wx[tx] * wyz * kern_4d->get_bsp(cx + ox, cy + oy, cz + oz);
 					}
 				}
 			}
@@ -530,6 +517,7 @@ void Interpolate::tri_bspline_grad(const std::vector<Point> &pts, const BoundBox
 
 	const int half_lo = (bsp_order - 1) / 2;
 	const int ntap = bsp_order + 1;
+	const bool fast_cubic = (bsp_order == 3);	// closed-form weights, no bspline_basis() calls
 
 #pragma omp parallel
 	{
@@ -547,17 +535,30 @@ void Interpolate::tri_bspline_grad(const std::vector<Point> &pts, const BoundBox
 			double ry = pts[n].ry();
 			double rz = pts[n].rz();
 
-			for (int t = 0; t < ntap; t++)
+			if (fast_cubic)
 			{
-				int o = t - half_lo;
+				cubic_bspline_weights(rx, wx.data());
+				cubic_bspline_weights(ry, wy.data());
+				cubic_bspline_weights(rz, wz.data());
 
-				wx[t] = bspline_basis(bsp_order, rx - o);
-				wy[t] = bspline_basis(bsp_order, ry - o);
-				wz[t] = bspline_basis(bsp_order, rz - o);
+				cubic_bspline_dweights(rx, dwx.data());
+				cubic_bspline_dweights(ry, dwy.data());
+				cubic_bspline_dweights(rz, dwz.data());
+			}
+			else
+			{
+				for (int t = 0; t < ntap; t++)
+				{
+					int o = t - half_lo;
 
-				dwx[t] = bspline_basis(bsp_order - 1, rx - o + 0.5) - bspline_basis(bsp_order - 1, rx - o - 0.5);
-				dwy[t] = bspline_basis(bsp_order - 1, ry - o + 0.5) - bspline_basis(bsp_order - 1, ry - o - 0.5);
-				dwz[t] = bspline_basis(bsp_order - 1, rz - o + 0.5) - bspline_basis(bsp_order - 1, rz - o - 0.5);
+					wx[t] = bspline_basis(bsp_order, rx - o);
+					wy[t] = bspline_basis(bsp_order, ry - o);
+					wz[t] = bspline_basis(bsp_order, rz - o);
+
+					dwx[t] = bspline_basis(bsp_order - 1, rx - o + 0.5) - bspline_basis(bsp_order - 1, rx - o - 0.5);
+					dwy[t] = bspline_basis(bsp_order - 1, ry - o + 0.5) - bspline_basis(bsp_order - 1, ry - o - 0.5);
+					dwz[t] = bspline_basis(bsp_order - 1, rz - o + 0.5) - bspline_basis(bsp_order - 1, rz - o - 0.5);
+				}
 			}
 
 			double val = 0.0, gx = 0.0, gy = 0.0, gz = 0.0;
@@ -575,7 +576,6 @@ void Interpolate::tri_bspline_grad(const std::vector<Point> &pts, const BoundBox
 						int ox = tx - half_lo;
 
 						double c = kern_4d->get_bsp(cx + ox, cy + oy, cz + oz);
-						if (c == 0.0) continue;
 
 						val += wx[tx] * wy[ty] * wz[tz] * c;
 						gx  += dwx[tx] * wy[ty] * wz[tz] * c;
