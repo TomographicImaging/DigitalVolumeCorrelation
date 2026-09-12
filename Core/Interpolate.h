@@ -114,6 +114,8 @@ public:
 
 	void center_on(Point pt);
 
+	bool bspline_ready() const { return bsp_valid; }
+
 private:
 //
 // Element [0][0][0] is located at the min corner of the interp_region.

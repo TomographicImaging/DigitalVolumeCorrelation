@@ -77,7 +77,10 @@ void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 	// single block allocated for the kernels
 	kern_4d = new Matrix_4d(est_box->iwide(), est_box->ihigh(), est_box->itall());
 
-	bsp_order = 0;
+	// this can be 3, 5, or 7 (cubic, quartic, quintic) - make an input option in future
+	bsp_order = 3;
+	//kernels_bspline();
+
 	bsp_halo_reserved = (bspline_order == 0) ? 0 : (bspline_order + 1) / 2;
 	bsp_gain = 1.0;
 	bsp_valid = false;
@@ -423,17 +426,33 @@ void Interpolate::kernels_bspline()
 // this morrors the Lekien interp calls with values only returned
 void Interpolate::tri_bspline(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
 {
+	
+	//std::cout << std::endl << "in tri_bspline" << std::endl;
+	//printf("bspline_order() = %d\n", bspline_order());
+	//printf("bspline_ready() = %d\n", bspline_ready());
+	
+	//printf("act_box: (%g,%g,%g) - (%g,%g,%g)\n", act_box->min().x(), act_box->min().y(), act_box->min().z(),act_box->max().x(), act_box->max().y(), act_box->max().z());
+	//printf("bbox:    (%g,%g,%g) - (%g,%g,%g)\n", bbox->min().x(), bbox->min().y(), bbox->min().z(), bbox->max().x(), bbox->max().y(), bbox->max().z());
+
+
+
 	try
 	{
 		act_box->contains(bbox);
 	}
 	catch (Bound_Fail)
 	{
+		printf("*** threw from act_box->contains(bbox) ***\n");
 		throw Intrp_Fail();
 	}
 
 	if (bsp_order == 0 || !bsp_valid)
-		throw Intrp_Fail();	// not configured, or kernels_bspline() hasn't been (re)run since the last kernels()/set_bspline_order()
+	{
+		printf("*** threw from the bsp_order/bsp_valid check ***\n");
+		throw Intrp_Fail();
+	}
+
+
 
 	const int half_lo = (bsp_order - 1) / 2;
 	const int ntap = bsp_order + 1;
