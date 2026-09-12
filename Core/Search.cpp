@@ -272,6 +272,10 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	if (rc->int_typ == nearest) interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	if (rc->int_typ == trilinear) interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	if (rc->int_typ == tricubic) interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	if (rc->int_typ == tri_bspline) {
+		//printf("bspline_order() = %d\n", interp->bspline_order());
+		interp->kernels_bspline();
+		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);}
 
 	// re-set kernels for the moving cloud
 
@@ -477,6 +481,12 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
+	if (rc->int_typ == tri_bspline) {
+		//printf("bspline_order() = %d\n", interp->bspline_order());
+		interp->kernels_bspline();
+		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		catch (Intrp_Fail) {throw Range_Fail();}}
+
 	double obj_val = obj_fcn(ref_subvol, tar_subvol);
 
 	return obj_val;
@@ -496,6 +506,11 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 
 	if (rc->int_typ == tricubic) {
 		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		catch (Intrp_Fail) {throw Range_Fail();}}
+
+	if (rc->int_typ == tri_bspline) {
+		interp->kernels_bspline();
+		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	double obj_val = obj_fcn_res(ref_subvol, tar_subvol, residual);

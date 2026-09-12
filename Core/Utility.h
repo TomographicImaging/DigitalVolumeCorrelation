@@ -67,9 +67,9 @@ enum Objfcn_Type {
 	SAD, SSD, ZSSD, NSSD, ZNSSD
 };
 /******************************************************************************/
-const std::string ok_interp_mthd_line = "nearest trilinear tricubic";
+const std::string ok_interp_mthd_line = "nearest trilinear tricubic tri_bspline";
 enum Interp_Type {
-	nearest, trilinear, tricubic
+	nearest, trilinear, tricubic, tri_bspline
 };
 /******************************************************************************/
 
