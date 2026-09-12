@@ -108,6 +108,16 @@ public:
 
 //	struct Min_Ftor_new;	// leave declared for now, not working
 private:
+	// Shared analytic residual-Jacobian assembly for tri_bspline, used by both
+	// Jacobian_at() and LM_prep_at() so the two never drift apart. Evaluates
+	// at 'a' (length ndof), fills base_res[npts] (the residual vector, same
+	// convention as obj_fcn_res) and J[npts][ndof], and returns the objective
+	// function value (same convention as obj_val_at). Throws Range_Fail if the
+	// query points fall outside the interpolator's active region. See
+	// Jacobian_at()'s definition in Search.cpp for the full derivation notes.
+	double bspline_jacobian_at(const std::vector<double> &a, int ndof,
+		std::vector<double> &base_res, std::vector< std::vector<double> > &J);
+
 #if defined(_WIN32) || defined(__WIN32__)
 	//friend CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search & ) ;
 #else
