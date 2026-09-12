@@ -71,13 +71,40 @@ Search::Search(RunControl *run)
 
 	est_box_nom->grow_by(rc->disp_max);
 
-	// compensate for derivatives in interpolator
+	// create interpolator of suitable capacity.
+	//
+	// The two paths below both end up with the same net safety margin (1
+	// voxel) beyond disp_max on act_box, but they get there differently:
+	//
+	//  - legacy path (nearest/trilinear/Lekien tricubic): the single-argument
+	//    Interpolate constructor always reserves a fixed frame of 1.0, so the
+	//    "+2.0" grown here becomes a net +1.0 margin once Interpolate shrinks
+	//    act_box by that fixed frame.
+	//
+	//  - B-spline path: the two-argument constructor reserves whatever halo
+	//    the chosen order actually needs (2 voxels for cubic, 3 for quintic,
+	//    4 for septic) automatically -- so growing by a flat "+2.0" here (as
+	//    the legacy path does) would leave a cubic B-spline object with ZERO
+	//    net margin beyond disp_max (2.0 grown here - 2.0 reserved internally),
+	//    which is exactly the halo/margin shortfall you were chasing earlier.
+	//    Instead we grow by just the desired net safety margin (1.0) and let
+	//    Interpolate's own constructor reserve the halo on top of that.
+	if (run->int_typ == tri_bspline)
+	{
+		const int bspline_order_cfg = 3;	// cubic; TODO: wire to an input/config option if quintic/septic is ever needed
 
-	est_box_nom->grow_by(2.0);
+		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
 
-	// create interpolator of suitable capacity
+		interp = new Interpolate(est_box_nom, bspline_order_cfg);
+	}
+	else
+	{
+		// compensate for derivatives in interpolator (fixed frame=1.0 internally, so this nets +1.0 margin)
 
-	interp = new Interpolate(est_box_nom);
+		est_box_nom->grow_by(2.0);
+
+		interp = new Interpolate(est_box_nom);
+	}
 
 }
 /******************************************************************************/
@@ -273,8 +300,7 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	if (rc->int_typ == trilinear) interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	if (rc->int_typ == tricubic) interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	if (rc->int_typ == tri_bspline) {
-		//printf("bspline_order() = %d\n", interp->bspline_order());
-		interp->kernels_bspline();
+		interp->kernels_bspline();	// once per kernels() reload -- NOT per-point, it processes the whole window
 		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);}
 
 	// re-set kernels for the moving cloud
@@ -291,6 +317,15 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	interp->center_on(offset_pt);
 
 	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
+
+	// prime B-spline coefficients ONCE for this newly-loaded moving-cloud window.
+	// obj_val_at() is then called many times per search point (every L-M
+	// iteration, every finite-difference step, every Nelder-Mead vertex) without
+	// this data changing -- kernels_bspline() must NOT be called again inside
+	// that loop, since (unlike the lazily-cached Lekien coefficients) it always
+	// reprocesses the entire window and was previously being paid for on every
+	// single objective-function evaluation.
+	if (rc->int_typ == tri_bspline) interp->kernels_bspline();
 
 }
 /******************************************************************************/
@@ -482,8 +517,11 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == tri_bspline) {
-		//printf("bspline_order() = %d\n", interp->bspline_order());
-		interp->kernels_bspline();
+		// kernels_bspline() is NOT called here -- it's primed once in
+		// search_pt_setup() right after the moving-cloud kernels() load, and
+		// stays valid (bsp_valid) across every obj_val_at() call in this
+		// search point's optimization loop, since fcld->affine_to() only
+		// moves query points, it never reloads voxel data.
 		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
@@ -509,7 +547,8 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == tri_bspline) {
-		interp->kernels_bspline();
+		// see obj_val_at(x) above -- kernels_bspline() is primed once in
+		// search_pt_setup(), not on every call here.
 		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
