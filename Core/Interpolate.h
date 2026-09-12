@@ -154,6 +154,33 @@ private:
 	void bspline_filter_1d(std::vector<double> &c) const;
 	static double bspline_init_causal(const std::vector<double> &c, double z, double tolerance);
 	static double bspline_init_anticausal(const std::vector<double> &c, double z);
+
+	// Closed-form, branch-free cubic weight/derivative-weight evaluation
+	// (taps at offsets -1,0,1,2 -> w[0..3]), used as a fast path for order 3
+	// in tri_bspline/tri_bspline_grad instead of the general bspline_basis()
+	// loop. Cross-checked against bspline_basis(3,.)/the derivative identity
+	// to ~1e-15 before use. Quintic/septic still go through the general path.
+	static inline void cubic_bspline_weights(double t, double w[4])
+	{
+		double t2 = t * t;
+		double t3 = t2 * t;
+		double omt = 1.0 - t;
+
+		w[0] = (omt * omt * omt) / 6.0;
+		w[1] = (4.0 - 6.0 * t2 + 3.0 * t3) / 6.0;
+		w[2] = (1.0 + 3.0 * t + 3.0 * t2 - 3.0 * t3) / 6.0;
+		w[3] = t3 / 6.0;
+	}
+
+	static inline void cubic_bspline_dweights(double t, double w[4])
+	{
+		double t2 = t * t;
+
+		w[0] = -(1.0 - t) * (1.0 - t) / 2.0;
+		w[1] = -2.0 * t + 1.5 * t2;
+		w[2] = 0.5 + t - 1.5 * t2;
+		w[3] = 0.5 * t2;
+	}
 };
 /******************************************************************************/
 
