@@ -563,6 +563,28 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 	int ndof = a.size();
 
 	std::vector<double> base_res(npts, 0.0);
+
+	if (rc->int_typ == tri_bspline)
+	{
+		// same analytic Jacobian as Jacobian_at() -- see bspline_jacobian_at()
+		// for the derivation. This is the path min_Lev_Mar() actually drives,
+		// so this is where the analytic gradient pays off during a real search.
+		std::vector< std::vector<double> > Jm(npts, std::vector<double>(ndof, 0.0));
+
+		double obj = bspline_jacobian_at(a, ndof, base_res, Jm);
+
+		for (int j=0; j<npts; j++)
+		{
+			e(j) = base_res[j];
+			for (int i=0; i<ndof; i++)
+				J(j,i) = Jm[j][i];
+		}
+
+		return obj;
+	}
+
+	// --- legacy finite-difference path (nearest/trilinear/Lekien tricubic) ---
+
 	std::vector<double> step_res(npts, 0.0);
 	std::vector<double> step_x(ndof, 0.0);
 
@@ -594,15 +616,168 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 	return obj;
 }
 /******************************************************************************/
+double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
+	std::vector<double> &base_res, std::vector< std::vector<double> > &J)
+// Analytic residual Jacobian using tri_bspline_grad -- ONE interpolation call
+// total (vs. ndof+1 full volume interpolations in the legacy finite-difference
+// path used by nearest/trilinear/Lekien tricubic). Shared by Jacobian_at() and
+// LM_prep_at() so the two never drift apart.
+//
+// This is the standard DIC/DVC "steepest descent image" construction:
+// chain-rule the analytic intensity gradient (dfdx/dfdy/dfdz, from
+// tri_bspline_grad, evaluated once at the current parameter vector 'a')
+// through the shape-function (affine transform) Jacobian d(point)/d(parameter).
+// The transform's own parameter->matrix mapping (SearchParams::matr_rot/
+// tens_str) is NOT needed explicitly: d(point)/d(parameter) is obtained
+// instead by calling FloatingCloud::affine_to() itself on perturbed parameter
+// vectors and reading back the resulting point positions -- pure
+// vector/matrix arithmetic over the subvolume's points, no volume
+// interpolation, so this is negligible cost regardless of ndof. Translation
+// dof's (indices 0-2) are exact, not finite-differenced: affine_to() moves
+// every point by exactly (del_x,del_y,del_z) independent of any
+// rotation/strain, so d(point)/d(translation) is exactly the identity.
+//
+// The per-point-per-dof geometric*intensity term (G below) is then run
+// through the same normalization each obj_fcn_res variant applies
+// (mean-subtraction for Z*, sum-of-squares scaling for N*), so the result
+// matches obj_fcn_res's residual formula exactly -- see
+// ObjectiveFunctions.cpp for the residual definitions this mirrors.
+{
+	int npts = (int)base_res.size();
+
+	std::vector<double> dfdx(npts), dfdy(npts), dfdz(npts);
+
+	fcld->affine_to(a, ndof);
+	try {interp->tri_bspline_grad(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol, dfdx, dfdy, dfdz);}
+	catch (Intrp_Fail) {throw Range_Fail();}
+
+	double obj = obj_fcn_res(ref_subvol, tar_subvol, base_res);	// fills base_res
+
+	std::vector< std::vector<double> > G(npts, std::vector<double>(ndof, 0.0));
+
+	const double h = 1e-6;	// pure-geometry central diff -- no interpolation noise, generous h is fine
+	std::vector<double> step_x(ndof);
+
+	for (int i=0; i<ndof; i++)
+	{
+		if (i < 3)
+		{
+			for (int j=0; j<npts; j++)
+				G[j][i] = (i==0) ? dfdx[j] : (i==1) ? dfdy[j] : dfdz[j];
+			continue;
+		}
+
+		step_x = a;
+		step_x[i] += h;
+		fcld->affine_to(step_x, ndof);
+		std::vector<Point> plus_pts = fcld->moving->ptvect;
+
+		step_x[i] -= 2.0*h;
+		fcld->affine_to(step_x, ndof);
+		std::vector<Point> minus_pts = fcld->moving->ptvect;
+
+		for (int j=0; j<npts; j++)
+		{
+			double dxda = (plus_pts[j].x() - minus_pts[j].x()) / (2.0*h);
+			double dyda = (plus_pts[j].y() - minus_pts[j].y()) / (2.0*h);
+			double dzda = (plus_pts[j].z() - minus_pts[j].z()) / (2.0*h);
+			G[j][i] = dfdx[j]*dxda + dfdy[j]*dyda + dfdz[j]*dzda;
+		}
+	}
+
+	// restore fcld->moving to reflect 'a' (we perturbed away from it above)
+	fcld->affine_to(a, ndof);
+
+	if (rc->obj_fcn == SAD || rc->obj_fcn == SSD)
+	{
+		// residual_j = tar_j - ref_j  =>  d(residual_j)/d(a_i) = G[j][i]
+		for (int j=0; j<npts; j++)
+			for (int i=0; i<ndof; i++)
+				J[j][i] = G[j][i];
+	}
+	else if (rc->obj_fcn == ZSSD)
+	{
+		// residual_j = (tar_j-avg_tar) - (ref_j-avg_ref)
+		// => d(residual_j)/d(a_i) = G[j][i] - avg_i(G)
+		for (int i=0; i<ndof; i++)
+		{
+			double avg_g = 0.0;
+			for (int j=0; j<npts; j++) avg_g += G[j][i];
+			avg_g /= npts;
+
+			for (int j=0; j<npts; j++)
+				J[j][i] = G[j][i] - avg_g;
+		}
+	}
+	else if (rc->obj_fcn == NSSD)
+	{
+		// residual_j = tar_j/Ct - ref_j/Cr,  Ct = sqrt(sum_k tar_k^2)
+		// => d(residual_j)/d(a_i) = G[j][i]/Ct - tar_j*S_i/Ct^3,  S_i = sum_k tar_k*G[k][i]
+		double Ct2 = 0.0;
+		for (int j=0; j<npts; j++) Ct2 += tar_subvol[j]*tar_subvol[j];
+		double Ct = sqrt(Ct2);
+
+		for (int i=0; i<ndof; i++)
+		{
+			double S_i = 0.0;
+			for (int k=0; k<npts; k++) S_i += tar_subvol[k]*G[k][i];
+
+			for (int j=0; j<npts; j++)
+				J[j][i] = G[j][i]/Ct - tar_subvol[j]*S_i/(Ct*Ct*Ct);
+		}
+	}
+	else if (rc->obj_fcn == ZNSSD)
+	{
+		// residual_j = (tar_j-avg_tar)/Ctb - (ref_j-avg_ref)/Crb,  u_j = tar_j-avg_tar,
+		// Ctb = sqrt(sum_k u_k^2)
+		// => d(residual_j)/d(a_i) = (G[j][i]-avg_i(G))/Ctb - u_j*T_i/Ctb^3,  T_i = sum_k u_k*G[k][i]
+		double avg_tar = 0.0;
+		for (int j=0; j<npts; j++) avg_tar += tar_subvol[j];
+		avg_tar /= npts;
+
+		std::vector<double> u(npts);
+		double Ctb2 = 0.0;
+		for (int j=0; j<npts; j++)
+		{
+			u[j] = tar_subvol[j] - avg_tar;
+			Ctb2 += u[j]*u[j];
+		}
+		double Ctb = sqrt(Ctb2);
+
+		for (int i=0; i<ndof; i++)
+		{
+			double avg_g = 0.0;
+			for (int j=0; j<npts; j++) avg_g += G[j][i];
+			avg_g /= npts;
+
+			double T_i = 0.0;
+			for (int k=0; k<npts; k++) T_i += u[k]*G[k][i];
+
+			for (int j=0; j<npts; j++)
+				J[j][i] = (G[j][i]-avg_g)/Ctb - u[j]*T_i/(Ctb*Ctb*Ctb);
+		}
+	}
+
+	return obj;
+}
+/******************************************************************************/
 void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<double> > &J)
 // a[ndof]
 // J[npts][ndof]
-// simple forward diff
 {
 	int npts = J.size();
 	int ndof = J[0].size();
 
 	std::vector<double> base_res(npts, 0.0);
+
+	if (rc->int_typ == tri_bspline)
+	{
+		bspline_jacobian_at(a, ndof, base_res, J);
+		return;
+	}
+
+	// --- legacy finite-difference path (nearest/trilinear/Lekien tricubic) ---
+
 	std::vector<double> step_res(npts, 0.0);
 	std::vector<double> step_x(ndof, 0.0);
 
