@@ -89,13 +89,33 @@ Search::Search(RunControl *run)
 	//    which is exactly the halo/margin shortfall you were chasing earlier.
 	//    Instead we grow by just the desired net safety margin (1.0) and let
 	//    Interpolate's own constructor reserve the halo on top of that.
-	if (run->int_typ == tri_bspline)
+
+	if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3 || run->int_typ == tri_bspline_5 || run->int_typ == tri_bspline_7)
 	{
-		const int bspline_order_cfg = 3;	// cubic (3); TODO: wire to an input/config option if quintic(5)/septic(7) is ever needed
+		// these are split into blocks, instead of just setting bspline_order_cfg, due to scope of the const type
+		if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3){
+			const int bspline_order_cfg = 3;
+			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
+			interp = new Interpolate(est_box_nom, bspline_order_cfg);
+		}
 
-		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
+		if (run->int_typ == tri_bspline_5){
+			const int bspline_order_cfg = 5;
+			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
+			interp = new Interpolate(est_box_nom, bspline_order_cfg);
+		}
 
-		interp = new Interpolate(est_box_nom, bspline_order_cfg);
+		if (run->int_typ == tri_bspline_7){
+			const int bspline_order_cfg = 7;
+			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
+			interp = new Interpolate(est_box_nom, bspline_order_cfg);
+		}
+
+		//const int bspline_order_cfg = 3;
+		//est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
+		//interp = new Interpolate(est_box_nom, bspline_order_cfg);
+
+		run->int_typ = tri_bspline;		// subsequent processing is the same for all orders, flagged by int_typ tri_bspline
 	}
 	else
 	{
