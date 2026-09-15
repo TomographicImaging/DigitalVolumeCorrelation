@@ -1271,16 +1271,24 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 {
 	std::ofstream res_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
 
+	res_file << std::fixed << std::setprecision(0);
 	res_file << n;
 
+	res_file << std::fixed << std::setprecision(3);
 	res_file << "\t" << pt.x() << "\t" << pt.y() << "\t" << pt.z();
 
+	res_file << std::fixed << std::setprecision(0);
 	res_file << "\t" << status;
 
+	res_file << std::fixed << std::setprecision(6);
 	res_file << "\t" << obj_min;
 
 	res_file << std::fixed << std::setprecision(6);
-
+	// this prints just the dispalcements
+	for (int i=0; i<3; i++) {
+		res_file << "\t" << result[i];
+	} 
+	
 	// this prints full search params, disp, rotation, strain if used
 	/*
 	for (int i=0; i<result.size(); i++)
@@ -1288,12 +1296,6 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 		res_file << "\t" << result[i];
 	} 
 	*/
-
-	// this prints just the dispalcements
-	for (int i=0; i<3; i++)
-	{
-		res_file << "\t" << result[i];
-	} 
 
 	res_file << "\n";
 

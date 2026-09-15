@@ -131,7 +131,6 @@ int main(int argc, char *argv[])
 	}
 
 	// check to see if the command line argument is an accessible file
-
 	// check and process command line flags
 	
 	int map_label;
@@ -145,22 +144,15 @@ int main(int argc, char *argv[])
 	if(!in.input_file_accessible(fname)) return 0;
 
 	// instantiate storage for run control parameters within Utility
-
 	RunControl run;
 
 	// parse and check the input file
-
 	if(!in.input_file_read(&run)) return 0;
 
 	// instantiate a DataCloud
-	// organize_cloud can be lengthy, does (# points)*(# points) sorting
-
 	DataCloud data;
-
 	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
-
 	data.organize_cloud(&run);
-
 
 	// *** begin run
 
@@ -217,8 +209,8 @@ int main(int argc, char *argv[])
 		//std::cout << std::endl << std::endl << "*************************" << std::endl;
 		//std::cout << "Search: ( " << std::endl << optimize <<  std::endl << ") " << std::endl <<std::endl;
 #else
-	std::cout << std::endl << std::endl << "*************************" << std::endl;
-	std::cout << "Search: ( " << std::endl << optimize << std::endl << ") " << std::endl << std::endl;
+	std::cout << std::endl << "*************************" << std::endl;
+	std::cout << std::endl << optimize << std::endl << std::endl;
 #endif
 
 	// main search loop

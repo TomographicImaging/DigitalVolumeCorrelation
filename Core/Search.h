@@ -77,7 +77,7 @@ public:
 	std::vector<double> par_min;	// parameter vector at optimum
 	double obj_min;			// objective function value at optimum
 
-	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test = 0);
+	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data);
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
