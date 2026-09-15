@@ -52,23 +52,26 @@ Search::Search(RunControl *run)
 		obj_fcn_res = &obj_ZNSSD;
 	}
 
+	// create a box with the full dimensions of the image voxel volumes
 	Point vox_box_min(0.0, 0.0, 0.0);
 	Point vox_box_max(run->vol_wide, run->vol_high, run->vol_tall);
 	vox_box = new BoundBox(vox_box_min, vox_box_max);
 
+	// create reference and correlate (target) subvolume vectors of interpolated voxel data, init to 0.0
 	ref_subvol = std::vector<double>(subv_num,0.0);
 	tar_subvol = std::vector<double>(subv_num,0.0);
 
+	// optimization result storage 
 	par_min = std::vector<double>(rc->num_srch_dof,0.0);	// note size, rc->num_srch_dof
 
 	// set-up a single fcld + disp_max sized interp region
 
+	// create a subvolume size box, then expand by the disp_max parameter (change to opt_translate_max?)
+	// position is initially at the corner of the vox_box
+	// note that subv_rad applies to both spheres and cubes, and is a half-width
 	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
-
 	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
-
 	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
-
 	est_box_nom->grow_by(rc->disp_max);
 
 	// create interpolator of suitable capacity.
@@ -269,7 +272,12 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const 
 		if (i>0) {
 			double del_obj = fabs(obj - obj_old);
 			double del_mag = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
+
+
 //			std::cout << "n: " << i << "\t obj_del = " << del_obj << "\t del_dis = " << del_mag << "\t p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
+
+
+
 			if ((del_obj < obj_tol) || (del_mag < mag_tol)) {
 				nits = i;
 				break;
@@ -294,33 +302,60 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const 
 /******************************************************************************/
 void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 {
-	// set kernels and interpolate the reference volume
+	// Interpolation kernels are established during this stage. 
+	//
+	// A kernel is first developed/used for one interpolation of reference volume data
+	// to establish the ref_subvol vector of interpolated sampling point values. 
+	//
+	// A kernel is then developed and used for the multiple interpolations of correlate volume data
+	// to establish tar_subvolume sampling point values as needed for optimization. 
+	//
+	// Nearest, tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
+	// of voxel values and derivatives at the voxel centers, stored in a matrix for fast mult/sum.
+	//
+	// For nearest/tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
+	//		This loads voxel data directly, then calculates derivatives at the voxel locations. 
+	//		nearest and tri_lin require no further kernel development.
+	//		tri_cub_leK calls further "on demand" kernel development as needed for individual sampling points.
+	//
+	// For tri_bspline: interp->kernels followed by interp->kernels_bspline
+	//		This reads voxel data, finds voxel derivatives, then calculates the bspline-specific coefficientc. 
+	//		This assumes interp = new Interpolate(est_box_nom, bspline_order_cfg) has been invoked with order set. 
 
+	// set kernels/kernels_derivs and interpolate the reference volume
 	interp->center_on(srch_pt);
-
 	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
-	if (rc->int_typ == nearest) interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	if (rc->int_typ == trilinear) interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	if (rc->int_typ == tricubic) interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	if (rc->int_typ == tri_bspline) {
-		interp->kernels_bspline();	// once per kernels() reload -- NOT per-point, it processes the whole window
-		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);}
+	switch (rc->int_typ){
+		case nearest:
+			interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+			break;
+		case trilinear:
+			interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+			break;
+		case tricubic:
+			interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+			break;
+		case tri_bspline:
+			interp->kernels_bspline();
+			interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+			break;
+	}
 
-	// re-set kernels for the moving cloud
-
-	// how to integrate neigh results? other starting point refinements?
-	// what if the best neigh result differs substantially from rigid_trans or other estimates?
-
+	// re-set kernels for the moving cloud to prepare for subsequent interp calls
 	starting_param(srch_pt, neigh_res);
-
 	Point offset_pt = srch_pt;
-
 	offset_pt.move_by(par_min[0], par_min[1], par_min[2]);
-
 	interp->center_on(offset_pt);
 
+	// this covers nearest/tri_lin/tri_cub_leK and partially grenerates tri_bspline
 	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
+
+	// this completes tri_bspline
+	if (rc->int_typ == tri_bspline) {
+		interp->kernels_bspline();
+	}
+
 }
 /******************************************************************************/
 void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
@@ -1519,6 +1554,9 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 			break;
 		case tricubic:
 			inttyp = std::string("tricubic");
+			break;
+		case tri_bspline:
+			inttyp = std::string("tri_bspline");
 			break;
 		case tri_bspline_3:
 			inttyp = std::string("tri_bspline_3");
