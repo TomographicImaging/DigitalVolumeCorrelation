@@ -68,6 +68,8 @@ public:
 	double subv_rad;	// keep for now, derived
 	int subv_num;		// keep for now, derived
 
+	//int bspline_order = 0;
+
 	BoundBox *vox_box;	// image volume dimensions
 	BoundBox *est_box_nom;	// for allocating an interpolator kernel
 

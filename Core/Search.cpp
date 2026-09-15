@@ -92,6 +92,24 @@ Search::Search(RunControl *run)
 	//    which is exactly the halo/margin shortfall you were chasing earlier.
 	//    Instead we grow by just the desired net safety margin (1.0) and let
 	//    Interpolate's own constructor reserve the halo on top of that.
+/*
+	switch (run->int_typ){
+		case tri_bspline: 
+			bspline_order = 3;
+		break;
+		case tri_bspline_3: 
+			bspline_order = 3;
+		break;
+		case tri_bspline_5: 
+			bspline_order = 5;
+		break;
+		case tri_bspline_7: 
+			bspline_order = 7;
+		break;
+	}
+*/
+
+	std::cout << std::endl << std::endl << "the bspline_order is " << run->bspline_order << std::endl << std::endl;
 
 	if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3 || run->int_typ == tri_bspline_5 || run->int_typ == tri_bspline_7)
 	{
