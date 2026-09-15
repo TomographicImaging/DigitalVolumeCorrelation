@@ -93,6 +93,7 @@ Search::Search(RunControl *run)
 	if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3 || run->int_typ == tri_bspline_5 || run->int_typ == tri_bspline_7)
 	{
 		// these are split into blocks, instead of just setting bspline_order_cfg, due to scope of the const type
+		// once the constructor is called with the proper bspline_order_cfg processing in uniform for all tri_bspline orders
 		if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3){
 			const int bspline_order_cfg = 3;
 			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
@@ -111,18 +112,13 @@ Search::Search(RunControl *run)
 			interp = new Interpolate(est_box_nom, bspline_order_cfg);
 		}
 
-		//const int bspline_order_cfg = 3;
-		//est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
-		//interp = new Interpolate(est_box_nom, bspline_order_cfg);
-
 		run->int_typ = tri_bspline;		// subsequent processing is the same for all orders, flagged by int_typ tri_bspline
 	}
 	else
 	{
 		// compensate for derivatives in interpolator (fixed frame=1.0 internally, so this nets +1.0 margin)
-
 		est_box_nom->grow_by(2.0);
-
+		// this is the tricubic constructor
 		interp = new Interpolate(est_box_nom);
 	}
 
@@ -139,21 +135,14 @@ Search::~Search()
 
 }
 /******************************************************************************/
-void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test)
+//void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test)
+void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data)
 {
 	// n is the index of the current search point
 	Point srch_pt = srch_data->points[n];
 
-	if (rc->sub_geo == sphere)
-	{
-		if (test)
-		{
-			fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2], 1); //seed consistent
-		}
-		else
-		{
-			fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
-		}
+	if (rc->sub_geo == sphere) {
+		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
 	}
 
 	if (rc->sub_geo == Subvol_Type::cube) {
@@ -173,26 +162,21 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	// this sets par_min to the starting point estimate through starting_param call
 	search_pt_setup(srch_pt, neigh_res);
 
-	// coarse search step
-	// this is probably going to phase out, except perhaps for global start
-	// also useful for objective function mapping
+	// *** special cases
 
-	// trap point for objective function mapping and convergence trace
-
+	// trap point for objective function mapping
 	if (map_flag && (srch_data->labels[n] == map_id)) {
-		// std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
-
-		// if just mapping, don;t want to update the parameter vector
-
-		// double half_range = 0.5*rc->disp_max;	// multiplier must be <= 1.0
-		double half_range = 1.0*rc->disp_max;	// multiplier must be <= 1.0
-
-		int num_each_dim = 100;
+		std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
+		// mapping range is taken from the disp_max value in the dvc input file
+		double half_range = rc->disp_max;
+		int num_each_dim = 100;		// hardcode this for now, could be a command line input in future
 		map_objective_function(map_id, half_range, num_each_dim);
 	}
 
-	// if using as part of a search the parameter vector is updated
-	trgrid_global(rc->disp_max, rc->basin_radius, n, false);
+	// coarse search step, this is probably going to phase out, except perhaps for optimization start refinement in special cases
+	// basin_radius = 0.0 in the input file signals no coarse search step
+	if (rc->basin_radius > 0.0) {trgrid_global(rc->disp_max, rc->basin_radius, n, false);}
+	// random search is also reserved for optimization start refinement in special cases, not triggered in current code configuration
 	//	random_global(rc->disp_max, rc->basin_radius);
 
 /*******************/
@@ -337,16 +321,6 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	interp->center_on(offset_pt);
 
 	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
-
-	// prime B-spline coefficients ONCE for this newly-loaded moving-cloud window.
-	// obj_val_at() is then called many times per search point (every L-M
-	// iteration, every finite-difference step, every Nelder-Mead vertex) without
-	// this data changing -- kernels_bspline() must NOT be called again inside
-	// that loop, since (unlike the lazily-cached Lekien coefficients) it always
-	// reprocesses the entire window and was previously being paid for on every
-	// single objective-function evaluation.
-	if (rc->int_typ == tri_bspline) interp->kernels_bspline();
-
 }
 /******************************************************************************/
 void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
@@ -1199,6 +1173,8 @@ std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vec
 void Search::trgrid_global(double displ_max, double basin_radius, int n, bool out_as_raw)
 {
 
+	std::cout << "trigrid_global running" << std::endl;
+
 	if (out_as_raw) {
 		std::cout << std::endl << "** in trigrid_global with out_as_raw true and point number in cloud  " << n << std::endl;
 		// return;
@@ -1511,41 +1487,70 @@ double Search::Min_Ftor_new::operator() (const std::vector<double> x)
 #else
 std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
+
+	// SAD, SSD, ZSSD, NSSD, ZNSSD
 	std::string objfun;
-	if (run->obj_fcn == SAD) {
-		//obj_fcn = &obj_SAD;
-		objfun = std::string("objective function SAD");
-	}
-	if (run->obj_fcn == SSD) {
-		//obj_fcn = &obj_SSD;
-		objfun = std::string("objective function SSD");
-	}
-	if (run->obj_fcn == ZSSD) {
-		//obj_fcn = &obj_ZSSD;
-		objfun = std::string("objective function ZSSD");
-	}
-	if (run->obj_fcn == NSSD) {
-		//obj_fcn = &obj_NSSD;
-		objfun = std::string("objective function NSSD");
-	}
-	if (run->obj_fcn == ZNSSD) {
-		//obj_fcn = &obj_ZNSSD;
-		objfun = std::string("objective function ZNSSD");
+	switch (run->obj_fcn) {
+		case SAD:
+			objfun = std::string("SAD");
+			break;
+		case SSD:
+			objfun = std::string("SSD");
+			break;
+		case ZSSD:
+			objfun = std::string("ZSSD");
+			break;
+		case NSSD:
+			objfun = std::string("NSSD");
+			break;
+		case ZNSSD:
+			objfun = std::string("ZNSSD");
+			break;
 	}
 
-	return strm << "Search(" << std::endl <<
+	//nearest trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7
+	std::string inttyp;
+	switch (run->int_typ) {
+		case nearest:
+			inttyp = std::string("nearest");
+			break;
+		case trilinear:
+			inttyp = std::string("trilinear");
+			break;
+		case tricubic:
+			inttyp = std::string("tricubic");
+			break;
+		case tri_bspline_3:
+			inttyp = std::string("tri_bspline_3");
+			break;
+		case tri_bspline_5:
+			inttyp = std::string("tri_bspline_5");
+			break;
+		case tri_bspline_7:
+			inttyp = std::string("tri_bspline_7");
+			break;
+	}
+
+	std::string geotyp;
+	switch (run->sub_geo) {
+		case cube:
+			geotyp = std::string("cube");
+			break;
+		case sphere:
+			geotyp = std::string("sphere");
+			break;
+	}
+
+	return strm << "Search settings: (" << std::endl <<
 		"bytes_per " << a.bytes_per << std::endl <<
-		"subv_rad " << a.subv_rad << std::endl <<
-		"subv_num " << a.subv_num << std::endl <<
+		"image volume size " << run->vol_wide << " " << run->vol_high << " " << run->vol_tall << std::endl <<
+		"subvol_geom " << geotyp << std::endl <<
+		"subvol_size " << 2*a.subv_rad << std::endl <<
+		"subvol_npts " << a.subv_num << std::endl <<
+		"interp_type " << inttyp << std::endl <<
 		"obj_fun " << objfun << std::endl <<
-		"input shape " << run->vol_wide << " " <<
-		run->vol_high << " " <<
-		run->vol_tall << std::endl <<
-		"subvol aspect " << run->subvol_aspect[0] << " " <<
-		run->subvol_aspect[1] << " " <<
-		run->subvol_aspect[2] << std::endl <<
-		"numr_search_dof " << run->num_srch_dof << std::endl <<
-		"disp max " << run->disp_max << std::endl <<
+		"num_srch_dof " << run->num_srch_dof << std::endl <<
+		"disp_max " << run->disp_max << std::endl <<
 		")";
 }
 #endif

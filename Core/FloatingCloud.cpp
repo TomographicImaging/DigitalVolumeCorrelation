@@ -20,8 +20,10 @@ Author(s): Brian Bay (OSU)
 #include "FloatingCloud.h"
 
 /******************************************************************************/
+// constructor for direct input of subvolume sampling points
 FloatingCloud::FloatingCloud (double ref_x, double ref_y, double ref_z)
 {
+	// both stable (reference) and moving (correlate) subvolume sampling points are managed together for consistency
 	stable = new Cloud();
 	moving = new Cloud();
 
@@ -37,10 +39,15 @@ public:
 };
 */
 /******************************************************************************/
-FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z, unsigned int seed)
+// constructor for randomized spherical or oblate spheroid subvolume sampling points
+FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z)
 {
+	// both stable (reference) and moving (correlate) subvolume sampling points are managed together for consistency
 	stable = new Cloud();
 	moving = new Cloud();
+
+	unsigned int seed = std::chrono::system_clock::now().time_since_epoch().count();
+	// for testing purposes to compare runs, replace with seed = 1 to keep subvolume sampling points consistent 
 
 	params = new SearchParams();
 
@@ -81,11 +88,12 @@ FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_
 // float_cloud_num += 1;							// subvol echo
 }
 /******************************************************************************/
+// constructor for regular 3D grid subvolume sampling points
 FloatingCloud::FloatingCloud (Point box_min, Point box_max, int nx, int ny, int nz)
-// cube
 {
 	// check that box_min and box_max are OK
 
+	// both stable (reference) and moving (correlate) subvolume sampling points are managed together for consistency
 	stable = new Cloud();
 	moving = new Cloud();
 
@@ -139,6 +147,7 @@ FloatingCloud::~FloatingCloud()
 }
 /******************************************************************************/
 int FloatingCloud::AddPoint(Point new_point)
+// adds the same point to both stable and moving FloatingCloud member variables
 {
 	stable->AddPoint(new_point);
 	moving->AddPoint(new_point);

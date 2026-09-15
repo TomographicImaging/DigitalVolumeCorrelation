@@ -145,7 +145,7 @@ void DataCloud::sort_order_neighbors(Point starting_point)
 /******************************************************************************/
 void DataCloud::sort_neighbors_kdtree(Point starting_point)
 {
-	std::cout << "kdtree sorting ..." << std::endl;
+	std::cout << std::endl << "kdtree sorting ..." << std::endl;
 
 	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
 
