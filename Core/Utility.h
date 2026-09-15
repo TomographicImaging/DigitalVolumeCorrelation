@@ -124,6 +124,7 @@ struct RunControl
 	
 	std::string obj_function;
 	std::string interp_type;
+	int bspline_order;
 
 	std::vector<double> rigid_trans;
 	double basin_radius;
