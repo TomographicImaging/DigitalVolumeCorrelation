@@ -56,7 +56,7 @@ public:
 
 	~Search();
 
-	RunControl *rc;	// give Search direct access to RunControl
+	RunControl *rc;	// gives all member functions of Search direct access to RunControl without passing
 	FloatingCloud *fcld;
 	Interpolate *interp;
 
@@ -85,16 +85,11 @@ public:
 
 	void starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
-	void look_with(Search_Type method, int ndof, double ftol);
-
 	double obj_val_at(const std::vector<double> x);	// this version uses nominals set at Search construct
 	double obj_val_at(const std::vector<double> x, std::vector<double> &residual); // with residuals returned as well
 
 	void Jacobian_at (const std::vector<double> a, std::vector< std::vector<double> > &J); // by forward diferences: [npts][ndof]
 	double LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J); // key bits needed by LM using eigen library types
-
-	std::vector<double> obj_grad_at(const std::vector<double> x); // simple finite diff if E, overall obj value
-	std::vector< std::vector<double> > obj_Hess_at(const std::vector<double> x);
 
 	// translation grid style global search
 	void trgrid_global(double displ_max, double basin_rad, int n, bool out_as_raw);
@@ -105,7 +100,7 @@ public:
 	// randomized points style global search
 	void random_global(double displ_max, double basin_rad);
 
-	std::vector<double> min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol);
+	// the primary optimization method
 	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol);
 
 //	struct Min_Ftor_new;	// leave declared for now, not working
@@ -127,27 +122,6 @@ private:
 #endif
 };
 
-/******************************************************************************/
-// not currently used, but leave in place for now
-/*struct Search::Min_Ftor_new
-{
-	int lndof;
-	FloatingCloud *lfcld;
-	Interpolate *linterp;
-
-	std::vector<double> lpar_cur;
-	std::vector<double> lref_subvol;
-	std::vector<double> ltar_subvol;
-
-	Objfcn_Type lobj_typ;
-	Interp_Type lint_typ;
-
-
-	Min_Ftor_new(const Interp_Type int_typ, const Objfcn_Type obj_typ, const int ndof, FloatingCloud *fcld, Interpolate *interp, const std::vector<double> &ref_subvol);
-
-	double operator() (const std::vector<double> x);
-
-};*/
 /******************************************************************************/
 
 #endif

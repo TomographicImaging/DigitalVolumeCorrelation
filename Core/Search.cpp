@@ -23,38 +23,38 @@ Author(s): Brian Bay (OSU)
 /******************************************************************************/
 Search::Search(RunControl *run)
 {
-	rc = run;
+	rc = run;	// gives all member functions of Search direct access to RunControl without passing
 
-	bytes_per = run->vol_bit_depth/8;
-	subv_rad = (run->subvol_size)/2.0;	// easier to use than subvol_size
-	if (run->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)run->subvol_npts,1.0/3.0)),3.0);
-	if (run->sub_geo == Subvol_Type::sphere) subv_num = run->subvol_npts;
+	bytes_per = rc->vol_bit_depth/8;
+	subv_rad = (rc->subvol_size)/2.0;	// easier to use than subvol_size
+	if (rc->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)rc->subvol_npts,1.0/3.0)),3.0);
+	if (rc->sub_geo == Subvol_Type::sphere) subv_num = rc->subvol_npts;
 
 	// establish pointer to function set in input file
-	if (run->obj_fcn == SAD) {
+	if (rc->obj_fcn == SAD) {
 		obj_fcn = &obj_SAD;
 		obj_fcn_res = &obj_SAD;
 	}
-	if (run->obj_fcn == SSD) {
+	if (rc->obj_fcn == SSD) {
 		obj_fcn = &obj_SSD;
 		obj_fcn_res = &obj_SSD;
 	}
-	if (run->obj_fcn == ZSSD) {
+	if (rc->obj_fcn == ZSSD) {
 		obj_fcn = &obj_ZSSD;
 		obj_fcn_res = &obj_ZSSD;
 	}
-	if (run->obj_fcn == NSSD) {
+	if (rc->obj_fcn == NSSD) {
 		obj_fcn = &obj_NSSD;
 		obj_fcn_res = &obj_NSSD;
 	}
-	if (run->obj_fcn == ZNSSD) {
+	if (rc->obj_fcn == ZNSSD) {
 		obj_fcn = &obj_ZNSSD;
 		obj_fcn_res = &obj_ZNSSD;
 	}
 
 	// create a box with the full dimensions of the image voxel volumes
 	Point vox_box_min(0.0, 0.0, 0.0);
-	Point vox_box_max(run->vol_wide, run->vol_high, run->vol_tall);
+	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
 	vox_box = new BoundBox(vox_box_min, vox_box_max);
 
 	// create reference and correlate (target) subvolume vectors of interpolated voxel data, init to 0.0
@@ -79,7 +79,7 @@ Search::Search(RunControl *run)
 	// The two paths below both end up with the same net safety margin (1
 	// voxel) beyond disp_max on act_box, but they get there differently:
 	//
-	//  - legacy path (nearest/trilinear/Lekien tricubic): the single-argument
+	//  - legacy path (trilinear/Lekien tricubic): the single-argument
 	//    Interpolate constructor always reserves a fixed frame of 1.0, so the
 	//    "+2.0" grown here becomes a net +1.0 margin once Interpolate shrinks
 	//    act_box by that fixed frame.
@@ -93,9 +93,9 @@ Search::Search(RunControl *run)
 	//    Instead we grow by just the desired net safety margin (1.0) and let
 	//    Interpolate's own constructor reserve the halo on top of that.
 
-	if (run->bspline == true)
+	if (rc->bspline == true)
 	{
-		const int bspline_order_cfg = run->bspline_order;
+		const int bspline_order_cfg = rc->bspline_order;
 		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
 		// this is the two argument bspline constructor
 		interp = new Interpolate(est_box_nom, bspline_order_cfg);	
@@ -120,7 +120,6 @@ Search::~Search()
 
 }
 /******************************************************************************/
-//void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test)
 void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data)
 {
 	// n is the index of the current search point
@@ -292,12 +291,12 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	// A kernel is then developed and used for the multiple interpolations of correlate volume data
 	// to establish tar_subvolume sampling point values as needed for optimization. 
 	//
-	// Nearest, tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
+	// tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
 	// of voxel values and derivatives at the voxel centers, stored in a matrix for fast mult/sum.
 	//
-	// For nearest/tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
+	// For tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
 	//		This loads voxel data directly, then calculates derivatives at the voxel locations. 
-	//		nearest and tri_lin require no further kernel development.
+	//		tri_lin require no further kernel development.
 	//		tri_cub_leK calls further "on demand" kernel development as needed for individual sampling points.
 	//
 	// For tri_bspline: interp->kernels followed by interp->kernels_bspline
@@ -308,9 +307,6 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	interp->center_on(srch_pt);
 	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
-	if (rc->int_typ == nearest) {
-		interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
 	if (rc->int_typ == trilinear) {
 		interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
@@ -322,23 +318,6 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
 
-/*
-	switch (rc->int_typ){
-		case nearest:
-			interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-		case trilinear:
-			interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-		case tricubic:
-			interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-		case tri_bspline:
-			interp->kernels_bspline();
-			interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-	}
-*/
 
 	// re-set kernels for the moving cloud to prepare for subsequent interp calls
 	starting_param(srch_pt, neigh_res);
@@ -346,11 +325,10 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	offset_pt.move_by(par_min[0], par_min[1], par_min[2]);
 	interp->center_on(offset_pt);
 
-	// this covers nearest/tri_lin/tri_cub_leK and partially grenerates tri_bspline
+	// this covers tri_lin/tri_cub_leK and partially grenerates tri_bspline
 	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
 
-	// this completes tri_bspline
-	//if (rc->int_typ == tri_bspline) {
+	// this completes kernel development when tri_bspline options are active
 	if (rc->bspline == true) {
 		interp->kernels_bspline();
 	}
@@ -459,82 +437,9 @@ void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 
 }
 /******************************************************************************/
-void Search::look_with(Search_Type method, int ndof, double ftol)
-{
-	// initial set
-//	double del_tra = 0.1;		// for translational dof's
-//	double del_rot = 0.001;		// for rotational dof's
-//	double del_str = 0.001;		// for strain dof's
-
-	// ran twice as fast in "old" test case
-//	double del_tra = 0.1;		// for translational dof's
-//	double del_rot = 0.01;		// for rotational dof's
-//	double del_str = 0.001;		// for strain dof's
-
-	// calculate rot and str delta's balanced with the translation delta
-	// 0.75 is distance from center of subvolume to a representative point
-	// del_tra of 0.2 comes from an initial test problem convergence study
-
-	double del_tra = 0.2;
-	double del_rot = del_tra;
-	// double del_rot = del_tra/(0.75*subv_rad); // very consertative w/ rot
-	double del_str = del_rot;
-
-	std::vector<double> pmin(ndof, 0.0);; //
-	std::vector<double> dels(ndof, 0.0);; //
-
-	for (int i=0; i<ndof; i++)
-	{
-		pmin[i] = par_min[i];
-
-		if (i< 3)
-		{
-			dels[i] = del_tra;
-		}
-		else if (i< 6)
-		{
-			dels[i] = del_rot;
-		}
-		else if (i<12)
-		{
-			dels[i] = del_str;
-		}
-	}
-
-	// custom Nelder-Mead using the functor, not working
-/*	if (method == amoeba) {
-		Min_Ftor_new simplex_ftor(int_typ,obj_typ,ndof,fcld,interp,ref_subvol);	// this is OK
-
-		Simplex simplex;// this is OK
-
-		// this line throws an "undefined"
-//		pmin_new = simplex.minimize(pmin_new, dels_new, simplex_ftor, ftol);
-
-	}
-*/
-
-	// custom Nelder-Mead using Search internal objective function evaluation
-	if (method == amoeba)
-	{
-		try {pmin = min_Nelder_Mead(pmin, dels, ftol);}
-		catch (Range_Fail) {throw Range_Fail();}
-		catch (Convg_Fail) {throw Convg_Fail();}
-	}
-
-	for (int i=0; i<ndof; i++)
-	{
-		par_min[i] = pmin[i];
-	}
-
-}
-/******************************************************************************/
 double Search::obj_val_at(const std::vector<double> x)	// this version uses nominals set at Search construct
 {
 	fcld->affine_to(x, x.size());
-
-	if (rc->int_typ == nearest) {
-		try {interp->nearest(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == trilinear) {
 		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
@@ -544,8 +449,6 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
-
-	//if (rc->int_typ == tri_bspline) {
 	if (rc->bspline == true) {
 		// kernels_bspline() is NOT called here -- it's primed once in
 		// search_pt_setup() right after the moving-cloud kernels() load, and
@@ -564,10 +467,6 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 {
 	fcld->affine_to(x, x.size());
 
-	if (rc->int_typ == nearest) {
-		try {interp->nearest(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}}
-
 	if (rc->int_typ == trilinear) {
 		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
@@ -576,8 +475,6 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
-		
-	//if (rc->int_typ == tri_bspline) {
 	if (rc->bspline == true) {
 		// see obj_val_at(x) above -- kernels_bspline() is primed once in
 		// search_pt_setup(), not on every call here.
@@ -596,8 +493,6 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 
 	std::vector<double> base_res(npts, 0.0);
 
-	
-	//if (rc->int_typ == tri_bspline)
 	if (rc->bspline == true)
 	{
 		// same analytic Jacobian as Jacobian_at() -- see bspline_jacobian_at()
@@ -617,7 +512,7 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 		return obj;
 	}
 
-	// --- legacy finite-difference path (nearest/trilinear/Lekien tricubic) ---
+	// --- legacy finite-difference path (trilinear/Lekien tricubic) ---
 
 	std::vector<double> step_res(npts, 0.0);
 	std::vector<double> step_x(ndof, 0.0);
@@ -654,7 +549,7 @@ double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
 	std::vector<double> &base_res, std::vector< std::vector<double> > &J)
 // Analytic residual Jacobian using tri_bspline_grad -- ONE interpolation call
 // total (vs. ndof+1 full volume interpolations in the legacy finite-difference
-// path used by nearest/trilinear/Lekien tricubic). Shared by Jacobian_at() and
+// path used by trilinear/Lekien tricubic). Shared by Jacobian_at() and
 // LM_prep_at() so the two never drift apart.
 //
 // This is the standard DIC/DVC "steepest descent image" construction:
@@ -804,15 +699,13 @@ void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<
 
 	std::vector<double> base_res(npts, 0.0);
 
-	
-	//if (rc->int_typ == tri_bspline)
 	if (rc->bspline == true)
 	{
 		bspline_jacobian_at(a, ndof, base_res, J);
 		return;
 	}
 
-	// --- legacy finite-difference path (nearest/trilinear/Lekien tricubic) ---
+	// --- legacy finite-difference path (trilinear/Lekien tricubic) ---
 
 	std::vector<double> step_res(npts, 0.0);
 	std::vector<double> step_x(ndof, 0.0);
@@ -833,382 +726,6 @@ void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<
 std::cout << "\n" << std::setprecision(20);
 std::cout << J[0][0] << "\t" << J[npts-1][ndof-1] << "\t" << "\n";
 std::cout << "\n" << std::setprecision(6);
-
-}
-/******************************************************************************/
-std::vector<double> Search::obj_grad_at(const std::vector<double> x)
-{
-	int ndof = x.size();
-	std::vector<double> x_step = x;
-	std::vector<double> gradient(ndof, 0.0);
-
-	double h = 1E-8;		// checked e-4 to e-12, all similar to several places
-	double add = 0.0;
-	double sub = 0.0;
-
-	// output obj values to test derivatives
-	std::cout << "\n\n" << std::setprecision(20);
-	double obj = 0.0;
-	x_step = x;
-
-	x_step[0] -= 2.0*h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	std::cout << "\n" << std::setprecision(6);
-	x_step = x;
-	//
-
-	// this is the actual gradient calc
-	for (int i=0; i<ndof; i++) {
-		x_step[i] += h;
-		add = obj_val_at(x_step);
-		x_step[i] -= 2.0*h;
-		sub = obj_val_at(x_step);
-		gradient[i] = (add - sub)/(2.0*h);
-		x_step[i] = x[i];
-	}
-
-	std::cout << "\n" << std::setprecision(20);
-	std::cout << gradient[0] << "\t" << gradient[1] << "\t" << gradient[2] << "\n";
-	std::cout << "\n" << std::setprecision(6);
-
-	return gradient;
-}
-/******************************************************************************/
-std::vector< std::vector<double> > Search::obj_Hess_at(const std::vector<double> x)
-{
-	// old-school Hessian by forward differences
-
-	int ndof = x.size();
-	std::vector<double> x_step = x;
-	double h = 1E-8;
-	double f1 = 0.0;
-	double f2 = 0.0;
-	double f3 = 0.0;
-	double f4 = 0.0;
-
-	std::vector< std::vector<double> > hessian;
-	hessian.resize(ndof);
-	for (int i=0; i<ndof; i++) {
-		hessian[i].resize(ndof, 0.0);
-	}
-
-	std::vector< std::vector<double> > hessian_T = hessian;
-
-	f4 = obj_val_at(x_step);
-	// for (int i=0; i<ndof; i++) {
-	for (int i=0; i<=0; i++) {
-		x_step = x;
-		x_step[i] += h;
-		f2 = obj_val_at(x_step);
-		//for (int j=0; j<ndof; j++) {
-		for (int j=0; j<=0; j++) {
-			x_step = x;
-			x_step[j] += h;
-			f3 = obj_val_at(x_step);
-			x_step = x;
-			x_step[i] += h;
-			x_step[j] += h;
-			f1 = obj_val_at(x_step);
-
-			hessian[i][j] = (f1 - f2 - f3 + f4)/(h*h);
-			hessian_T[j][i] = hessian[i][j];
-		}
-	}
-
-	std::cout << "\n" << std::setprecision(20);
-	std::cout << f1 << "\t" << f2 << "\t"<< f3 << "\t"<< f4 << "\n";
-
-	std::cout << "\n" << std::setprecision(20);
-	std::cout << hessian[0][0] << "\t" << hessian[0][1] << "\t" << hessian[0][2] << "\n";
-	std::cout << "\n" << std::setprecision(6);
-
-
-	// replace H with 0.5*(H + HT) to force symmetry
-	/*
-	std::cout << "\n";
-	for (int i=0; i<ndof; i++) {
-		for (int j=0; j<ndof; j++) {
-			hessian[i][j] = 0.5*(hessian[i][j] + hessian_T[i][j]);
-
-			std::cout << hessian[i][j] << "\t";
-
-		}
-		std::cout << "\n";
-	}
-*/
-
-	return hessian;
-}
-/******************************************************************************/
-std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol)
-{
-	const int MAX_FUNC = 2000;		// max allowed objective function evaluations
-	const double NOT_ZERO = 1.0e-10;	// prevent divide by zero
-
-	int ndof = start.size();	// dimensionality of the parameter space
-	int nvrt = ndof + 1;		// number of vertices in the simplex
-	int num_func = 0;		// count num of function evals, for convergence checking
-
-	double ALPHA =  1.0;	// >0, typically 1.0;		reflection scaling
-	double GAMMA =  2.0;	// >alpha, typically 2.0;	expansion scaling
-	double DELTA = -0.5;	// mag >0, <=0.5, typ 0.5;	contract worst toward centroid
-	double OMEGA =  0.5;	// >0, <=0.5, typ = delta;	contract all toward best
-//	double NUDGE =  0.1;	// bet 0 & 1, typ = 0.1;	nudge centroid toward best, an idea ...
-
-	std::vector< std::vector<double> > simplex;	// store simplex as a vector of vectors [nvrt][ndof]
-	std::vector<double> vrt_val (nvrt, 0.0);	// objective function values at vertices
-
-	std::vector<double> centroid (ndof, 0.0);	// position of the opposite face centroid
-	std::vector<double> del_vect (ndof, 0.0);	// vector from wrst to centroid
-
-	std::vector<double> xref (ndof, 0.0);	// reflection
-	std::vector<double> xexp (ndof, 0.0);	// expansion
-	std::vector<double> xcon (ndof, 0.0);	// contraction
-
-	double yref, yexp, ycon;
-
-	simplex.resize(nvrt);
-	for (int i=0; i<nvrt; i++)
-	{
-		simplex[i].resize(ndof);
-	}
-
-	for (int i=0; i<nvrt; i++)
-	{
-		for (int j=0; j<ndof; j++)
-		{
-			simplex[i][j] = start[j];
-		}
-
-		if (i != 0)
-		{
-			simplex[i][i-1] += dels[i-1];
-		}
-	}
-
-//	std::cout << "\n";				// output initial simplex vertices
-//	for (int i=0; i<nvrt; i++) {
-//		for (int j=0; j<ndof; j++)
-//			std::cout << simplex[i][j] << "\t";
-//		std::cout << "\n";
-//	}
-
-	for (int i=0; i<nvrt; i++)
-	{			// get vertex objective function values
-		try
-		{
-			vrt_val[i] = obj_val_at(simplex[i]);
-		}
-		catch (Range_Fail)
-		{
-			throw Range_Fail();
-		}
-	}
-
-	num_func += nvrt;
-
-// Note: standard formulation uses centroid as a reference point for new locations
-// Note: there are two cases where the reflected point is kept: 1.a. and 2.b.
-//
-// 1. xref = reflect wrst beyond centroid by a factor of alpha (typically = 1; >0)
-// 	a. if xref is between best and poor (second wrst), substitute xref for wrst and iterate
-//
-// 2. xexp = expand wrst beyond centroid by a factor of gamma (typically = 2; >alpha)
-// 	a. if xexp is better than xref, substitute xexp for wrst and iterate
-//	b. if xepx is not better than xref (but better than wrst), substitute xref for wrst and iterate
-//
-// 3. xcon = contract wrst within centroid by a factor of delta (typically 0.5; >0, <=0.5)
-//	a. if xcon is better than wrst, substitute xcon for wrst and iterate
-// 	b. if xcon not better than wrst, contract all but best toward best by a factor of omega (typically 0.5; >0, <=0.5)
-//
-	for (;;) {
-		int wrst = 0;		// wrst, poor, best: poor = "second worst"
-		int best = 0;
-		for (int i=1; i<nvrt; i++)
-		{
-			if (vrt_val[i] > vrt_val[wrst])
-			{
-				wrst = i;
-			}
-			if (vrt_val[i] < vrt_val[best])
-			{
-				best = i;
-			}
-		}
-
-		int poor = best;
-
-		for (int i=0; i<nvrt; i++)
-		{
-			if ((i != wrst) && (i != best))
-			{
-				if (vrt_val[i] > vrt_val[poor])
-				{
-					poor = i;
-				}
-			}
-		}
-		// Note: the individual vertex values are updated during simplex evaluation below
-
-		double rel_diff = 2.0*fabs(vrt_val[wrst]-vrt_val[best])/(fabs(vrt_val[wrst])+fabs(vrt_val[best])+NOT_ZERO);
-
-		if (rel_diff < conv_tol)
-		{
-			return simplex[best];	// successful convergence, normal return from minimize
-		}
-
-		if (num_func > MAX_FUNC)
-		{
-			throw Convg_Fail();	// wandering around aimlessly
-		}
-
-		// prepare for simplex modification
-
-		for (int j=0; j<ndof; j++)
-		{
-			centroid[j] = 0.0;
-			for (int i=0; i<nvrt; i++)
-			{
-				if (i != wrst)
-				{
-					centroid[j] += simplex[i][j];
-				}
-			}
-			centroid[j] /= ndof;
-			del_vect[j] = centroid[j] - simplex[wrst][j];
-//			del_vect[j] = centroid[j] - simplex[wrst][j] + NUDGE*(simplex[best][j] - centroid[j]);
-		}
-
-		bool eval = true;
-		while (eval) {		// evaluate and adjust the simplex
-
-			for (int i=0; i<ndof; i++)
-			{
-				xref[i] = centroid[i] + ALPHA*del_vect[i];
-			}
-			try
-			{
-				yref = obj_val_at(xref);
-			}
-			catch (Range_Fail)
-			{
-				throw Range_Fail();
-			}
-
-			num_func += 1;
-
-			if ((yref <= vrt_val[poor]) && (yref >= vrt_val[best]))
-			{
-				simplex[wrst] = xref;
-				vrt_val[wrst] = yref;
-				break;
-			}
-
-			if (yref < vrt_val[best])
-			{
-				for (int i=0; i<ndof; i++)
-				{
-					xexp[i] = centroid[i] + GAMMA*del_vect[i];
-				}
-				try
-				{
-					yexp = obj_val_at(xexp);
-				}
-				catch (Range_Fail)
-				{
-					throw Range_Fail();
-				}
-
-				num_func += 1;
-
-				if (yexp < vrt_val[best])
-				{
-					simplex[wrst] = xexp;
-					vrt_val[wrst] = yexp;
-					break;
-				}
-				else
-				{
-					simplex[wrst] = xref;
-					vrt_val[wrst] = yref;
-					break;
-				}
-			}
-
-			for (int i=0; i<ndof; i++)
-			{
-				xcon[i] = centroid[i] + DELTA*del_vect[i];
-			}
-
-			try
-			{
-				ycon = obj_val_at(xcon);
-			}
-			catch (Range_Fail)
-			{
-				throw Range_Fail();
-			}
-
-			num_func += 1;
-
-			if (ycon < vrt_val[best])
-			{
-				simplex[wrst] = xcon;
-				vrt_val[wrst] = ycon;
-				break;
-			}
-			else
-			{
-				for (int i=0; i<nvrt; i++)
-				{
-					if (i != best)
-					{
-						for (int j=0; j<ndof; j++)
-						{
-							simplex[i][j] = simplex[best][j] + OMEGA*(simplex[i][j] - simplex[best][j]);
-						}
-						try
-						{
-							vrt_val[i] = obj_val_at(simplex[i]);
-						}
-						catch (Range_Fail)
-						{
-							throw Range_Fail();
-						}
-
-						num_func += 1;
-					}
-				}
-				break;
-			}
-
-			eval = false;	// code should never get here, but break loop in case
-					// simplex has not changed, for will run until MAX_FUNC reached
-
-		} // while end
-
-
-	} // for end
-
-
 
 }
 /******************************************************************************/
@@ -1473,55 +990,8 @@ void Search::random_global(double displ_max, double basin_radius)
 
 	return;
 
-}/******************************************************************************/
-/*Search::Min_Ftor_new::Min_Ftor_new(const Interp_Type int_typ, const Objfcn_Type obj_typ, const int ndof, FloatingCloud *fcld, Interpolate *interp, const std::vector<double> &ref_subvol)
-// not currently used, but leave in place for now
-{
-
-	lndof = ndof;
-	lfcld = fcld;
-	linterp = interp;
-
-	lpar_cur = std::vector<double>(12,0.0);
-	lref_subvol = std::vector<double>(ref_subvol.size(),0.0);
-	ltar_subvol = std::vector<double>(ref_subvol.size(),0.0);
-
-	lref_subvol = ref_subvol;
-
-	lobj_typ = obj_typ;
-	lint_typ = int_typ;
 }
 
-double Search::Min_Ftor_new::operator() (const std::vector<double> x)
-{
-	for (int i=0; i<x.size(); i++)
-		lpar_cur[i] = x[i];
-
-
-	lfcld->affine_to(lpar_cur, lndof);
-
-	if (lint_typ == trilinear)
-	{
-		try {linterp->tri_lin(lfcld->moving->ptvect, lfcld->moving->bbox(), ltar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}
-	}
-
-	if (lint_typ == tricubic)
-	{
-		try {linterp->tri_cub_Lek(lfcld->moving->ptvect, lfcld->moving->bbox(), ltar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}
-	}
-
-	double obj;
-
-	if (lobj_typ == SAD) obj = obj_SAD(lref_subvol, ltar_subvol);
-	if (lobj_typ == SSD) obj = obj_SSD(lref_subvol, ltar_subvol);
-	if (lobj_typ == ZSSD) obj = obj_ZSSD(lref_subvol, ltar_subvol);
-	if (lobj_typ == NSSD) obj = obj_NSSD(lref_subvol, ltar_subvol);
-	if (lobj_typ == ZNSSD) obj = obj_ZNSSD(lref_subvol, ltar_subvol);
-
-	return obj;
-}*/
 /******************************************************************************/
 
 #if defined(_WIN32) || defined(__WIN32__)
@@ -1550,12 +1020,8 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 			break;
 	}
 
-	//nearest trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7
 	std::string inttyp;
 	switch (run->int_typ) {
-		case nearest:
-			inttyp = std::string("nearest");
-			break;
 		case trilinear:
 			inttyp = std::string("trilinear");
 			break;

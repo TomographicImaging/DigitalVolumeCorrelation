@@ -863,31 +863,6 @@ void Interpolate::kernels_Lekien_one(int ic, int ir, int is)
 
 }
 /******************************************************************************/
-void Interpolate::nearest(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
-{
-	try
-	{
-		act_box->contains(bbox);
-	}
-	catch (Bound_Fail)
-	{
-		throw Intrp_Fail();
-	}
-
-	int rel_x = 0;
-	int rel_y = 0;
-	int rel_z = 0;
-
-	for (unsigned int i = 0; i < pts.size(); i++)
-	{
-		rel_x = pts[i].ix() - est_box->min().ix();
-		rel_y = pts[i].iy() - est_box->min().iy();
-		rel_z = pts[i].iz() - est_box->min().iz();
-
-		ivals[i] = kern_4d->get(rel_x, rel_y, rel_z, 0);
-	}
-}
-/******************************************************************************/
 void Interpolate::tri_lin(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
 {
 	try

@@ -57,9 +57,9 @@ enum Subvol_Type {
 	cube, sphere
 };
 /******************************************************************************/
-const std::string ok_srch_mthd_line = "global amoeba congrad qnwtdfp powells";
+const std::string ok_srch_mthd_line = "global amoeba";
 enum Search_Type {
-	global, amoeba, congrad, qnwtdfp, powells
+	global, amoeba
 };
 /******************************************************************************/
 const std::string ok_obj_fcn_line = "sad ssd zssd nssd znssd";
@@ -67,9 +67,9 @@ enum Objfcn_Type {
 	SAD, SSD, ZSSD, NSSD, ZNSSD
 };
 /******************************************************************************/
-const std::string ok_interp_mthd_line = "nearest trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7";
+const std::string ok_interp_mthd_line = "trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7";
 enum Interp_Type {
-	nearest, trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7
+	trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7
 };
 /******************************************************************************/
 

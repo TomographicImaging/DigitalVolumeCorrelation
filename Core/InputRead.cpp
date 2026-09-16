@@ -485,11 +485,13 @@ InputRead::InputRead()
 	kwh_interp_type.exam.assign("tricubic");
 	kwh_interp_type.reqd.assign("yes");
 	kwh_interp_type.pool.assign("opt_mthd");
-	kwh_interp_type.hint.assign("### trilinear (faster), tricubic (recommended)");
+	std::string valid_input = "Options: " + ok_interp_mthd_line;
+	kwh_interp_type.hint.assign(valid_input);
 	kwh_interp_type.help.assign("   Defines the interpolation method used during template matching.\n");
-	kwh_interp_type.help.append("   Trilinear is significantly faster, but with known template matching artifacts.\n");
-	kwh_interp_type.help.append("   Trilinear is most useful for tuning other search parameters during preliminary runs.\n");
-	kwh_interp_type.help.append("   Tricubic is computationally expensive, but is the choice if strain is of interst.\n");
+	kwh_interp_type.help.append("   trilinear is fast but imprecise, useful for preliminary runs and evaluating other parameters.\n");
+	kwh_interp_type.help.append("   tricubic is slower but a good choice for general DVC.\n");
+	kwh_interp_type.help.append("   tri_bspline_3 _5 _7 is standard bspline interpolation of cubic, quintic, and septic orders.\n");
+	kwh_interp_type.help.append("   Selection is best evaluated against correlate image volumes with known displacement/strain fields.\n");
 	kwh_interp_type.help.append("\n");
 	manual.push_back(kwh_interp_type);
 

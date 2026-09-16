@@ -94,7 +94,7 @@ public:
 	// B-spline interpolation with analytic first derivatives (index/voxel
 	// space, isotropic unit spacing -- consistent with the rest of this
 	// class). Caller must size ivals/dfdx/dfdy/dfdz to pts.size(), same
-	// convention as nearest/tri_lin/tri_cub_Lek/tri_bspline. Same staleness
+	// convention as tri_lin/tri_cub_Lek/tri_bspline. Same staleness
 	// check as tri_bspline.
 	void tri_bspline_grad(const std::vector<Point> &pts, const BoundBox *bbox,
 		std::vector<double> &ivals,
@@ -108,7 +108,6 @@ public:
 	void set_bspline_order(int order);
 	int bspline_order() const { return bsp_order; }
 
-	void nearest(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals);
 	void tri_lin(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals);
 	void tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals);
 
