@@ -67,9 +67,9 @@ enum Objfcn_Type {
 	SAD, SSD, ZSSD, NSSD, ZNSSD
 };
 /******************************************************************************/
-const std::string ok_interp_mthd_line = "nearest trilinear tricubic tri_bspline tri_bspline_3 tri_bspline_5 tri_bspline_7";
+const std::string ok_interp_mthd_line = "nearest trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7";
 enum Interp_Type {
-	nearest, trilinear, tricubic, tri_bspline, tri_bspline_3, tri_bspline_5, tri_bspline_7
+	nearest, trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7
 };
 /******************************************************************************/
 
@@ -124,6 +124,8 @@ struct RunControl
 	
 	std::string obj_function;
 	std::string interp_type;
+
+	bool bspline;
 	int bspline_order;
 
 	std::vector<double> rigid_trans;
