@@ -92,48 +92,13 @@ Search::Search(RunControl *run)
 	//    which is exactly the halo/margin shortfall you were chasing earlier.
 	//    Instead we grow by just the desired net safety margin (1.0) and let
 	//    Interpolate's own constructor reserve the halo on top of that.
-/*
-	switch (run->int_typ){
-		case tri_bspline: 
-			bspline_order = 3;
-		break;
-		case tri_bspline_3: 
-			bspline_order = 3;
-		break;
-		case tri_bspline_5: 
-			bspline_order = 5;
-		break;
-		case tri_bspline_7: 
-			bspline_order = 7;
-		break;
-	}
-*/
 
-	std::cout << std::endl << std::endl << "the bspline_order is " << run->bspline_order << std::endl << std::endl;
-
-	if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3 || run->int_typ == tri_bspline_5 || run->int_typ == tri_bspline_7)
+	if (run->bspline == true)
 	{
-		// these are split into blocks, instead of just setting bspline_order_cfg, due to scope of the const type
-		// once the constructor is called with the proper bspline_order_cfg processing in uniform for all tri_bspline orders
-		if (run->int_typ == tri_bspline || run->int_typ == tri_bspline_3){
-			const int bspline_order_cfg = 3;
-			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
-			interp = new Interpolate(est_box_nom, bspline_order_cfg);
-		}
-
-		if (run->int_typ == tri_bspline_5){
-			const int bspline_order_cfg = 5;
-			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
-			interp = new Interpolate(est_box_nom, bspline_order_cfg);
-		}
-
-		if (run->int_typ == tri_bspline_7){
-			const int bspline_order_cfg = 7;
-			est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
-			interp = new Interpolate(est_box_nom, bspline_order_cfg);
-		}
-
-		run->int_typ = tri_bspline;		// subsequent processing is the same for all orders, flagged by int_typ tri_bspline
+		const int bspline_order_cfg = run->bspline_order;
+		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
+		// this is the two argument bspline constructor
+		interp = new Interpolate(est_box_nom, bspline_order_cfg);	
 	}
 	else
 	{
@@ -142,7 +107,6 @@ Search::Search(RunControl *run)
 		// this is the tricubic constructor
 		interp = new Interpolate(est_box_nom);
 	}
-
 }
 /******************************************************************************/
 
@@ -344,6 +308,21 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	interp->center_on(srch_pt);
 	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
+	if (rc->int_typ == nearest) {
+		interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->int_typ == trilinear) {
+		interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->int_typ == tricubic) {
+		interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->bspline == true) {
+		interp->kernels_bspline();
+		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+
+/*
 	switch (rc->int_typ){
 		case nearest:
 			interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
@@ -359,6 +338,7 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 			interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 			break;
 	}
+*/
 
 	// re-set kernels for the moving cloud to prepare for subsequent interp calls
 	starting_param(srch_pt, neigh_res);
@@ -370,7 +350,8 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
 
 	// this completes tri_bspline
-	if (rc->int_typ == tri_bspline) {
+	//if (rc->int_typ == tri_bspline) {
+	if (rc->bspline == true) {
 		interp->kernels_bspline();
 	}
 
@@ -563,7 +544,9 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
-	if (rc->int_typ == tri_bspline) {
+
+	//if (rc->int_typ == tri_bspline) {
+	if (rc->bspline == true) {
 		// kernels_bspline() is NOT called here -- it's primed once in
 		// search_pt_setup() right after the moving-cloud kernels() load, and
 		// stays valid (bsp_valid) across every obj_val_at() call in this
@@ -593,7 +576,9 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
-	if (rc->int_typ == tri_bspline) {
+		
+	//if (rc->int_typ == tri_bspline) {
+	if (rc->bspline == true) {
 		// see obj_val_at(x) above -- kernels_bspline() is primed once in
 		// search_pt_setup(), not on every call here.
 		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
@@ -611,7 +596,9 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 
 	std::vector<double> base_res(npts, 0.0);
 
-	if (rc->int_typ == tri_bspline)
+	
+	//if (rc->int_typ == tri_bspline)
+	if (rc->bspline == true)
 	{
 		// same analytic Jacobian as Jacobian_at() -- see bspline_jacobian_at()
 		// for the derivation. This is the path min_Lev_Mar() actually drives,
@@ -817,7 +804,9 @@ void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<
 
 	std::vector<double> base_res(npts, 0.0);
 
-	if (rc->int_typ == tri_bspline)
+	
+	//if (rc->int_typ == tri_bspline)
+	if (rc->bspline == true)
 	{
 		bspline_jacobian_at(a, ndof, base_res, J);
 		return;
@@ -1572,9 +1561,6 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 			break;
 		case tricubic:
 			inttyp = std::string("tricubic");
-			break;
-		case tri_bspline:
-			inttyp = std::string("tri_bspline");
 			break;
 		case tri_bspline_3:
 			inttyp = std::string("tri_bspline_3");

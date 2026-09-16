@@ -680,18 +680,19 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_vec_val(kwh_obj_function, ok_obj_function, run->obj_function, true) != input_line_ok ) return 0;
 	for (int i=0; i<ok_obj_function.size(); i++)
 		if (run->obj_function == ok_obj_function[i]) run->obj_fcn = (Objfcn_Type)i;
+	
+	run->bspline = false;
+	run->bspline_order = 0;
 	if(parse_line_vec_val(kwh_interp_type, ok_interp_type, run->interp_type, true) != input_line_ok ) return 0;
 	for (int i=0; i<ok_interp_type.size(); i++)
 		if (run->interp_type == ok_interp_type[i]) {
 			run->int_typ = (Interp_Type)i;
-			std::cout<< std::endl<< std::endl << ok_interp_type[i] << std::endl << std::endl;
+			// bspline types are broken into a boolean flag bspline (true) and a numerical bspline_order (3,5,7)
 			std::string bspline = "bspline";
 			if (ok_interp_type[i].find(bspline) != std::string::npos) {
-//				std::cout  << "contains bspline!" << std::endl << std::endl;
 				char last_char = ok_interp_type[i].back();
-//				std::cout  << "last character is " << last_char << std::endl << std::endl;
-				run->bspline_order = last_char - '0';
-//				std::cout  << "2x the bspline_order is " << 2*run->bspline_order << std::endl << std::endl;
+				run->bspline_order = last_char - '0'; // this converts single digit ascii chars to the corresponding int
+				run->bspline = true;
 			}
 		}
 
