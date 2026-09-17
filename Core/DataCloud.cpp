@@ -231,6 +231,9 @@ void DataCloud::organize_cloud(RunControl *run)
 		}
 	}
 
+	/**/
+	//std::cout << std::endl << "results.size() = " << results.size() << std::endl;
+
 }
 /******************************************************************************//******************************************************************************/
 /*DataCloud::DataCloud (InputRead *in)

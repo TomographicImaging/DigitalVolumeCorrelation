@@ -354,19 +354,24 @@ struct DualSort
 	double value;
 };
 /******************************************************************************/
+// Information from a completed search, used for cloud point neighborhoods
+// Part of the opt starting point determination process
 struct ResultRecord
-// Information from a completed search
 {
 	int status;		// as defined in Utility.h
-	
-//	Objfcn_Type obj_typ;	// for interpretation of obj_min
-	
 	double obj_min;			// value at minumum
-	
 	std::vector<double> par_min;	// parameters at min [ndof]
-
 };
-
+/******************************************************************************/
+// Detailed information on opt for a point cloud
+struct Opt_Track
+{
+    // the full sequence of parameter values during a search
+    // loaded through push_back, accessed through size()
+    // [variable][ndof]
+    std::vector<std::vector<double>> par_sequence;
+    
+};
 /******************************************************************************/
 class CCPI_EXPORT DataCloud
 {

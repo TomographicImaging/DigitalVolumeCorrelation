@@ -31,10 +31,7 @@ Search::Search(RunControl *run)
 	if (rc->sub_geo == Subvol_Type::sphere) subv_num = rc->subvol_npts;
 
 	// establish pointer to function set in input file
-	if (rc->obj_fcn == SAD) {
-		obj_fcn = &obj_SAD;
-		obj_fcn_res = &obj_SAD;
-	}
+
 	if (rc->obj_fcn == SSD) {
 		obj_fcn = &obj_SSD;
 		obj_fcn_res = &obj_SSD;
@@ -63,6 +60,11 @@ Search::Search(RunControl *run)
 
 	// optimization result storage 
 	par_min = std::vector<double>(rc->num_srch_dof,0.0);	// note size, rc->num_srch_dof
+
+	/***/
+	// this creates a tracking structure for detailed optimization monitoring
+	//std::vector<Opt_Track> point_opt_track;
+	/***/
 
 	// set-up a single fcld + disp_max sized interp region
 
@@ -140,8 +142,9 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 
 	// vector of ResultRecord for the neighborhood of this search point
 	std::vector<ResultRecord> neigh_res;
-	for (int i=0; i<srch_data->neigh[n].size(); i++)
+	for (int i=0; i<srch_data->neigh[n].size(); i++) {
 		neigh_res.push_back(srch_data->results[t][srch_data->neigh[n][i]]);
+	}
 
 	// this sets par_min to the starting point estimate through starting_param call
 	search_pt_setup(srch_pt, neigh_res);
@@ -177,43 +180,7 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	//
 /********************/
 
-
-/************************
-	// basic N-M process
-	//
-	//
-	try
-	{
-		// look_with(amoeba, 3, 0.00001); // does disp only search first for all searches
-		// sequence the 6 and 12 dof searches
-		//if (rc->num_srch_dof > 3) look_with(amoeba, 6, 0.0000001);
-		//if (rc->num_srch_dof > 6) look_with(amoeba,12, 0.0000001);
-
-
-		// do all standalone
-		if (rc->num_srch_dof == 3) look_with(amoeba, 3, 0.00001);
-		if (rc->num_srch_dof == 6) look_with(amoeba, 6, 0.0000001);
-		if (rc->num_srch_dof == 12) look_with(amoeba,12, 0.0000001);
-
-	}
-	catch (Convg_Fail)
-	{
-		delete fcld;
-		throw Convg_Fail();
-	}
-	catch (Range_Fail)
-	{
-		delete fcld;
-		throw Range_Fail();
-	}
-	//
-	//
-	//
-*************************/
-
-
 	// update status of Search members
-
 
 	try {obj_min = obj_val_at(par_min);}
 	catch (Range_Fail) {throw Range_Fail();}
@@ -617,7 +584,7 @@ double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
 	// restore fcld->moving to reflect 'a' (we perturbed away from it above)
 	fcld->affine_to(a, ndof);
 
-	if (rc->obj_fcn == SAD || rc->obj_fcn == SSD)
+	if (rc->obj_fcn == SSD)
 	{
 		// residual_j = tar_j - ref_j  =>  d(residual_j)/d(a_i) = G[j][i]
 		for (int j=0; j<npts; j++)
@@ -1000,12 +967,9 @@ void Search::random_global(double displ_max, double basin_radius)
 std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
 
-	// SAD, SSD, ZSSD, NSSD, ZNSSD
+	// SSD, ZSSD, NSSD, ZNSSD
 	std::string objfun;
 	switch (run->obj_fcn) {
-		case SAD:
-			objfun = std::string("SAD");
-			break;
 		case SSD:
 			objfun = std::string("SSD");
 			break;

@@ -21,29 +21,6 @@ Author(s): Brian Bay (OSU)
 #include "ObjectiveFunctions.h"
 
 /******************************************************************************/
-double obj_SAD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
-{
-	double obj = 0.0;
-	for (unsigned int i=0; i<ref_subvol.size(); i++) {
-		double diff = tar_subvol[i] - ref_subvol[i];
-		obj += fabs(diff);
-	}
-
-	return obj;
-}
-/******************************************************************************/
-double obj_SAD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
-{
-	double obj = 0.0;
-	for (unsigned int i=0; i<ref_subvol.size(); i++) {
-		double diff = tar_subvol[i] - ref_subvol[i];
-		residual[i] = diff;
-		obj += fabs(diff);
-	}
-
-	return obj;
-}
-/******************************************************************************/
 double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
 // Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
 {

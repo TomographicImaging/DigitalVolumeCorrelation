@@ -154,6 +154,9 @@ int main(int argc, char *argv[])
 	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
 	data.organize_cloud(&run);
 
+	/**/
+	//std::cout << std::endl << "data.results.size() = " << data.results.size() << std::endl;
+
 	// *** begin run
 
 	auto start_time_test = std::chrono::system_clock::now();
@@ -169,10 +172,6 @@ int main(int argc, char *argv[])
 	// *** print configuration to screen
 	//std::cout << optimize << std::endl;
 	std::string objfun;
-	if (run.obj_fcn == SAD) {
-		//obj_fcn = &obj_SAD;
-		objfun = std::string("objective function SAD");
-	}
 	if (run.obj_fcn == SSD) {
 		//obj_fcn = &obj_SSD;
 		objfun = std::string("objective function SSD");

@@ -103,7 +103,6 @@ public:
 	// the primary optimization method
 	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol);
 
-//	struct Min_Ftor_new;	// leave declared for now, not working
 private:
 	// Shared analytic residual-Jacobian assembly for tri_bspline, used by both
 	// Jacobian_at() and LM_prep_at() so the two never drift apart. Evaluates

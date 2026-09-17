@@ -149,6 +149,8 @@ InputRead::InputRead()
 	Point max_pt(0,0,0);
 	search_box = new BoundBox(min_pt, max_pt);
 
+	std::string valid_input; // used to echo valid parameter options from Utility.h for various keywords
+
 	// parameter limits
 	kwh_ref_fname.good.assign("name of raw image file (in working directory) or a full path");
 	kwh_cor_fname.good.assign("name of raw image file (in working directory) or a full path");
@@ -463,18 +465,17 @@ InputRead::InputRead()
 	kwh_obj_function.exam.assign("znssd");
 	kwh_obj_function.reqd.assign("yes");
 	kwh_obj_function.pool.assign("opt_mthd");
-	kwh_obj_function.hint.assign("### sad, ssd, zssd, nssd, znssd");
-	kwh_obj_function.help.assign("   Defines the objective function template matching form.\n");
-	kwh_obj_function.help.append("   See B. Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010 \n");
-	kwh_obj_function.help.append("   Functions become increasingly expensive and more robust as you progress from sad to znssd.\n");
-	kwh_obj_function.help.append("   Minimizing squared-difference and maximizing cross-correlation are functionally equivalent.\n");
-	kwh_obj_function.help.append("   sad  = sum of absolute differences\n");
-	kwh_obj_function.help.append("   ssd  = sum of squared differences\n");
-	kwh_obj_function.help.append("   zssd  = intensity offset insensitive sum of squared differences (value not normalized)\n");
-	kwh_obj_function.help.append("   nssd  = intensity range insensitive sum of squared differences (0.0 = perfect match, 1.0 = max value)\n");
-	kwh_obj_function.help.append("   znssd  = intensity offset and range insensitive sum of squared differences (0.0 = perfect match, 1.0 = max value)\n");
+	//std::string valid_input = "Options: " + ok_obj_fcn_line;
+	//kwh_interp_type.hint.assign(valid_input);
+	kwh_obj_function.hint.assign("Options: " + ok_obj_fcn_line);
+	kwh_obj_function.help.assign("   Standard objective functions of sum-of-squared differences (SSD) form.\n");
+	kwh_obj_function.help.append("   Minimizing squared-differences and maximizing cross-correlation are functionally equivalent.\n");
+	kwh_obj_function.help.append("   ssd  = standard SSD without normalization, fast but sensitive to brightness/contrast differences.\n");
+	kwh_obj_function.help.append("   zssd  = brightness normalized SSD (value not scaled).\n");
+	kwh_obj_function.help.append("   nssd  = contrast normalized SSD.\n");
+	kwh_obj_function.help.append("   znssd  = brightness and contrast normalized SSD.\n");
 	kwh_obj_function.help.append("   Notes on objective function values:\n");
-	kwh_obj_function.help.append("      1. The normalized quantities nssd and znssd are preferred, as quality of match can be assessed.\n");
+	kwh_obj_function.help.append("      1. Functions nssd and znssd are preferred, as quality of match can be quantified.\n");
 	kwh_obj_function.help.append("      2. The natural range of nssd is [0.0 to 2.0], and of znssd is [0.0 to 4.0].\n");
 	kwh_obj_function.help.append("      3. Both are scaled for output into the [0.0 to 1.0] range for ease of comparison.\n");
 
@@ -485,8 +486,9 @@ InputRead::InputRead()
 	kwh_interp_type.exam.assign("tricubic");
 	kwh_interp_type.reqd.assign("yes");
 	kwh_interp_type.pool.assign("opt_mthd");
-	std::string valid_input = "Options: " + ok_interp_mthd_line;
-	kwh_interp_type.hint.assign(valid_input);
+	//std::string valid_input = "Options: " + ok_interp_mthd_line;
+	//kwh_interp_type.hint.assign(valid_input);
+	kwh_interp_type.hint.assign("Options: " + ok_interp_mthd_line);
 	kwh_interp_type.help.assign("   Defines the interpolation method used during template matching.\n");
 	kwh_interp_type.help.append("   trilinear is fast but imprecise, useful for preliminary runs and evaluating other parameters.\n");
 	kwh_interp_type.help.append("   tricubic is slower but a good choice for general DVC.\n");
@@ -560,18 +562,6 @@ InputRead::InputRead()
 	kwh_starting_point.help.assign("   If not set, the first point in the point cloud will be used as starting point\n");
 	kwh_starting_point.help.append("\n");
 	manual.push_back(kwh_starting_point);
-/*
-	kwh_fine_srch.word.assign("fine_search");
-	kwh_fine_srch.exam.assign("bfgs");
-	kwh_fine_srch.reqd.assign("yes");
-	kwh_fine_srch.pool.assign("opt_mthd");
-	kwh_fine_srch.hint.assign("### powell, levenberg, bfgs, steepest");
-	kwh_fine_srch.help.assign("\tDefines the method for high-precision (fine) optimization.\n");
-	kwh_fine_srch.help.append("\tIt is the final optimization step, after starting point and base search processes.\n");
-	kwh_fine_srch.help.append("\tvalues: powell, levenberg, bfgs, steepest\n");
-	kwh_fine_srch.help.append("\n");
-	manual.push_back(kwh_fine_srch);
-*/
 }
 /******************************************************************************/
 InputRead::~InputRead()
