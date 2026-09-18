@@ -77,13 +77,13 @@ public:
 	std::vector<double> tar_subvol;
 
 	double obj_tol;		// objective function change threshold that defines convergence
-	double mag_tol;		// parameter vector displcement mag change threshold that defines convergence
+	double pos_tol;		// parameter vector displcement (pos) mag change threshold that defines convergence
 	int maxit;			// max iterations allowed
 
 	// these variables are copied into DataCloud on return after process_point
 	double obj_min;					// objective function value at optimum for the current cloud point
 	std::vector<double> par_min;	// parameter vector at optimum for the current cloud point
-	Iter_Stats iter_stats;			// iteration stats for the current cloud point
+	Iter_Stats iter_stats;			// iteration stats for the current cloud point being searched
 	
 	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data);
 

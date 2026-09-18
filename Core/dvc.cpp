@@ -262,7 +262,11 @@ int main(int argc, char *argv[])
 			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
 			std::cout << std::setw(12) << "dy= " << optimize.par_min[1];
 			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
-			std::cout << std::setw(12) << "nits= " << optimize.iter_stats.nits;
+
+			// flag whether to display these or not
+			std::cout << std::setw(20) << "obj/nits/pos= " << optimize.iter_stats.obj_nits << "/" << optimize.iter_stats.nits << "/" << optimize.iter_stats.pos_nits;
+			std::cout << std::setw(20) << "del_obj_last= " << optimize.iter_stats.obj_update_last_it;
+			std::cout << std::setw(20) << "del_pos_last= " << optimize.iter_stats.pos_update_last_it;
 
 			// put results into record for this point
 			data.results[trg][n].status = point_good;
@@ -271,6 +275,12 @@ int main(int argc, char *argv[])
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
 			}
 			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
+			data.results[trg][n].iter_stats.obj_nits = optimize.iter_stats.obj_nits;
+			data.results[trg][n].iter_stats.pos_nits = optimize.iter_stats.pos_nits;
+
+			data.results[trg][n].iter_stats.obj_update_last_it = optimize.iter_stats.obj_update_last_it;
+			data.results[trg][n].iter_stats.pos_update_last_it = optimize.iter_stats.pos_update_last_it;
+
 			data.results[trg][n].iter_stats.obj_beg = optimize.iter_stats.obj_beg;
 			data.results[trg][n].iter_stats.obj_end = optimize.iter_stats.obj_end;
 

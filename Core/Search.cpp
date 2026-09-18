@@ -60,7 +60,7 @@ Search::Search(RunControl *run)
 
 	// set convergence criteria
 	obj_tol = 0.000001;		// objective function change threshold that defines convergence
-	mag_tol = 0.01;			// parameter vector displcement mag change threshold that defines convergence
+	pos_tol = 0.01;			// parameter vector displcement mag change threshold that defines convergence
 	maxit = 20;				// max iterations allowed
 
 	// optimization result storage 
@@ -189,10 +189,15 @@ Several ting to do here.
 
 	int ndof = par_min.size();
 	std::vector<double> jump(ndof, 0.0);
+
 	jump = min_Lev_Mar(par_min, srch_data);
+
+	// need to change this, mi_Lav_Mar returning a jump even if maxit reached, that should be a Convg_Fail
+
 	for (int i=0; i<ndof; i++) {
 		par_min[i] = jump[i];
 	}
+
 	//
 	//
 /********************/
@@ -208,7 +213,7 @@ Several ting to do here.
 /******************************************************************************/
 std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data)
 // obj_tol compares with change in the objective function at each iteration
-// mag_tol compares with displacement magnitude change at each iteration
+// pos_tol compares with position change at each iteration
 {
 	int npts = subv_num;
 	int ndof = start.size();
@@ -221,14 +226,23 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCl
 	Eigen::VectorXd JTe = Eigen::VectorXd(ndof);
 	Eigen::VectorXd update = Eigen::VectorXd(ndof);
 
+	// jump contains the updated parameter vector as optimization proceeds
 	for (int i=0; i<ndof; i++) {
 			jump[i] = start[i];
 	}
 
 	double obj_old = 0.0;
-	int nits = 0;
+
+	// track number of iterations, start with 1 for nits updated within the convergence check conditional
+	int nits = 1;
+	int obj_nits = 1;
+	int pos_nits = 1;
+
+	double del_obj;		// change on objective function value from prior it
+	double del_pos;		// change in position from prior it
 
 	for (int i=0; i<maxit; i++) {
+
 		double obj = LM_prep_at(jump, e, J);
 
 		if (i==0) {
@@ -238,14 +252,29 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCl
 			iter_stats.pos_beg.z = jump[2];
 		}
 
+		// convergence check
 		if (i>0) {
-			double del_obj = fabs(obj - obj_old);
-			double del_mag = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
+			del_obj = fabs(obj - obj_old);
+			del_pos = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
 
-			// point has converged
-			if ((del_obj < obj_tol) || (del_mag < mag_tol)) {
-				iter_stats.nits = i;
+			nits += 1;
+			if (del_obj > obj_tol) {
+				obj_nits += 1;
+			}
+			if (del_pos > pos_tol) {
+				pos_nits += 1;
+			}
+
+			// point has converged for either obj or pos criteria
+			if ((del_obj <= obj_tol) || (del_pos <= pos_tol)) {
+				iter_stats.nits = nits;
+				iter_stats.obj_nits = obj_nits;
+				iter_stats.pos_nits = pos_nits;
+
+				iter_stats.obj_update_last_it = del_obj;
+				iter_stats.pos_update_last_it = del_pos;
 				iter_stats.obj_end = obj;
+				
 				iter_stats.pos_end.x = jump[0];
 				iter_stats.pos_end.y = jump[1];
 				iter_stats.pos_end.z = jump[2];
@@ -264,8 +293,14 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCl
 		obj_old = obj;
 
 		if (i==maxit) {
-			iter_stats.nits = i;
+			iter_stats.nits = maxit;
+			iter_stats.obj_nits = maxit;
+			iter_stats.pos_nits = maxit;
+
+			iter_stats.obj_update_last_it = del_obj;
+			iter_stats.pos_update_last_it = del_pos;
 			iter_stats.obj_end = obj;
+
 			iter_stats.pos_end.x = jump[0];
 			iter_stats.pos_end.y = jump[1];
 			iter_stats.pos_end.z = jump[2];
