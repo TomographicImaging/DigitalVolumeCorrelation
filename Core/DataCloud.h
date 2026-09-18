@@ -354,6 +354,18 @@ struct DualSort
 	double value;
 };
 /******************************************************************************/
+// data for a single iteration
+struct Iter_Stats
+{
+    int nits;
+
+    double obj_beg;
+    double obj_end;
+
+    Point3D pos_beg;
+    Point3D pos_end;
+};
+/******************************************************************************/
 // Information from a completed search, used for cloud point neighborhoods
 // Part of the opt starting point determination process
 struct ResultRecord
@@ -361,18 +373,10 @@ struct ResultRecord
 	int status;		// as defined in Utility.h
 	double obj_min;			// value at minumum
 	std::vector<double> par_min;	// parameters at min [ndof]
+    Iter_Stats iter_stats;     // iteration tracking data
 };
 /******************************************************************************/
-// Detailed information on opt for a point cloud
-struct Opt_Track
-{
-    // the full sequence of parameter values during a search
-    // loaded through push_back, accessed through size()
-    // [variable][ndof]
-    std::vector<std::vector<double>> par_sequence;
-    
-};
-/******************************************************************************/
+// instantiated in dvc.cpp, initialized and organized in DataCloud::organize_cloud, passed as a pointer into Search::process_point
 class CCPI_EXPORT DataCloud
 {
 public:
@@ -404,9 +408,14 @@ public:
 	// indices of neighbors of a search point
 	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
 	
+    // this is set-up for potentially multiple targets (correlate volumes) with updating in mind
+    // ntrg is 1 for standard single correlate volume searches
 	// vector of result records for a point
-	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
-	
+	std::vector< std::vector<ResultRecord> > results;	// [ntrg][npts]
+
+    // storage for iteration summary data 
+	//std::vector<std::vector<Iteration_Specs>> iter_track;
+
 	//
 	// results from the STRAIN calculation executable
 	//

@@ -217,13 +217,14 @@ int main(int argc, char *argv[])
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
 
-
 	int count = 0;
 	int count_good = 0;
 	int count_range = 0;
 	int count_convg = 0;
-	int trg = 0;
 
+	int ntrg = 1;			// number of correlation file targets, with auto updating of reference in mind, not implemented yet
+	int trg = ntrg - 1;		// trg is an index and becomes 0 for standard single corelation runs
+							
 	std::vector<double> blank_par_min = optimize.par_min;
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
 
@@ -261,12 +262,25 @@ int main(int argc, char *argv[])
 			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
 			std::cout << std::setw(12) << "dy= " << optimize.par_min[1];
 			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
+			std::cout << std::setw(12) << "nits= " << optimize.iter_stats.nits;
 
 			// put results into record for this point
 			data.results[trg][n].status = point_good;
 			data.results[trg][n].obj_min = optimize.obj_min;
-			for (int j=0; j<run.num_srch_dof; j++)
+			for (int j=0; j<run.num_srch_dof; j++) {
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
+			}
+			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
+			data.results[trg][n].iter_stats.obj_beg = optimize.iter_stats.obj_beg;
+			data.results[trg][n].iter_stats.obj_end = optimize.iter_stats.obj_end;
+
+			data.results[trg][n].iter_stats.pos_beg.x = optimize.iter_stats.pos_beg.x;
+			data.results[trg][n].iter_stats.pos_beg.y = optimize.iter_stats.pos_beg.y;
+			data.results[trg][n].iter_stats.pos_beg.z = optimize.iter_stats.pos_beg.z;
+
+			data.results[trg][n].iter_stats.pos_end.x = optimize.iter_stats.pos_end.x;
+			data.results[trg][n].iter_stats.pos_end.y = optimize.iter_stats.pos_end.y;
+			data.results[trg][n].iter_stats.pos_end.z = optimize.iter_stats.pos_end.z;
 		}
 		catch (Range_Fail)
 		{
@@ -300,8 +314,6 @@ int main(int argc, char *argv[])
 
 			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec" << std::endl;
 		}
-
-
 
 	}
 

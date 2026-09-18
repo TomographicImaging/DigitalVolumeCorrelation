@@ -58,13 +58,13 @@ Search::Search(RunControl *run)
 	ref_subvol = std::vector<double>(subv_num,0.0);
 	tar_subvol = std::vector<double>(subv_num,0.0);
 
+	// set convergence criteria
+	obj_tol = 0.000001;		// objective function change threshold that defines convergence
+	mag_tol = 0.01;			// parameter vector displcement mag change threshold that defines convergence
+	maxit = 20;				// max iterations allowed
+
 	// optimization result storage 
 	par_min = std::vector<double>(rc->num_srch_dof,0.0);	// note size, rc->num_srch_dof
-
-	/***/
-	// this creates a tracking structure for detailed optimization monitoring
-	//std::vector<Opt_Track> point_opt_track;
-	/***/
 
 	// set-up a single fcld + disp_max sized interp region
 
@@ -170,9 +170,26 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 
 	// L-M optimization, currently using pure QN steps (no lambda tuning)
 	// not yet reporting on convg or range failures
+
+
+
+/*
+Several ting to do here.
+1. The obj_val_at below should be eliminated. It duplicates the final call in min_Lev_Mar. 
+	Reducing 1 obj_val_at by 1 is a big win with iterations numbers genreally low (3,4,5). 
+	It's not correct 
+2. Need to build try/catch in the iterations in case an out of box param vector is tried.
+	Currently any Range_Fail being thrown must be fro this final check, but it should be at each obj eval in min_Lev_Mar
+	Then just keep obj_min aready avaialble and utilized in Search updated. 
+*/
+
+
+
+
+
 	int ndof = par_min.size();
 	std::vector<double> jump(ndof, 0.0);
-	jump = min_Lev_Mar(par_min, 0.000001, 0.01);
+	jump = min_Lev_Mar(par_min, srch_data);
 	for (int i=0; i<ndof; i++) {
 		par_min[i] = jump[i];
 	}
@@ -189,13 +206,14 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	throw Point_Good();
 }
 /******************************************************************************/
-std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol)
+std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data)
 // obj_tol compares with change in the objective function at each iteration
 // mag_tol compares with displacement magnitude change at each iteration
 {
 	int npts = subv_num;
 	int ndof = start.size();
 	std::vector<double> jump(ndof, 0.0);
+	Iter_Stats point_stats;
 
 	Eigen::VectorXd e = Eigen::VectorXd(npts);
 	Eigen::MatrixXd J = Eigen::MatrixXd(npts,ndof);
@@ -207,27 +225,30 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const 
 			jump[i] = start[i];
 	}
 
-//	std::cout << "\n" << std::setprecision(12);
-//	std::cout << "p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
-
 	double obj_old = 0.0;
-	int maxit = 20;
 	int nits = 0;
 
 	for (int i=0; i<maxit; i++) {
 		double obj = LM_prep_at(jump, e, J);
 
+		if (i==0) {
+			iter_stats.obj_beg = obj;
+			iter_stats.pos_beg.x = jump[0];
+			iter_stats.pos_beg.y = jump[1];
+			iter_stats.pos_beg.z = jump[2];
+		}
+
 		if (i>0) {
 			double del_obj = fabs(obj - obj_old);
 			double del_mag = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
 
-
-//			std::cout << "n: " << i << "\t obj_del = " << del_obj << "\t del_dis = " << del_mag << "\t p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
-
-
-
+			// point has converged
 			if ((del_obj < obj_tol) || (del_mag < mag_tol)) {
-				nits = i;
+				iter_stats.nits = i;
+				iter_stats.obj_end = obj;
+				iter_stats.pos_end.x = jump[0];
+				iter_stats.pos_end.y = jump[1];
+				iter_stats.pos_end.z = jump[2];
 				break;
 			}
 		}
@@ -236,14 +257,20 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const 
 		JTe = J.transpose()*e;
 		update = JTJ.colPivHouseholderQr().solve(-JTe);
 
-		for (int i=0; i<ndof; i++) {
-				jump[i] += update(i);
+		for (int j=0; j<ndof; j++) {
+			jump[j] += update(j);
 		}
 
 		obj_old = obj;
-	}
 
-//	std::cout << std::setprecision(6);
+		if (i==maxit) {
+			iter_stats.nits = i;
+			iter_stats.obj_end = obj;
+			iter_stats.pos_end.x = jump[0];
+			iter_stats.pos_end.y = jump[1];
+			iter_stats.pos_end.z = jump[2];
+		}
+	}
 
 	return jump;
 }

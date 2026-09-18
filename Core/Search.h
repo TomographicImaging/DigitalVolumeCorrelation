@@ -76,9 +76,15 @@ public:
 	std::vector<double> ref_subvol;
 	std::vector<double> tar_subvol;
 
-	std::vector<double> par_min;	// parameter vector at optimum
-	double obj_min;			// objective function value at optimum
+	double obj_tol;		// objective function change threshold that defines convergence
+	double mag_tol;		// parameter vector displcement mag change threshold that defines convergence
+	int maxit;			// max iterations allowed
 
+	// these variables are copied into DataCloud on return after process_point
+	double obj_min;					// objective function value at optimum for the current cloud point
+	std::vector<double> par_min;	// parameter vector at optimum for the current cloud point
+	Iter_Stats iter_stats;			// iteration stats for the current cloud point
+	
 	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data);
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
@@ -101,7 +107,7 @@ public:
 	void random_global(double displ_max, double basin_rad);
 
 	// the primary optimization method
-	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol);
+	std::vector<double> min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data);
 
 private:
 	// Shared analytic residual-Jacobian assembly for tri_bspline, used by both
