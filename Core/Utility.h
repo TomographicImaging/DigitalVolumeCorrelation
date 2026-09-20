@@ -80,8 +80,12 @@ class Intrp_Fail {};	// Points asked for outside of an interp volume
 // used in input operations and file checking
 class Input_Fail {};	// Reguired input file missing or unreadable
 
-//enum class ConvergenceReason {
+/******************************************************************************/
+
+const std::vector<std::string> CR_str_vec = {"Converged", "Maxit", "NotConverged", "CostChange", "ParameterChange", "GradientNorm"};
 enum ConvergenceReason {
+	Converged,
+	Maxit,
     NotConverged,
     CostChange,
     ParameterChange,

@@ -99,8 +99,8 @@ public:
 
 	// legacy convergence check
 	ConvergenceReason check_convergence(
-		const Eigen::VectorXd& x_k,
-		const Eigen::VectorXd& x_next,
+		const Eigen::VectorXd& X_prev,
+		const Eigen::VectorXd& X_curr,
     	double F_prev,
     	double F_curr);
 
@@ -108,10 +108,10 @@ public:
 	ConvergenceReason Check_Convergence(
 		const Eigen::VectorXd& r,
 		const Eigen::MatrixXd& J,
-		const Eigen::VectorXd& x_k,
-		const Eigen::VectorXd& x_next,
-		double cost_k,
-		double cost_next);
+		const Eigen::VectorXd& X_prev,
+		const Eigen::VectorXd& X_curr,
+		double F_prev,
+		double F_curr);
 
 	// translation grid style global search
 	void trgrid_global(double displ_max, double basin_rad, int n, bool out_as_raw);
@@ -123,7 +123,7 @@ public:
 	void random_global(double displ_max, double basin_rad);
 
 	// the primary optimization method
-	std::vector<double> min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data);
+	ConvergenceReason min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data);
 
 private:
 	// Shared analytic residual-Jacobian assembly for tri_bspline, used by both

@@ -177,7 +177,7 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 Several ting to do here.
 1. The obj_val_at below should be eliminated. It duplicates the final call in min_Lev_Mar. 
 	Reducing 1 obj_val_at by 1 is a big win with iterations numbers genreally low (3,4,5). 
-	It's not correct 
+
 2. Need to build try/catch in the iterations in case an out of box param vector is tried.
 	Currently any Range_Fail being thrown must be fro this final check, but it should be at each obj eval in min_Lev_Mar
 	Then just keep obj_min aready avaialble and utilized in Search updated. 
@@ -186,40 +186,47 @@ Several ting to do here.
 
 
 
-
+	// par_min initial estimate in place here, with par_min reset within min_Lev_Mar, copy into start and passed as const
 	int ndof = par_min.size();
-	std::vector<double> jump(ndof, 0.0);
-
-	jump = min_Lev_Mar(par_min, srch_data);
-
-	// need to change this, mi_Lav_Mar returning a jump even if maxit reached, that should be a Convg_Fail
-
+	std::vector<double> start(ndof, 0.0);
 	for (int i=0; i<ndof; i++) {
-		par_min[i] = jump[i];
+		start[i] = par_min[i];
 	}
 
-	//
-	//
-/********************/
+	ConvergenceReason opt_status;
 
-	// update status of Search members
+	// set par_min and obj_min within min_Lev_Mar and return a ConvergenceReason that includes Converged
 
-	try {obj_min = obj_val_at(par_min);}
-	catch (Range_Fail) {throw Range_Fail();}
+	opt_status = min_Lev_Mar(start, srch_data);
+
+	std::cout << "convg_result = " << CR_str_vec[opt_status] << std::endl;
+
+	// need to track-down origin and status of Range_Fail();
 
 	delete fcld;
-	throw Point_Good();
+
+	if (opt_status == Converged) {
+		throw Point_Good();
+	}
+	if (opt_status == Maxit) {
+		throw Convg_Fail();
+	}
 }
 /******************************************************************************/
-// legacy version, simple checks on relative objective functin and parameter vector changes
+// legacy version, simple checks on relative objective function and parameter vector changes
 ConvergenceReason Search::check_convergence(
     const Eigen::VectorXd& X_prev,
     const Eigen::VectorXd& X_curr,
     double F_prev,
     double F_curr)	// access is tol.cost_tol, tol.step_tol, tol.grad_tol,
 {
-	double tol_cost = 0.000001;			// hardcoded locally here for now, (legacy = 0.000001)
-	double tol_step = 0.01;				// hardcoded locally here for now, (legacy = 0.01)
+	// Notes on convergence.
+	// 1. These simple checks behave in a very similar way to C_C with similar settings
+	// 2. Gets to CostChange even at 1e-10 with just a couple more iterations. 
+	// 3. But this looks artificial for settings of this scale, as compared with C_C which does not converge. 
+
+	double tol_cost = 1e-6;			// hardcoded locally here for now, (legacy = 1e-6, reset to 1e-6)
+	double tol_step = 1e-4;			// hardcoded locally here for now, (legacy = 1e-2, reset to 1e-4)
 
 	// 1. Change in the objective function:
 	double cost_norm = fabs(F_curr - F_prev);
@@ -239,43 +246,48 @@ ConvergenceReason Search::check_convergence(
 ConvergenceReason Search::Check_Convergence(
     const Eigen::VectorXd& r,
     const Eigen::MatrixXd& J,
-    const Eigen::VectorXd& x_k,
-    const Eigen::VectorXd& x_next,
-    double cost_k,
-    double cost_next)
+    const Eigen::VectorXd& X_prev,
+    const Eigen::VectorXd& X_curr,
+    double F_prev,
+    double F_curr)
 {
-    double cost_tol = 1e-8;   // eps1: relative cost change, hardcoded locally here for now, (original = 1e-8)
-    double step_tol = 1e-8;   // eps2: relative parameter step, hardcoded locally here for now, (original = 1e-8)
+	// Notes on convergence.
+	// 1. At reset settings there is about 1 more it to convergence compared with c_c.
+	// 2. However, there is better balance between cost and step convergence, they trade-off during initial test runs. 
+	// 3. 1e-5/1e-3 becomes dominated by ParameterChange, with typically 1 fewer iteration.
+
+    double cost_tol = 1e-6;   // eps1: relative cost change, hardcoded locally here for now, (original = 1e-8, reset to 1e-6)
+    double step_tol = 1e-4;   // eps2: relative parameter step, hardcoded locally here for now, (original = 1e-8, reset to 1e-4)
     double grad_tol = 1e-8;   // eps3: gradient (first-order optimality), hardcoded locally here for now, (original = 1e-8)
 
     // 1. Change in the objective function:
-    //    |S(x_k) - S(x_{k+1})| / S(x_k) < eps1
-    double cost_denom = std::max(cost_k, std::numeric_limits<double>::epsilon());
-    double cost_change = std::abs(cost_k - cost_next) / cost_denom;
+    //    |S(X_prev) - S(x_{k+1})| / S(X_prev) < eps1
+    double cost_denom = std::max(F_prev, std::numeric_limits<double>::epsilon());
+    double cost_change = std::abs(F_prev - F_curr) / cost_denom;
     if (cost_change < cost_tol) {
         return ConvergenceReason::CostChange;
     }
 
     // 2. Change in the parameter vector:
-    //    ||x_{k+1} - x_k|| < eps2 * (||x_k|| + eps2)
-    double step_norm  = (x_next - x_k).norm();
-    double param_norm = x_k.norm();
+    //    ||x_{k+1} - X_prev|| < eps2 * (||X_prev|| + eps2)
+    double step_norm  = (X_curr - X_prev).norm();
+    double param_norm = X_prev.norm();
     if (step_norm < step_tol * (param_norm + step_tol)) {
         return ConvergenceReason::ParameterChange;
     }
 
     // 3. Gradient norm (first-order optimality):
     //    ||J^T r||_inf < eps3
-    Eigen::VectorXd grad = J.transpose() * r;   // = gradient of S(x) = 0.5||r||^2
-    double grad_inf_norm = grad.lpNorm<Eigen::Infinity>();
-    if (grad_inf_norm < grad_tol) {
-        return ConvergenceReason::GradientNorm;
-    }
+ //   Eigen::VectorXd grad = J.transpose() * r;   // = gradient of S(x) = 0.5||r||^2
+ //   double grad_inf_norm = grad.lpNorm<Eigen::Infinity>();
+ //   if (grad_inf_norm < grad_tol) {
+ //       return ConvergenceReason::GradientNorm;
+ //   }
 
     return ConvergenceReason::NotConverged;
 }
 /******************************************************************************/
-std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data)
+ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data)
 // obj_tol compares with change in the objective function at each iteration
 // pos_tol compares with position change at each iteration
 {
@@ -307,7 +319,7 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCl
 	ConvergenceReason convg_reason;
 	ConvergenceReason Convg_Reason;		// maintain both for comparisons
 
-	std::vector<std::string> convg_str = {"NotConverged", "CostChange", "ParameterChange", "GradientNorm"};
+	ConvergenceReason convg_status;	// Converged or Maxit
 
 	// X contains the updated parameter vector as optimization proceeds, initialized here
 	for (int i=0; i<ndof; i++) {
@@ -348,21 +360,33 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCl
 				X_curr_eig(j) = X_curr[j];
 			}
 			convg_reason = check_convergence(X_prev_eig, X_curr_eig, F_prev, F_curr);
-			std::cout << "convg_reason = " << convg_str[convg_reason];
-
-			std::cout << "\t";		// live report formatting
-
+			std::cout << "convg_reason = " << CR_str_vec[convg_reason];
+			std::cout << "\t";			// live report formatting
 			// also run Check_Convergence for comparison with legacy
 			Convg_Reason = Check_Convergence(r, J, X_prev_eig, X_curr_eig, F_prev, F_curr);
-			std::cout << "Convg_Reason = " << convg_str[Convg_Reason];
-
+			std::cout << "Convg_Reason = " << CR_str_vec[Convg_Reason];
 			std::cout << std::endl;		// live report formatting
 
-			if (convg_reason != NotConverged) {
+			// *** Convergence response 
+			//if (convg_reason != NotConverged) {	// using legacy check
+			if (Convg_Reason != NotConverged) {	 // using legacy updated
+				for (int j=0; j<ndof; j++) {
+					par_min[j] = X_curr[j];
+				}
+				obj_min = F_curr;
+				convg_status = ConvergenceReason::Converged;
 				break;
 			}
+		}
 
-
+		// *** No Convergence at maxit
+		if (i == maxit - 1){
+			for (int j=0; j<ndof; j++) {
+					par_min[j] = 0.0;
+			}
+			obj_min = 0.0;
+			convg_status = ConvergenceReason::Maxit;
+			break;
 		}
 
 		// determine and apply a new parameter update, move current data back to previous
@@ -377,17 +401,17 @@ std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCl
 		F_prev = F_curr;
 	}
 
-	iter_stats.nits = nits;
+//	iter_stats.nits = nits;
 
-	iter_stats.obj_update_last_it = del_obj;
-	iter_stats.pos_update_last_it = del_pos;
+//	iter_stats.obj_update_last_it = del_obj;
+//	iter_stats.pos_update_last_it = del_pos;
 	
-	iter_stats.pos_end.x = X_curr[0];
-	iter_stats.pos_end.y = X_curr[1];
-	iter_stats.pos_end.z = X_curr[2];
-	iter_stats.obj_end = F_curr;
+//	iter_stats.pos_end.x = X_curr[0];
+//	iter_stats.pos_end.y = X_curr[1];
+//	iter_stats.pos_end.z = X_curr[2];
+//	iter_stats.obj_end = F_curr;
 
-	return X_curr;
+	return convg_status;
 }
 /******************************************************************************/
 void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
