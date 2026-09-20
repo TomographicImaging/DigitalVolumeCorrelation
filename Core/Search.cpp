@@ -58,10 +58,10 @@ Search::Search(RunControl *run)
 	ref_subvol = std::vector<double>(subv_num,0.0);
 	tar_subvol = std::vector<double>(subv_num,0.0);
 
-	// set convergence criteria
-	obj_tol = 0.000001;		// objective function change threshold that defines convergence
-	pos_tol = 0.01;			// parameter vector displcement mag change threshold that defines convergence
-	maxit = 20;				// max iterations allowed
+	// set convergence criteria (Legacy, simple abs obj change magnitudes and translation step magnitude (norm))
+//	obj_tol = 0.000001;		// objective function change threshold that defines convergence (legacy = 0.000001)
+//	pos_tol = 0.01;			// parameter vector displcement mag change threshold that defines convergence (legacy = 0.01)
+//	maxit = 20;				// max iterations allowed (legacy = 20)
 
 	// optimization result storage 
 	par_min = std::vector<double>(rc->num_srch_dof,0.0);	// note size, rc->num_srch_dof
@@ -211,103 +211,183 @@ Several ting to do here.
 	throw Point_Good();
 }
 /******************************************************************************/
+// legacy version, simple checks on relative objective functin and parameter vector changes
+ConvergenceReason Search::check_convergence(
+    const Eigen::VectorXd& X_prev,
+    const Eigen::VectorXd& X_curr,
+    double F_prev,
+    double F_curr)	// access is tol.cost_tol, tol.step_tol, tol.grad_tol,
+{
+	double tol_cost = 0.000001;			// hardcoded locally here for now, (legacy = 0.000001)
+	double tol_step = 0.01;				// hardcoded locally here for now, (legacy = 0.01)
+
+	// 1. Change in the objective function:
+	double cost_norm = fabs(F_curr - F_prev);
+	if (cost_norm < tol_cost) {
+		return ConvergenceReason::CostChange;
+	}
+
+	// 2. Change in the parameter vector:
+	double step_norm = (X_curr - X_prev).norm();
+	if (step_norm < tol_step) {
+		return ConvergenceReason::ParameterChange;
+	}
+
+	return NotConverged;	// if none of the checks are satisfied this is returned
+}
+/******************************************************************************/
+ConvergenceReason Search::Check_Convergence(
+    const Eigen::VectorXd& r,
+    const Eigen::MatrixXd& J,
+    const Eigen::VectorXd& x_k,
+    const Eigen::VectorXd& x_next,
+    double cost_k,
+    double cost_next)
+{
+    double cost_tol = 1e-8;   // eps1: relative cost change, hardcoded locally here for now, (original = 1e-8)
+    double step_tol = 1e-8;   // eps2: relative parameter step, hardcoded locally here for now, (original = 1e-8)
+    double grad_tol = 1e-8;   // eps3: gradient (first-order optimality), hardcoded locally here for now, (original = 1e-8)
+
+    // 1. Change in the objective function:
+    //    |S(x_k) - S(x_{k+1})| / S(x_k) < eps1
+    double cost_denom = std::max(cost_k, std::numeric_limits<double>::epsilon());
+    double cost_change = std::abs(cost_k - cost_next) / cost_denom;
+    if (cost_change < cost_tol) {
+        return ConvergenceReason::CostChange;
+    }
+
+    // 2. Change in the parameter vector:
+    //    ||x_{k+1} - x_k|| < eps2 * (||x_k|| + eps2)
+    double step_norm  = (x_next - x_k).norm();
+    double param_norm = x_k.norm();
+    if (step_norm < step_tol * (param_norm + step_tol)) {
+        return ConvergenceReason::ParameterChange;
+    }
+
+    // 3. Gradient norm (first-order optimality):
+    //    ||J^T r||_inf < eps3
+    Eigen::VectorXd grad = J.transpose() * r;   // = gradient of S(x) = 0.5||r||^2
+    double grad_inf_norm = grad.lpNorm<Eigen::Infinity>();
+    if (grad_inf_norm < grad_tol) {
+        return ConvergenceReason::GradientNorm;
+    }
+
+    return ConvergenceReason::NotConverged;
+}
+/******************************************************************************/
 std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data)
 // obj_tol compares with change in the objective function at each iteration
 // pos_tol compares with position change at each iteration
 {
 	int npts = subv_num;
 	int ndof = start.size();
-	std::vector<double> jump(ndof, 0.0);
 	Iter_Stats point_stats;
 
-	Eigen::VectorXd e = Eigen::VectorXd(npts);
-	Eigen::MatrixXd J = Eigen::MatrixXd(npts,ndof);
-	Eigen::MatrixXd JTJ = Eigen::MatrixXd(ndof,ndof);
-	Eigen::VectorXd JTe = Eigen::VectorXd(ndof);
-	Eigen::VectorXd update = Eigen::VectorXd(ndof);
+	maxit = 20;		// hardcoded locally here for now, (legacy = 20)
+	double obj_tol = 0.000001;			// hardcoded locally here for now, (legacy = 0.000001)
+	double pos_tol = 0.01;				// hardcoded locally here for now, (legacy = 0.01)
 
-	// jump contains the updated parameter vector as optimization proceeds
+	std::vector<double> X_prev(ndof, 0.0);		// parameter vector of previous  iteration
+	std::vector<double> X_curr(ndof, 0.0);		// parameter vector of current iteration
+
+	// patch for now to support Check_Convergence which uses Eigen .norm, lpNorm, etc.
+	// switch to all Eigen types in future
+	Eigen::VectorXd X_prev_eig = Eigen::VectorXd(ndof);		// parameter vector of previous  iteration
+	Eigen::VectorXd X_curr_eig = Eigen::VectorXd(ndof);		// parameter vector of current iteration
+
+	double F_prev{};		// objective function value of previous iteration, itialized to zero
+	double F_curr{};		// objective function value of current iteration, itialized to zero
+
+	Eigen::VectorXd r = Eigen::VectorXd(npts);			// residual vector
+	Eigen::MatrixXd J = Eigen::MatrixXd(npts,ndof);		// Jacobian
+	Eigen::MatrixXd JTJ = Eigen::MatrixXd(ndof,ndof);	// lhs
+	Eigen::VectorXd JTr = Eigen::VectorXd(ndof);		// rhs
+	Eigen::VectorXd update = Eigen::VectorXd(ndof);		// parameter change
+
+	ConvergenceReason convg_reason;
+	ConvergenceReason Convg_Reason;		// maintain both for comparisons
+
+	std::vector<std::string> convg_str = {"NotConverged", "CostChange", "ParameterChange", "GradientNorm"};
+
+	// X contains the updated parameter vector as optimization proceeds, initialized here
 	for (int i=0; i<ndof; i++) {
-			jump[i] = start[i];
+			X_curr[i] = start[i];
 	}
-
-	double obj_old = 0.0;
+	iter_stats.pos_beg.x = start[0];
+	iter_stats.pos_beg.y = start[1];
+	iter_stats.pos_beg.z = start[2];
 
 	// track number of iterations, start with 1 for nits updated within the convergence check conditional
 	int nits = 1;
-	int obj_nits = 1;
-	int pos_nits = 1;
 
-	double del_obj;		// change on objective function value from prior it
+	double del_obj;		// change in objective abs function value from prior it
 	double del_pos;		// change in position from prior it
+
+	// Working to update the convergence test. 
+	// Write convergence test as seperate functions that can be swapped/trialed independently to preserve legacy behaviour. 
+	
+	//double F;				// objective function magnitude returned by LM_prep_at
+	//double F_old = 0.0;		// prior it value
+
+	//for (int i=0; i<2; i++) {		// check
+
+	std::cout << std::endl;		// live report formatting
 
 	for (int i=0; i<maxit; i++) {
 
-		double obj = LM_prep_at(jump, e, J);
+		F_curr = LM_prep_at(X_curr, r, J);	// X is a constant input, r and J passed as pointers and modified
 
-		if (i==0) {
-			iter_stats.obj_beg = obj;
-			iter_stats.pos_beg.x = jump[0];
-			iter_stats.pos_beg.y = jump[1];
-			iter_stats.pos_beg.z = jump[2];
-		}
+		if (i==0) { iter_stats.obj_beg = F_curr; }
 
 		// convergence check
 		if (i>0) {
-			del_obj = fabs(obj - obj_old);
-			del_pos = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
-
 			nits += 1;
-			if (del_obj > obj_tol) {
-				obj_nits += 1;
-			}
-			if (del_pos > pos_tol) {
-				pos_nits += 1;
-			}
 
-			// point has converged for either obj or pos criteria
-			if ((del_obj <= obj_tol) || (del_pos <= pos_tol)) {
-				iter_stats.nits = nits;
-				iter_stats.obj_nits = obj_nits;
-				iter_stats.pos_nits = pos_nits;
+			for (int j=0; j<ndof; j++) {
+				X_prev_eig(j) = X_prev[j];
+				X_curr_eig(j) = X_curr[j];
+			}
+			convg_reason = check_convergence(X_prev_eig, X_curr_eig, F_prev, F_curr);
+			std::cout << "convg_reason = " << convg_str[convg_reason];
 
-				iter_stats.obj_update_last_it = del_obj;
-				iter_stats.pos_update_last_it = del_pos;
-				iter_stats.obj_end = obj;
-				
-				iter_stats.pos_end.x = jump[0];
-				iter_stats.pos_end.y = jump[1];
-				iter_stats.pos_end.z = jump[2];
+			std::cout << "\t";		// live report formatting
+
+			// also run Check_Convergence for comparison with legacy
+			Convg_Reason = Check_Convergence(r, J, X_prev_eig, X_curr_eig, F_prev, F_curr);
+			std::cout << "Convg_Reason = " << convg_str[Convg_Reason];
+
+			std::cout << std::endl;		// live report formatting
+
+			if (convg_reason != NotConverged) {
 				break;
 			}
+
+
 		}
 
+		// determine and apply a new parameter update, move current data back to previous
 		JTJ = J.transpose()*J;
-		JTe = J.transpose()*e;
-		update = JTJ.colPivHouseholderQr().solve(-JTe);
-
+		JTr = J.transpose()*r;
+		update = JTJ.colPivHouseholderQr().solve(-JTr);
+		
 		for (int j=0; j<ndof; j++) {
-			jump[j] += update(j);
+			X_prev[j] = X_curr[j];
+			X_curr[j] += update(j);
 		}
-
-		obj_old = obj;
-
-		if (i==maxit) {
-			iter_stats.nits = maxit;
-			iter_stats.obj_nits = maxit;
-			iter_stats.pos_nits = maxit;
-
-			iter_stats.obj_update_last_it = del_obj;
-			iter_stats.pos_update_last_it = del_pos;
-			iter_stats.obj_end = obj;
-
-			iter_stats.pos_end.x = jump[0];
-			iter_stats.pos_end.y = jump[1];
-			iter_stats.pos_end.z = jump[2];
-		}
+		F_prev = F_curr;
 	}
 
-	return jump;
+	iter_stats.nits = nits;
+
+	iter_stats.obj_update_last_it = del_obj;
+	iter_stats.pos_update_last_it = del_pos;
+	
+	iter_stats.pos_end.x = X_curr[0];
+	iter_stats.pos_end.y = X_curr[1];
+	iter_stats.pos_end.z = X_curr[2];
+	iter_stats.obj_end = F_curr;
+
+	return X_curr;
 }
 /******************************************************************************/
 void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)

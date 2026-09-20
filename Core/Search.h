@@ -97,6 +97,22 @@ public:
 	void Jacobian_at (const std::vector<double> a, std::vector< std::vector<double> > &J); // by forward diferences: [npts][ndof]
 	double LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J); // key bits needed by LM using eigen library types
 
+	// legacy convergence check
+	ConvergenceReason check_convergence(
+		const Eigen::VectorXd& x_k,
+		const Eigen::VectorXd& x_next,
+    	double F_prev,
+    	double F_curr);
+
+	// enhanced convergence check
+	ConvergenceReason Check_Convergence(
+		const Eigen::VectorXd& r,
+		const Eigen::MatrixXd& J,
+		const Eigen::VectorXd& x_k,
+		const Eigen::VectorXd& x_next,
+		double cost_k,
+		double cost_next);
+
 	// translation grid style global search
 	void trgrid_global(double displ_max, double basin_rad, int n, bool out_as_raw);
 

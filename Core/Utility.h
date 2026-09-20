@@ -77,8 +77,16 @@ class Convg_Fail {};	// max it exceeded in an optimization routine
 class Bound_Fail {};	// BoundBox not within another, as expected
 class Intrp_Fail {};	// Points asked for outside of an interp volume
 
-// used in input operations and fiel checking
+// used in input operations and file checking
 class Input_Fail {};	// Reguired input file missing or unreadable
+
+//enum class ConvergenceReason {
+enum ConvergenceReason {
+    NotConverged,
+    CostChange,
+    ParameterChange,
+    GradientNorm
+};
 
 /******************************************************************************/
 

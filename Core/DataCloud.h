@@ -358,8 +358,6 @@ struct DualSort
 struct Iter_Stats
 {
     int nits;
-    int obj_nits;
-    int pos_nits;
 
     double obj_update_last_it;
     double pos_update_last_it;
