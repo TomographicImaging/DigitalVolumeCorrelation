@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 
 			try
 			{
-				optimize.process_point(trg, n, &data, 1);
+				optimize.process_point(trg, n, 0, 0, &data);
 			}
 			catch (Point_Good)
 			{
