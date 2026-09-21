@@ -12,9 +12,10 @@ RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
 )
 
 
-message (WARNING "Adding test test1")
-
-add_test(NAME DATACLOUD_test
-           COMMAND test1 datacloud_input.txt
-           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
+if (NOT WIN32)
+  message (WARNING "Adding test DATACLOUD_test")
+  find_package(Bash REQUIRED)
+  add_test(NAME DATACLOUD_test
+         COMMAND ${BASH_EXECUTABLE} run_test.sh
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
