@@ -30,6 +30,7 @@ Author(s): Brian Bay (OSU)
 #include <sstream>
 #include <limits>
 #include <cstdlib>
+#include <ctime>
 
 // adjust Makefile if changes made here
 #include "Point.h"
