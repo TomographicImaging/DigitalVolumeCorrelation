@@ -169,41 +169,26 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 /*******************/
 
 	// L-M optimization, currently using pure QN steps (no lambda tuning)
-	// not yet reporting on convg or range failures
 
-
-
-/*
-Several ting to do here.
-1. The obj_val_at below should be eliminated. It duplicates the final call in min_Lev_Mar. 
-	Reducing 1 obj_val_at by 1 is a big win with iterations numbers genreally low (3,4,5). 
-
-2. Need to build try/catch in the iterations in case an out of box param vector is tried.
-	Currently any Range_Fail being thrown must be fro this final check, but it should be at each obj eval in min_Lev_Mar
-	Then just keep obj_min aready avaialble and utilized in Search updated. 
-*/
-
-
-
-
-	// par_min initial estimate in place here, with par_min reset within min_Lev_Mar, copy into start and passed as const
+	// par_min initial estimate in place here, with par_min reset within min_Lev_Mar, copy into start (passed as const)
 	int ndof = par_min.size();
 	std::vector<double> start(ndof, 0.0);
 	for (int i=0; i<ndof; i++) {
 		start[i] = par_min[i];
 	}
 
-	ConvergenceReason opt_status;
-
-	// set par_min and obj_min within min_Lev_Mar and return a ConvergenceReason that includes Converged
-
-	opt_status = min_Lev_Mar(start, srch_data);
-
+	// par_min and obj_min set within min_Lev_Mar, returns a ConvergenceReason that includes Converged and Maxit codes
+	ConvergenceReason opt_status = min_Lev_Mar(start, srch_data);
 	std::cout << "convg_result = " << CR_str_vec[opt_status] << std::endl;
 
-	// need to track-down origin and status of Range_Fail();
-
 	delete fcld;
+
+	// need to track-down origin and status of Range_Fail();
+	// 1. within the interp functions:
+	// 1.a. try act_box->contains(bbox), if fail returns Bound_Fail, and interp throw Intrp_Fail()
+	// 2. min_Lev_Mar calls LM_prep_at calls bspline_jacobian_at/obj_val_at which call the interp functions
+	// 3. the interp func tions all use catch (Intrp_Fail) {throw Range_Fail();}
+	// *** try/catch needs to work it's way up to here, with min_Lev_mar with a try/catch for all fails withn the esquence
 
 	if (opt_status == Converged) {
 		throw Point_Good();
