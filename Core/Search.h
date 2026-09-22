@@ -71,7 +71,7 @@ public:
 	//int bspline_order = 0;
 
 	BoundBox *vox_box;	// image volume dimensions
-	BoundBox *est_box_nom;	// for allocating an interpolator kernel
+	BoundBox *est_box_nom;	// for allocating an interpolator kernel sized for the correlate volume search range
 
 	std::vector<double> ref_subvol;
 	std::vector<double> tar_subvol;

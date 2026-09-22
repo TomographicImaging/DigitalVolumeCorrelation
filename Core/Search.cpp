@@ -58,11 +58,6 @@ Search::Search(RunControl *run)
 	ref_subvol = std::vector<double>(subv_num,0.0);
 	tar_subvol = std::vector<double>(subv_num,0.0);
 
-	// set convergence criteria (Legacy, simple abs obj change magnitudes and translation step magnitude (norm))
-//	obj_tol = 0.000001;		// objective function change threshold that defines convergence (legacy = 0.000001)
-//	pos_tol = 0.01;			// parameter vector displcement mag change threshold that defines convergence (legacy = 0.01)
-//	maxit = 20;				// max iterations allowed (legacy = 20)
-
 	// optimization result storage 
 	par_min = std::vector<double>(rc->num_srch_dof,0.0);	// note size, rc->num_srch_dof
 
@@ -71,6 +66,7 @@ Search::Search(RunControl *run)
 	// create a subvolume size box, then expand by the disp_max parameter (change to opt_translate_max?)
 	// position is initially at the corner of the vox_box
 	// note that subv_rad applies to both spheres and cubes, and is a half-width
+
 	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
 	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
 	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
@@ -96,6 +92,8 @@ Search::Search(RunControl *run)
 	//    Instead we grow by just the desired net safety margin (1.0) and let
 	//    Interpolate's own constructor reserve the halo on top of that.
 
+	// interp is instantiated here with new for persistence during the search
+	// these are for the search region within the correlate volume
 	if (rc->bspline == true)
 	{
 		const int bspline_order_cfg = rc->bspline_order;
@@ -427,24 +425,6 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	// ***** using the same bbox (Cloud) when set to subvol size + opt range is wasteful
 	// try doing this process with a seperateinterp box that is just subvol size plus kernal margins. 
 
-	// having difficulty tracking the various nob variables, let's check
-	int iwide = fcld->stable->bbox()->iwide();
-	int ihigh = fcld->stable->bbox()->ihigh();
-	int itall = fcld->stable->bbox()->itall();
-	std::cout << "fcld->stable->bbox(): " << iwide << " " << ihigh << " " << itall << std::endl;
-
-	iwide = fcld->moving->bbox()->iwide();
-	ihigh = fcld->moving->bbox()->ihigh();
-	itall = fcld->moving->bbox()->itall();
-	std::cout << "fcld->moving->bbox(): " << iwide << " " << ihigh << " " << itall << std::endl;
-
-
-	iwide = est_box_nom->iwide();
-	ihigh = est_box_nom->ihigh();
-	itall = est_box_nom->itall();
-	std::cout << "est_box_nom: " << iwide << " " << ihigh << " " << itall << std::endl;
-	//
-
 	// Notes on the various boxes.
 	// 0. vox_box is the full image volume size
 	// 1. fcld->stable->bbox() is subvolume size, centered at the cloud point location for current search
@@ -466,12 +446,56 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	//		for tri_bspline frame is set to halo, defined witihin the constructor for a given bspline_order
 	//		***** this needs to be fixed at the constructor level, currently just done for one est_box size.  
 	//	
-	//		***** Best strategy may be to move the Interpolate constructors here from the Search constructor.
+	//	***** Best strategy may be to add Interpolate constructors here for ref subvolume interpolation.
+	//		Each Interpolate owns ref_box and act_box, Search owns est_box_nom. 
+	//	
 	
+	// *** reference volume interpolation, limited in size to subvolume size + coefficient borders
+	Point ref_vox_box_min = Point(0.0, 0.0, 0.0);
+	Point ref_vox_box_max = Point(rc->vol_wide, rc->vol_high, rc->vol_tall);
+	BoundBox ref_vox_box = BoundBox(ref_vox_box_min, ref_vox_box_max);
 
+	Point ref_box_nom_min = Point(0.0, 0.0, 0.0);
+	Point ref_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
+	// no adjustment for search range, just the subvolume
+	BoundBox ref_box_nom = BoundBox(ref_box_nom_min, ref_box_nom_max);
+
+	// this unusual syntax extends scope of interp_ref beyond the conditional
+	Interpolate interp_ref = [&]() {
+		if (rc->bspline == true) {
+			const int bspline_order_cfg = rc->bspline_order;
+			double halo = ((bspline_order_cfg + 1) / 2) + 1;
+			ref_box_nom.grow_by(halo);	// the basic halo definition increased by 1
+			return Interpolate(&ref_box_nom, bspline_order_cfg);
+		}
+		else {
+			ref_box_nom.grow_by(2.0);
+			return Interpolate(&ref_box_nom);
+		}
+	}();
+
+	interp_ref.center_on(srch_pt);
+	interp_ref.kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
+
+	if (rc->int_typ == trilinear) {
+		interp_ref.tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->int_typ == tricubic) {
+		interp_ref.tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->bspline == true) {
+		interp_ref.kernels_bspline();
+		interp_ref.tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+
+	// ***
+
+
+
+	// original sequence for reference volume interpolation
+/*	
 	interp->center_on(srch_pt);
 	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
-
 	if (rc->int_typ == trilinear) {
 		interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
@@ -482,7 +506,7 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 		interp->kernels_bspline();
 		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
-
+*/	
 
 	// re-set kernels for the moving cloud to prepare for subsequent interp calls
 	starting_param(srch_pt, neigh_res);

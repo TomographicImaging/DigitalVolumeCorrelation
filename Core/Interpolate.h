@@ -120,8 +120,8 @@ private:
 // Element [0][0][0] is located at the min corner of the interp_region.
 // Subtract est_box.min() from actual (x,y,z) to get relative position.
 //
-	BoundBox *est_box;	// the overall interp bbox
-	BoundBox *act_box;	// the active region, minus a frame for fdd's
+	BoundBox *est_box;	// the overall interp box in the correlate volume, subvolume size + search range + coefficient border
+	BoundBox *act_box;	// the active region, minus a frame for coefficient access
 
 	Matrix_4d *kern_4d;
 
