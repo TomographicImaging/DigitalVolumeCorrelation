@@ -49,11 +49,6 @@ Search::Search(RunControl *run)
 		obj_fcn_res = &obj_ZNSSD;
 	}
 
-	// create a box with the full dimensions of the image voxel volumes
-	Point vox_box_min(0.0, 0.0, 0.0);
-	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
-	vox_box = new BoundBox(vox_box_min, vox_box_max);
-
 	// create reference and correlate (target) subvolume vectors of interpolated voxel data, init to 0.0
 	ref_subvol = std::vector<double>(subv_num,0.0);
 	tar_subvol = std::vector<double>(subv_num,0.0);
@@ -66,11 +61,6 @@ Search::Search(RunControl *run)
 	// create a subvolume size box, then expand by the disp_max parameter (change to opt_translate_max?)
 	// position is initially at the corner of the vox_box
 	// note that subv_rad applies to both spheres and cubes, and is a half-width
-
-	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
-	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
-	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
-	est_box_nom->grow_by(rc->disp_max);
 
 
 	// create interpolator of suitable capacity.
@@ -94,6 +84,17 @@ Search::Search(RunControl *run)
 
 	// interp is instantiated here with new for persistence during the search
 	// these are for the search region within the correlate volume
+
+	// create a box with the full dimensions of the image voxel volumes for use in range checking
+	Point vox_box_min(0.0, 0.0, 0.0);
+	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
+	vox_box = new BoundBox(vox_box_min, vox_box_max);
+
+	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
+	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
+	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
+	est_box_nom->grow_by(rc->disp_max);
+
 	if (rc->bspline == true)
 	{
 		const int bspline_order_cfg = rc->bspline_order;
@@ -327,7 +328,7 @@ ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataClou
 
 	//for (int i=0; i<2; i++) {		// check
 
-	std::cout << std::endl;		// live report formatting
+	//std::cout << std::endl;		// live report formatting
 
 	for (int i=0; i<maxit; i++) {
 
@@ -398,59 +399,8 @@ ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataClou
 	return convg_status;
 }
 /******************************************************************************/
-void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
+void Search::load_ref_subvol(Point srch_pt) 
 {
-	// Interpolation kernels are established during this stage. 
-	//
-	// A kernel is first developed/used for one interpolation of reference volume data
-	// to establish the ref_subvol vector of interpolated sampling point values. 
-	//
-	// A kernel is then developed and used for the multiple interpolations of correlate volume data
-	// to establish tar_subvolume sampling point values as needed for optimization. 
-	//
-	// tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
-	// of voxel values and derivatives at the voxel centers, stored in a matrix for fast mult/sum.
-	//
-	// For tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
-	//		This loads voxel data directly, then calculates derivatives at the voxel locations. 
-	//		tri_lin require no further kernel development.
-	//		tri_cub_leK calls further "on demand" kernel development as needed for individual sampling points.
-	//
-	// For tri_bspline: interp->kernels followed by interp->kernels_bspline
-	//		This reads voxel data, finds voxel derivatives, then calculates the bspline-specific coefficientc. 
-	//		This assumes interp = new Interpolate(est_box_nom, bspline_order_cfg) has been invoked with order set. 
-
-	// set kernels/kernels_derivs for the reference volume
-
-	// ***** using the same bbox (Cloud) when set to subvol size + opt range is wasteful
-	// try doing this process with a seperateinterp box that is just subvol size plus kernal margins. 
-
-	// Notes on the various boxes.
-	// 0. vox_box is the full image volume size
-	// 1. fcld->stable->bbox() is subvolume size, centered at the cloud point location for current search
-	// 2. fcld->moving->bbox() is subvolume size, centered at par_min[0],[1],[2], updated at each iteration
-	// 3. Need to sort out est_box_nom (Search.h) and est_box (Interp.h). 
-	//		It looks like everything (ref included) is read into a of subvolume + range search expansion.
-	//		If so, it's an opportunity for an efficiency gain. Ref doesn't need this.
-	// 4. There is also an act_box (Interp.h) that looks like the active region within est_box, accounting for kernel borders.
-	// Figure out where these things are set, where they are modified, etc. 
-	//
-	// est_box and act_box are initially established in Interpolate::init
-	//		est_box is BoundBox(region->min(), region->max());
-	//		act_box is est_box with grow_by(-frame) applied. 
-	//
-	//	est_box is used by the Interpolate constructors which take in a BoundBox as argument region
-	//		seperate constructors for trilinear/tricubic and tri_bspline_3,5,7
-	//		constructors in turn call Interpolate::init
-	//		init also takes in the argument frame, set as 1 for tricubic
-	//		for tri_bspline frame is set to halo, defined witihin the constructor for a given bspline_order
-	//		***** this needs to be fixed at the constructor level, currently just done for one est_box size.  
-	//	
-	//	***** Best strategy may be to add Interpolate constructors here for ref subvolume interpolation.
-	//		Each Interpolate owns ref_box and act_box, Search owns est_box_nom. 
-	//	
-	
-	// *** reference volume interpolation, limited in size to subvolume size + coefficient borders
 	Point ref_vox_box_min = Point(0.0, 0.0, 0.0);
 	Point ref_vox_box_max = Point(rc->vol_wide, rc->vol_high, rc->vol_tall);
 	BoundBox ref_vox_box = BoundBox(ref_vox_box_min, ref_vox_box_max);
@@ -487,28 +437,40 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 		interp_ref.kernels_bspline();
 		interp_ref.tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
+}
+/******************************************************************************/
+void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
+{
+	// Interpolation kernels are established during this stage. 
+	//
+	// A kernel is first developed/used for one interpolation of reference volume data
+	// to establish the ref_subvol vector of interpolated sampling point values. 
+	//
+	// A kernel is then developed and used for the multiple interpolations of correlate volume data
+	// to establish tar_subvolume sampling point values as needed for optimization. 
+	//
+	// tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
+	// of voxel values and derivatives at the voxel centers, stored in a matrix for fast mult/sum.
+	//
+	// For tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
+	//		This loads voxel data directly, then calculates derivatives at the voxel locations. 
+	//		tri_lin require no further kernel development.
+	//		tri_cub_leK calls further "on demand" kernel development as needed for individual sampling points.
+	//
+	// For tri_bspline: interp->kernels followed by interp->kernels_bspline
+	//		This reads voxel data, finds voxel derivatives, then calculates the bspline-specific coefficientc. 
+	//		This assumes interp = new Interpolate(est_box_nom, bspline_order_cfg) has been invoked with order set. 
+	//	
+	// Overall strategy is seperate Interpolate constructors for reference and target data interpolation.
+	//		A reference volume Interpolate is established within load_ref_subvol, used locally to load ref_subvolume, then discarded.
+	//		The  
+	//	
+	
+	// *** reference volume interpolation, limited in size to subvolume size + coefficient borders
+	load_ref_subvol(srch_pt);
 
-	// ***
-
-
-
-	// original sequence for reference volume interpolation
-/*	
-	interp->center_on(srch_pt);
-	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
-	if (rc->int_typ == trilinear) {
-		interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	if (rc->int_typ == tricubic) {
-		interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	if (rc->bspline == true) {
-		interp->kernels_bspline();
-		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-*/	
-
-	// re-set kernels for the moving cloud to prepare for subsequent interp calls
+	// target volume interpolation preparation, reading of image data and kernel calculations for iteration during optimization
+	// interp constructor is invoked in the Search constructor using new to persist durnig the function calls of the iteration process. 
 	starting_param(srch_pt, neigh_res);
 	Point offset_pt = srch_pt;
 	offset_pt.move_by(par_min[0], par_min[1], par_min[2]);

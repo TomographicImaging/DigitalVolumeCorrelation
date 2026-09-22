@@ -89,6 +89,8 @@ public:
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
+	void load_ref_subvol(Point srch_pt);
+
 	void starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
 	double obj_val_at(const std::vector<double> x);	// this version uses nominals set at Search construct
