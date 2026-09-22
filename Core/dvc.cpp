@@ -274,9 +274,11 @@ int main(int argc, char *argv[])
 			for (int j=0; j<run.num_srch_dof; j++) {
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
 			}
+
+			/*
 			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
-			//data.results[trg][n].iter_stats.obj_nits = optimize.iter_stats.obj_nits;
-			//data.results[trg][n].iter_stats.pos_nits = optimize.iter_stats.pos_nits;
+			data.results[trg][n].iter_stats.obj_nits = optimize.iter_stats.obj_nits;
+			data.results[trg][n].iter_stats.pos_nits = optimize.iter_stats.pos_nits;
 
 			data.results[trg][n].iter_stats.obj_update_last_it = optimize.iter_stats.obj_update_last_it;
 			data.results[trg][n].iter_stats.pos_update_last_it = optimize.iter_stats.pos_update_last_it;
@@ -291,6 +293,7 @@ int main(int argc, char *argv[])
 			data.results[trg][n].iter_stats.pos_end.x = optimize.iter_stats.pos_end.x;
 			data.results[trg][n].iter_stats.pos_end.y = optimize.iter_stats.pos_end.y;
 			data.results[trg][n].iter_stats.pos_end.z = optimize.iter_stats.pos_end.z;
+			*/
 		}
 		catch (Range_Fail)
 		{

@@ -76,6 +76,7 @@ Search::Search(RunControl *run)
 	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
 	est_box_nom->grow_by(rc->disp_max);
 
+
 	// create interpolator of suitable capacity.
 	//
 	// The two paths below both end up with the same net safety margin (1
@@ -179,7 +180,7 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 
 	// par_min and obj_min set within min_Lev_Mar, returns a ConvergenceReason that includes Converged and Maxit codes
 	ConvergenceReason opt_status = min_Lev_Mar(start, srch_data);
-	std::cout << "convg_result = " << CR_str_vec[opt_status] << std::endl;
+	//std::cout << "convg_result = " << CR_str_vec[opt_status] << std::endl;
 
 	delete fcld;
 
@@ -345,12 +346,12 @@ ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataClou
 				X_curr_eig(j) = X_curr[j];
 			}
 			convg_reason = check_convergence(X_prev_eig, X_curr_eig, F_prev, F_curr);
-			std::cout << "convg_reason = " << CR_str_vec[convg_reason];
-			std::cout << "\t";			// live report formatting
+			//std::cout << "convg_reason = " << CR_str_vec[convg_reason];
+			//std::cout << "\t";			// live report formatting
 			// also run Check_Convergence for comparison with legacy
 			Convg_Reason = Check_Convergence(r, J, X_prev_eig, X_curr_eig, F_prev, F_curr);
-			std::cout << "Convg_Reason = " << CR_str_vec[Convg_Reason];
-			std::cout << std::endl;		// live report formatting
+			//std::cout << "Convg_Reason = " << CR_str_vec[Convg_Reason];
+			//std::cout << std::endl;		// live report formatting
 
 			// *** Convergence response 
 			//if (convg_reason != NotConverged) {	// using legacy check
@@ -421,7 +422,53 @@ void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res
 	//		This reads voxel data, finds voxel derivatives, then calculates the bspline-specific coefficientc. 
 	//		This assumes interp = new Interpolate(est_box_nom, bspline_order_cfg) has been invoked with order set. 
 
-	// set kernels/kernels_derivs and interpolate the reference volume
+	// set kernels/kernels_derivs for the reference volume
+
+	// ***** using the same bbox (Cloud) when set to subvol size + opt range is wasteful
+	// try doing this process with a seperateinterp box that is just subvol size plus kernal margins. 
+
+	// having difficulty tracking the various nob variables, let's check
+	int iwide = fcld->stable->bbox()->iwide();
+	int ihigh = fcld->stable->bbox()->ihigh();
+	int itall = fcld->stable->bbox()->itall();
+	std::cout << "fcld->stable->bbox(): " << iwide << " " << ihigh << " " << itall << std::endl;
+
+	iwide = fcld->moving->bbox()->iwide();
+	ihigh = fcld->moving->bbox()->ihigh();
+	itall = fcld->moving->bbox()->itall();
+	std::cout << "fcld->moving->bbox(): " << iwide << " " << ihigh << " " << itall << std::endl;
+
+
+	iwide = est_box_nom->iwide();
+	ihigh = est_box_nom->ihigh();
+	itall = est_box_nom->itall();
+	std::cout << "est_box_nom: " << iwide << " " << ihigh << " " << itall << std::endl;
+	//
+
+	// Notes on the various boxes.
+	// 0. vox_box is the full image volume size
+	// 1. fcld->stable->bbox() is subvolume size, centered at the cloud point location for current search
+	// 2. fcld->moving->bbox() is subvolume size, centered at par_min[0],[1],[2], updated at each iteration
+	// 3. Need to sort out est_box_nom (Search.h) and est_box (Interp.h). 
+	//		It looks like everything (ref included) is read into a of subvolume + range search expansion.
+	//		If so, it's an opportunity for an efficiency gain. Ref doesn't need this.
+	// 4. There is also an act_box (Interp.h) that looks like the active region within est_box, accounting for kernel borders.
+	// Figure out where these things are set, where they are modified, etc. 
+	//
+	// est_box and act_box are initially established in Interpolate::init
+	//		est_box is BoundBox(region->min(), region->max());
+	//		act_box is est_box with grow_by(-frame) applied. 
+	//
+	//	est_box is used by the Interpolate constructors which take in a BoundBox as argument region
+	//		seperate constructors for trilinear/tricubic and tri_bspline_3,5,7
+	//		constructors in turn call Interpolate::init
+	//		init also takes in the argument frame, set as 1 for tricubic
+	//		for tri_bspline frame is set to halo, defined witihin the constructor for a given bspline_order
+	//		***** this needs to be fixed at the constructor level, currently just done for one est_box size.  
+	//	
+	//		***** Best strategy may be to move the Interpolate constructors here from the Search constructor.
+	
+
 	interp->center_on(srch_pt);
 	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 

@@ -48,7 +48,7 @@ using namespace std;
 class CCPI_EXPORT Interpolate
 {
 public:
-
+	// original constructor, now just for tricubic
 	Interpolate(const BoundBox *region);
 
 	// Reserves enough margin (est_box vs act_box) to support B-spline

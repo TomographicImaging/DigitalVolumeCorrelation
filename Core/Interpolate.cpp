@@ -598,6 +598,8 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 	return Interpolate::kernels(voxfname, vox_box, bytes_per, endian, 0);
 }
 /******************************************************************************/
+// e.g. interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
+
 void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian, unsigned int offset)
 
 // Load values from a voxel file. Derivatives are calculated at each voxel, but
