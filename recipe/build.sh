@@ -39,6 +39,6 @@ else
                         -DBUILD_TEST=ON
 fi
 
-cmake --build . --target install
-
+cmake --build . --target install -j
+ctest --output-on-failure
 # ${PYTHON} setup.py install

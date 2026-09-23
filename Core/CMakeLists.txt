@@ -98,6 +98,7 @@ include_directories(strain PUBLIC
 )
 
 if(BUILD_TEST)
+  message("Building tests")
   add_subdirectory(tests)
 endif()
 
