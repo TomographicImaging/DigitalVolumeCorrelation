@@ -14,8 +14,20 @@ RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
 
 if (NOT WIN32)
   message (WARNING "Adding test DATACLOUD_test")
-  find_package(Bash REQUIRED)
+  find_program(BASH_PROGRAM NAMES bash)
+
+  if (NOT BASH_PROGRAM)
+      message(FATAL_ERROR "Bash executable not found!")
+  endif()
+
+  message(STATUS "Found Bash at: ${BASH_PROGRAM}")
+  add_custom_target(GENERATE_TESTDATA ALL
+    COMMAND ${BASH_PROGRAM} run_test.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
   add_test(NAME DATACLOUD_test
-         COMMAND ${BASH_EXECUTABLE} run_test.sh
+         COMMAND test1 datacloud_input.txt
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+  add_dependencies(test1 GENERATE_TESTDATA)
 endif()

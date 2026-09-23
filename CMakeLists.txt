@@ -75,4 +75,6 @@ ExternalProject_Add(eigen
   INSTALL_COMMAND   ""
 )
 
+enable_testing()
+
 add_subdirectory(Core)
