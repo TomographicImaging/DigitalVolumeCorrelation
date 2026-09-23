@@ -12,6 +12,26 @@ RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
 )
 
 
+add_executable(test_kdtree test_KDTree.cpp)
+target_link_libraries(test_kdtree cildvc_static)
+include_directories(test_kdtree PUBLIC ${CMAKE_SOURCE_DIR}/Core)
+add_test(NAME KDTree_test COMMAND test_kdtree WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(test_inputread test_InputRead.cpp)
+target_link_libraries(test_inputread cildvc_static)
+include_directories(test_inputread PUBLIC ${CMAKE_SOURCE_DIR}/Core)
+add_test(NAME InputRead_test COMMAND test_inputread WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(test_bspline_interp test_BSpline_Interpolate.cpp)
+target_link_libraries(test_bspline_interp cildvc_static)
+include_directories(test_bspline_interp PUBLIC ${CMAKE_SOURCE_DIR}/Core)
+add_test(NAME BSpline_Interpolate_test COMMAND test_bspline_interp WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(test_search test_Search.cpp)
+target_link_libraries(test_search cildvc_static)
+include_directories(test_search PUBLIC ${CMAKE_SOURCE_DIR}/Core)
+add_test(NAME Search_test COMMAND test_search WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
 if (NOT WIN32)
   message (WARNING "Adding test DATACLOUD_test")
   find_program(BASH_PROGRAM NAMES bash)
@@ -31,3 +51,4 @@ if (NOT WIN32)
 
   add_dependencies(test1 GENERATE_TESTDATA)
 endif()
+
