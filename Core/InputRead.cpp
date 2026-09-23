@@ -142,6 +142,14 @@ std::vector<std::string> InputRead::line_to_vect(std::string line)
 
 	return vect;
 }
+
+/******************************************************************************/
+void InputRead::clear_stream_str(std::ostringstream &the_stream, std::string &the_str)
+{
+	the_stream.str("");
+	the_stream.clear();
+	the_str.clear();
+}
 /******************************************************************************/
 InputRead::InputRead()
 {
@@ -192,6 +200,11 @@ InputRead::InputRead()
 	min_vol_fract_min = 0.0;
 	min_vol_fract_max = 1.0;
 	kwh_min_vol_fract.good = limits_to_string(min_vol_fract_min, min_vol_fract_max);
+
+	kwh_cost_tol.good = limits_to_string(cost_tol_min, cost_tol_max);
+	kwh_step_tol.good = limits_to_string(step_tol_min, step_tol_max);
+	kwh_grad_tol.good = limits_to_string(grad_tol_min, grad_tol_max);
+	kwh_max_iter.good = limits_to_string(max_iter_min, max_iter_max);
 
 	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
 	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
@@ -519,7 +532,6 @@ InputRead::InputRead()
 	kwh_basin_radius.reqd.assign("no");
 	kwh_basin_radius.pool.assign("opt_tune");
 	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = disp_max");
-
 	kwh_basin_radius.help.assign("   The default process uses cloud points sorted from a global start to establish initial disp values.\n");
 	kwh_basin_radius.help.append("   To conduct a coarse search in addition (gridded translation), set basin_radius to a non-zero value.\n");
 	kwh_basin_radius.help.append("   The basin_radius value sets the coarse-search resolution (grid step size).\n");
@@ -562,6 +574,101 @@ InputRead::InputRead()
 	kwh_starting_point.help.assign("   If not set, the first point in the point cloud will be used as starting point\n");
 	kwh_starting_point.help.append("\n");
 	manual.push_back(kwh_starting_point);
+
+
+	// std::ostringstream allows formatted conversion of numeric variables
+	// .str() extracts the string portion which can then be used as a std::string
+	// clear_stream_str(a_stream, a_str); before each use
+	std::ostringstream a_stream;
+	std::string a_str;
+
+	// cost_tol
+	kwh_cost_tol.word.assign("cost_tol");
+	kwh_cost_tol.pool.assign("opt_tune");
+	kwh_cost_tol.reqd.assign("no");
+
+	clear_stream_str(a_stream, a_str);
+	a_stream << cost_tol_def;
+	a_str = a_stream.str();
+	kwh_cost_tol.exam.assign(a_str);
+
+	clear_stream_str(a_stream, a_str);
+	a_stream << "### optional tuning of objective function convergence tolerance\n"
+        		<< "    min: " << std::scientific << std::setprecision(2) << cost_tol_min 
+        		<< "    default: " << std::scientific << std::setprecision(2) << cost_tol_def
+				<< "    max: " << std::scientific << std::setprecision(2) << cost_tol_max;
+	a_str = a_stream.str();
+	kwh_cost_tol.hint.assign(a_str);
+
+	clear_stream_str(a_stream, a_str);
+	a_stream << "    Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n"
+				<< "    A cloud point search is considered converged if the objective function change is below cost_tol.\n"
+				<< "    Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n"
+				<< "    Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n\n";
+	a_str = a_stream.str();
+	kwh_cost_tol.help.assign(a_str);
+	
+	manual.push_back(kwh_cost_tol);
+	//
+
+	// step_tol
+	kwh_step_tol.word.assign("step_tol");
+	kwh_step_tol.pool.assign("opt_tune");
+	kwh_step_tol.reqd.assign("no");
+
+	clear_stream_str(a_stream, a_str);
+	a_stream << step_tol_def;
+	a_str = a_stream.str();
+	kwh_step_tol.exam.assign(a_str);
+
+	clear_stream_str(a_stream, a_str);
+	a_stream 	<< "### optional tuning of parameter vector convergence tolerance\n"
+        		<< "    min: " << std::scientific << std::setprecision(2) << step_tol_min 
+        		<< "    default: " << std::scientific << std::setprecision(2) << step_tol_def
+				<< "    max: " << std::scientific << std::setprecision(2) << step_tol_max;
+	a_str = a_stream.str();
+	kwh_step_tol.hint.assign(a_str);
+
+	clear_stream_str(a_stream, a_str);
+	a_stream 	<< "    Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n"
+				<< "    A cloud point search is considered converged if the parameter vector change is below step_tol.\n"
+				<< "    Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n"
+				<< "    Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n\n";
+	a_str = a_stream.str();
+	kwh_step_tol.help.assign(a_str);
+	
+	manual.push_back(kwh_step_tol);
+	//
+
+	// max_iter
+	kwh_max_iter.word.assign("max_iter");
+	kwh_max_iter.pool.assign("opt_tune");
+	kwh_max_iter.reqd.assign("no");
+
+	clear_stream_str(a_stream, a_str);
+	a_stream << max_iter_def;
+	a_str = a_stream.str();
+	kwh_max_iter.exam.assign(a_str);
+
+	clear_stream_str(a_stream, a_str);
+	a_stream 	<< "### optional change in the maximum number of optimization iterations\n"
+        		<< "    min: " << std::scientific << std::setprecision(2) << max_iter_min 
+        		<< "    default: " << std::scientific << std::setprecision(2) << max_iter_def
+				<< "    max: " << std::scientific << std::setprecision(2) << max_iter_max;
+	a_str = a_stream.str();
+	kwh_max_iter.hint.assign(a_str);	
+	
+	clear_stream_str(a_stream, a_str);
+	a_stream 	<< "    Optimization is limited to a set number of iterations to manage cases of unreasonably slow convergence.\n"
+				<< "    In general a well-posed DVC problem with a good starting point will convege in a few iterations.\n"
+				<< "    There is no performance benefit from reducing max_iter as convergence checks break early from the update loop.\n"
+				<< "    In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help.\n\n";
+	a_str = a_stream.str();
+	kwh_max_iter.help.assign(a_str);
+
+	manual.push_back(kwh_max_iter);
+	//
+
 }
 /******************************************************************************/
 InputRead::~InputRead()
@@ -689,6 +796,17 @@ int InputRead::input_file_read(RunControl *run)
 		}
 
 	// optional parameters
+
+	// new code process, set min/max/def in InputRead.h as const
+	run->cost_tol = cost_tol_def;
+	run->step_tol = step_tol_def;
+	run->grad_tol = grad_tol_def;
+	run->max_iter = max_iter_def;
+
+	if(parse_line_min_max(kwh_cost_tol, cost_tol_min, cost_tol_max, run->cost_tol, false) == param_invalid) return 0;
+	if(parse_line_min_max(kwh_step_tol, step_tol_min, step_tol_max, run->step_tol, false) == param_invalid) return 0;
+	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
+	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
 	run->basin_radius = 0.0;
 	if(parse_line_min_max(kwh_basin_radius, 0, run->disp_max, run->basin_radius, false) == param_invalid) return 0;

@@ -359,14 +359,10 @@ struct Iter_Stats
 {
     int nits;
 
-    double obj_update_last_it;
-    double pos_update_last_it;
+    ConvergenceReason convg_status;  
 
     double obj_beg;
     double obj_end;
-
-    Point3D pos_beg;
-    Point3D pos_end;
 };
 /******************************************************************************/
 // Information from a completed search, used for cloud point neighborhoods

@@ -35,7 +35,6 @@ Author(s): Brian Bay (OSU)
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
-
 //
 
 #include "CCPiDefines.h"
@@ -120,6 +119,10 @@ public:
 	key_word_help kwh_num_points_to_process;
 	key_word_help kwh_starting_point;
 
+	key_word_help kwh_cost_tol;
+	key_word_help kwh_step_tol;
+	key_word_help kwh_grad_tol;
+	key_word_help kwh_max_iter;
 
 	key_word_help kwh_fine_srch;		// not implemented
 
@@ -143,6 +146,23 @@ public:
 	std::vector<std::string> ok_subvol_thresh;
 	double min_vol_fract_min, min_vol_fract_max;
 
+	// note, the const_tol variable itself is owned by Utility.h as part of RunControl
+	const double cost_tol_min = 1e-10;
+	const double step_tol_min = 1e-10;
+	const double grad_tol_min = 1e-10;
+
+	const double cost_tol_max = 1e-2;
+	const double step_tol_max = 1e-2;
+	const double grad_tol_max = 1e-2;
+
+	const double cost_tol_def = 1e-6;
+	const double step_tol_def = 1e-4;
+	const double grad_tol_def = 1e-8;
+
+	const int max_iter_min = 1;
+	const int max_iter_max = 100;
+	const int max_iter_def = 20;
+
 	std::vector<int> ok_num_srch_dof;
 	
 	std::vector<std::string> ok_obj_function;
@@ -160,6 +180,8 @@ public:
 	std::string limits_to_string(std::vector<int> val);
 	
 	std::vector<std::string> line_to_vect(std::string line);
+
+	void clear_stream_str(std::ostringstream &the_stream, std::string &the_str);
 
 	// get and parse line functions
 	int check_eol(std::ifstream &file, char &eol, std::string &term);

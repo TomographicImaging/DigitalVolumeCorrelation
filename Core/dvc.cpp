@@ -254,19 +254,19 @@ int main(int argc, char *argv[])
 		catch (Point_Good)
 		{
 			count_good += 1;
+			std::string status_txt;
+			if (optimize.iter_stats.convg_status == CostChange) {status_txt = "obj in ";}
+			if (optimize.iter_stats.convg_status == ParameterChange) {status_txt = "par in ";}
+			if (optimize.iter_stats.convg_status == GradientNorm) {status_txt = "grd in ";}
+
 			// this outputs in search order, may want to reshuffle at the end
 			in.append_result(run.res_fname, data.labels[n], data.points[n], point_good, optimize.obj_min, optimize.par_min);
-			std::cout << "Point_Good" << "\t";
+			std::cout << "Point_Good (" << status_txt << optimize.iter_stats.nits << ")" << "\t";
 			std::cout << std::setprecision(6);
 			std::cout << "obj= " << optimize.obj_min;
 			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
 			std::cout << std::setw(12) << "dy= " << optimize.par_min[1];
 			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
-
-			// flag whether to display these or not
-			//std::cout << std::setw(20) << "obj/nits/pos= " << optimize.iter_stats.obj_nits << "/" << optimize.iter_stats.nits << "/" << optimize.iter_stats.pos_nits;
-			//std::cout << std::setw(20) << "del_obj_last= " << optimize.iter_stats.obj_update_last_it;
-			//std::cout << std::setw(20) << "del_pos_last= " << optimize.iter_stats.pos_update_last_it;
 
 			// put results into record for this point
 			data.results[trg][n].status = point_good;
@@ -274,26 +274,8 @@ int main(int argc, char *argv[])
 			for (int j=0; j<run.num_srch_dof; j++) {
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
 			}
-
-			/*
 			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
-			data.results[trg][n].iter_stats.obj_nits = optimize.iter_stats.obj_nits;
-			data.results[trg][n].iter_stats.pos_nits = optimize.iter_stats.pos_nits;
-
-			data.results[trg][n].iter_stats.obj_update_last_it = optimize.iter_stats.obj_update_last_it;
-			data.results[trg][n].iter_stats.pos_update_last_it = optimize.iter_stats.pos_update_last_it;
-
-			data.results[trg][n].iter_stats.obj_beg = optimize.iter_stats.obj_beg;
-			data.results[trg][n].iter_stats.obj_end = optimize.iter_stats.obj_end;
-
-			data.results[trg][n].iter_stats.pos_beg.x = optimize.iter_stats.pos_beg.x;
-			data.results[trg][n].iter_stats.pos_beg.y = optimize.iter_stats.pos_beg.y;
-			data.results[trg][n].iter_stats.pos_beg.z = optimize.iter_stats.pos_beg.z;
-
-			data.results[trg][n].iter_stats.pos_end.x = optimize.iter_stats.pos_end.x;
-			data.results[trg][n].iter_stats.pos_end.y = optimize.iter_stats.pos_end.y;
-			data.results[trg][n].iter_stats.pos_end.z = optimize.iter_stats.pos_end.z;
-			*/
+			data.results[trg][n].iter_stats.nits = optimize.iter_stats.convg_status;
 		}
 		catch (Range_Fail)
 		{
