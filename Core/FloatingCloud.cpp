@@ -40,13 +40,12 @@ public:
 */
 /******************************************************************************/
 // constructor for randomized spherical or oblate spheroid subvolume sampling points
-FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z)
+FloatingCloud::FloatingCloud (Point cen, double rad_max, int num, double aspect_x, double aspect_y, double aspect_z, unsigned int seed)
 {
 	// both stable (reference) and moving (correlate) subvolume sampling points are managed together for consistency
 	stable = new Cloud();
 	moving = new Cloud();
 
-	unsigned int seed = std::chrono::system_clock::now().time_since_epoch().count();
 	// for testing purposes to compare runs, replace with seed = 1 to keep subvolume sampling points consistent 
 
 	params = new SearchParams();

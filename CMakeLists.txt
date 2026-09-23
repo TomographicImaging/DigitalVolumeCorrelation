@@ -51,6 +51,23 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 
 set (CMAKE_BUILD_TYPE "Release")
 
+option(BUILD_TEST "Build tests" ON)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+set(COVERAGE_TYPE "AUTO" CACHE STRING "Coverage type: AUTO, SOURCE_BASED (Clang), or GCOV")
+
+if (ENABLE_COVERAGE)
+  message(STATUS "Code coverage enabled")
+  if (COVERAGE_TYPE STREQUAL "GCOV" OR (COVERAGE_TYPE STREQUAL "AUTO" AND CMAKE_COMPILER_IS_GNUCXX))
+    message(STATUS "Using GCOV code coverage flags")
+    add_compile_options(--coverage -O0 -g)
+    add_link_options(--coverage)
+  else()
+    message(STATUS "Using Clang source-based code coverage flags")
+    add_compile_options(-fprofile-instr-generate -fcoverage-mapping -O0 -g)
+    add_link_options(-fprofile-instr-generate)
+  endif()
+endif()
+
 set(INSTALL_DIR "" CACHE PATH "Install Directory")
 if (INSTALL_DIR)
     set(INSTALL_BIN_DIR "${INSTALL_DIR}")
@@ -74,5 +91,7 @@ ExternalProject_Add(eigen
   BUILD_COMMAND     ""
   INSTALL_COMMAND   ""
 )
+
+enable_testing()
 
 add_subdirectory(Core)
