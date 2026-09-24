@@ -96,15 +96,16 @@ void test_set_bspline_order() {
 }
 
 void test_staleness_and_interpolation() {
-    // Generate a small synthetic volume: 20 x 20 x 20
-    const int nx = 20, ny = 20, nz = 20;
-    const double tolerance = 0.2;
+    // Generate synthetic volume: 30 x 30 x 30
+    const int nx = 30, ny = 30, nz = 30;
+    const double tolerance = 1e-3;
     const std::string vol_file = "tmp_synth_vol.raw";
 
-    // Known smooth linear function f(x, y, z) = 10.0 + 2.0*x + 3.0*y + 4.0*z
-    // B-spline interpolation reproduces linear polynomials exactly.
+    // Known smooth linear function f(x, y, z) = 10.0 + 1.0*x + 2.0*y + 3.0*z
+    // B-spline interpolation reproduces linear polynomials with high precision
+    // in the interior of the domain, away from boundary mirror artifacts.
     auto synth_fn = [](double x, double y, double z) -> double {
-        return 10.0 + 2.0 * x + 3.0 * y + 4.0 * z;
+        return 10.0 + 1.0 * x + 2.0 * y + 3.0 * z;
     };
 
     bool written = write_synthetic_raw_volume(vol_file, nx, ny, nz, 0, 1, synth_fn);
@@ -115,7 +116,7 @@ void test_staleness_and_interpolation() {
     BoundBox vox_box(vox_min, vox_max);
 
     Point reg_min(2.0, 2.0, 2.0);
-    Point reg_max(18.0, 18.0, 18.0);
+    Point reg_max(28.0, 28.0, 28.0);
     BoundBox region(reg_min, reg_max);
 
     // Construct Interpolate with order 7 (can also test 3 and 5)
@@ -123,8 +124,8 @@ void test_staleness_and_interpolation() {
     ASSERT_FALSE(interp.bspline_ready());
 
     // Query before kernels_bspline must throw Intrp_Fail
-    std::vector<Point> test_pts = {Point(10.0, 10.0, 10.0)};
-    BoundBox pt_bbox(Point(9.9, 9.9, 9.9), Point(10.1, 10.1, 10.1));
+    std::vector<Point> test_pts = {Point(15.0, 15.0, 15.0)};
+    BoundBox pt_bbox(Point(14.9, 14.9, 14.9), Point(15.1, 15.1, 15.1));
     std::vector<double> ivals(1, 0.0);
     std::vector<double> dfdx(1, 0.0), dfdy(1, 0.0), dfdz(1, 0.0);
 
@@ -148,13 +149,13 @@ void test_staleness_and_interpolation() {
         interp.kernels_bspline();
         ASSERT_TRUE(interp.bspline_ready());
 
-        // Test points within active region
+        // Test points in deep interior of active region (away from mirror boundary effects)
         std::vector<Point> qpts = {
-            Point(8.5, 9.2, 10.7),
-            Point(10.0, 10.0, 10.0),
-            Point(11.3, 11.7, 12.1)
+            Point(13.5, 14.2, 15.7),
+            Point(15.0, 15.0, 15.0),
+            Point(16.3, 15.8, 14.2)
         };
-        BoundBox qbox(Point(8.0, 8.0, 8.0), Point(13.0, 13.0, 13.0));
+        BoundBox qbox(Point(13.0, 13.0, 13.0), Point(17.0, 17.0, 17.0));
 
         std::vector<double> qvals(qpts.size(), 0.0);
         interp.tri_bspline(qpts, &qbox, qvals);
@@ -171,9 +172,9 @@ void test_staleness_and_interpolation() {
         for (size_t i = 0; i < qpts.size(); i++) {
             double expected_val = synth_fn( qpts[i].x(), qpts[i].y(), qpts[i].z() );
             ASSERT_NEAR(qvals[i], expected_val, tolerance);
-            ASSERT_NEAR(gx[i], 2.0, tolerance);
-            ASSERT_NEAR(gy[i], 3.0, tolerance);
-            ASSERT_NEAR(gz[i], 4.0, tolerance);
+            ASSERT_NEAR(gx[i], 1.0, tolerance);
+            ASSERT_NEAR(gy[i], 2.0, tolerance);
+            ASSERT_NEAR(gz[i], 3.0, tolerance);
         }
     }
 
