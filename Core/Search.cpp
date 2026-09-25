@@ -57,6 +57,16 @@ Search::Search(RunControl *run)
 	// optimization result storage 
 	par_min = std::vector<double>(rc->num_srch_dof,0.0);
 
+	// Notes on boxes:
+	//	1. They do not contain content, they simply define the boundaries of rectangular prisms in the 3D voxel space. 
+	//	2. Used within the code to define processing regions, validate input parameters, and control processing.
+	//	3. Boxes are nested to support interpolator construction and manage the movement of subvolume sampling points during optimization. 
+	//
+	// *** box descriptions (large to small):
+	//	1. vox_box = the limits of the full voxel space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
+	//	2. est_box = the total voxel prism of the search space within the correlate image volume, centered on the starting point location
+	//	3. 
+
 	// create a box with the full dimensions of the image voxel volumes for use in range checking
 	Point vox_box_min(0.0, 0.0, 0.0);
 	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
@@ -381,6 +391,7 @@ void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, load
 	BoundBox ref_vox_box = BoundBox(ref_vox_box_min, ref_vox_box_max);
 
 	Point ref_box_nom_min = Point(0.0, 0.0, 0.0);
+	// if aspect != 1 the overall search boxes may need expansion, check on this
 	Point ref_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
 	// no adjustment for search range, just the subvolume
 	BoundBox ref_box_nom = BoundBox(ref_box_nom_min, ref_box_nom_max);
@@ -1136,9 +1147,9 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 		"obj_fun " << objfun << std::endl <<
 		"num_srch_dof " << run->num_srch_dof << std::endl <<
 		"disp_max " << run->disp_max << std::endl <<
-		"cost_tol (obj) " << std::scientific << std::setprecision(2) << a.rc->cost_tol << std::endl <<
-		"step_tol (par) " << std::scientific << std::setprecision(2) << a.rc->step_tol << std::endl <<
-		"max_iter " << std::scientific << std::setprecision(2) << a.rc->max_iter << std::endl <<
+		"cost_tol (obj) " << std::scientific << std::setprecision(1) << a.rc->cost_tol << std::endl <<
+		"step_tol (par) " << std::scientific << std::setprecision(1) << a.rc->step_tol << std::endl <<
+		"max_iter " << std::fixed << std::setprecision(0) << a.rc->max_iter << std::endl <<
 		")";
 }
 #endif

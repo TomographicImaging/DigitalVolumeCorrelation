@@ -115,6 +115,15 @@ public:
 
 	bool bspline_ready() const { return bsp_valid; }
 
+	// Read-only voxel-grid dimensions of est_box / act_box (the box that was
+	// passed to the constructor, and the safe region carved out of it by
+	// shrinking inward by the halo/frame). Diagnostic only -- lets a caller
+	// confirm the box-sizing relationships it intended (e.g. est_box =
+	// act_box + 2*halo, act_box = ref_box + 2*search_range) actually landed
+	// where expected, without exposing est_box/act_box themselves.
+	void est_box_dims(int &wide, int &high, int &tall) const;
+	void act_box_dims(int &wide, int &high, int &tall) const;
+
 private:
 //
 // Element [0][0][0] is located at the min corner of the interp_region.
