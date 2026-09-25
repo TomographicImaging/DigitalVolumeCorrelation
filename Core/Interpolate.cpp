@@ -69,10 +69,29 @@ void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 
 		// establish the kernel structure ... check allocation!
 
+	
+	// note - subtracting frame makes the active region smaller that step_max by the size of the frame
 	est_box = new BoundBox(region->min(), region->max());
 	act_box = new BoundBox(region->min(), region->max());
-
 	act_box->grow_by(-frame);
+
+	// try instead growing the est_box by frame!
+	//est_box = new BoundBox(region->min(), region->max());
+	//act_box = new BoundBox(region->min(), region->max());
+	//act_box->grow_by(-frame);
+
+	// diagnostic
+	/*
+	std::cout << "Interpolate::init ..." << std::endl;
+	int wide, high, tall;
+	std::cout << std::endl;
+	est_box_dims(wide, high, tall);
+	std::cout << "est_box = " << wide << " " << high << " " << tall << std::endl;
+	act_box_dims(wide, high, tall);
+	std::cout << "act_box = " << wide << " " << high << " " << tall << std::endl;
+	std::cout << "... done" << std::endl;
+	*/
+	//
 
 	// single block allocated for the kernels
 	kern_4d = new Matrix_4d(est_box->iwide(), est_box->ihigh(), est_box->itall());

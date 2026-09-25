@@ -63,9 +63,9 @@ Search::Search(RunControl *run)
 	//	3. Boxes are nested to support interpolator construction and manage the movement of subvolume sampling points during optimization. 
 	//
 	// *** box descriptions (large to small):
-	//	1. vox_box = the limits of the full voxel space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
+	//	1. vox_box = the limits of the full image volume space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
 	//	2. est_box = the total voxel prism of the search space within the correlate image volume, centered on the starting point location
-	//	3. 
+	//	3. act_box = the accessible region for interpolation returns within the est_box, respecting the frame required for coefficient calculation
 
 	// create a box with the full dimensions of the image voxel volumes for use in range checking
 	Point vox_box_min(0.0, 0.0, 0.0);
@@ -77,7 +77,7 @@ Search::Search(RunControl *run)
 	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
 	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
 	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
-	est_box_nom->grow_by(rc->disp_max);
+	est_box_nom->grow_by(rc->disp_max);		// this increases est_box by step_max to accomdate subvolume movement during iteration
 
 	// interp is instantiated here with new for persistence during optimization function calls
 	// these are for the search region within the correlate volume
@@ -94,6 +94,17 @@ Search::Search(RunControl *run)
 		// this is the tricubic constructor
 		interp = new Interpolate(est_box_nom);
 	}
+
+	// diagnostic
+	std::cout << "interp (persistent, Search constructor) ..." << std::endl;
+	int wide, high, tall;
+	interp->est_box_dims(wide, high, tall);
+	std::cout << "interp est_box = " << wide << " " << high << " " << tall << std::endl;
+	interp->act_box_dims(wide, high, tall);
+	std::cout << "interp act_box = " << wide << " " << high << " " << tall << std::endl;
+	std::cout << "... done" << std::endl;
+	//
+
 }
 /******************************************************************************/
 Search::~Search()
@@ -409,6 +420,16 @@ void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, load
 			return Interpolate(&ref_box_nom);
 		}
 	}();
+
+	// diagnostic
+	std::cout << std::endl << "interp_ref (perishable, Search::load_ref_subvol) ..." << std::endl;
+	int wide, high, tall;
+	interp_ref.est_box_dims(wide, high, tall);
+	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_ref.act_box_dims(wide, high, tall);
+	std::cout << "interp_ref act_box = " << wide << " " << high << " " << tall << std::endl;
+	std::cout << "... done" << std::endl;
+	//
 
 	interp_ref.center_on(srch_pt);
 	interp_ref.kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
