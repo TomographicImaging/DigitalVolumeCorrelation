@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 		run.subvol_aspect[1] << " " <<
 		run.subvol_aspect[2] << std::endl <<
 		"numr_search_dof " << run.num_srch_dof << std::endl <<
-		"disp max " << run.disp_max << std::endl <<
+		"disp max " << run.step_max << std::endl <<
 		")";
 		*/
 #if defined(_WIN32) || defined(__WIN32__)

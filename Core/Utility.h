@@ -120,7 +120,7 @@ struct RunControl
 	double gray_thresh_max;
 	double min_vol_fract;
 
-	int disp_max;
+	int step_max;
 	int num_srch_dof;
 
 	unsigned int num_points_to_process;

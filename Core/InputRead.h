@@ -107,7 +107,7 @@ public:
 	key_word_help kwh_min_vol_fract;
 
 	// keywords in pool opt_mthd
-	key_word_help kwh_disp_max;
+	key_word_help kwh_step_max;
 	key_word_help kwh_num_srch_dof;
 	key_word_help kwh_obj_function;
 	key_word_help kwh_interp_type;

@@ -204,7 +204,7 @@ InputRead::InputRead()
 	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
 	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
 
-	kwh_disp_max.good.assign("1 <= int <= smallest dimension of the image volumes");
+	kwh_step_max.good.assign("1 <= int <= smallest dimension of the image volumes");
 
 	ok_num_srch_dof.push_back(3);
 	ok_num_srch_dof.push_back(6);
@@ -220,7 +220,7 @@ InputRead::InputRead()
 	kwh_interp_type.good = limits_to_string(ok_interp_type);
 
 	kwh_rigid_trans.good.assign("abs(x,y,z) limited to the dimensions of the voxel space");
-	kwh_basin_radius.good.assign("0.0 <= double <= disp_max");
+	kwh_basin_radius.good.assign("0.0 <= double <= step_max");
 	kwh_subvol_aspect.good.assign("0.1 <= double <= 10.0 for each component in (x,y,z)");
 	aspect_min = 0.1;
 	aspect_max = 10.0;
@@ -431,19 +431,19 @@ InputRead::InputRead()
 
 	// required optimization parameters (basic search process)
 
-	kwh_disp_max.word.assign("disp_max");
-	kwh_disp_max.exam.assign("15");
-	kwh_disp_max.reqd.assign("yes");
-	kwh_disp_max.pool.assign("opt_mthd");
-	kwh_disp_max.hint.assign("### maximum displacement in voxels, for range checking and search limits");
-	kwh_disp_max.help.assign("   Defines the maximum displacement expected within the reference image volume.\n");
-	kwh_disp_max.help.append("   This is a very important paramater used for search process control and memory allocation.\n");
-	kwh_disp_max.help.append("   Set to a reasonable value just greater than the actual sample maximum displacement.\n");
-	kwh_disp_max.help.append("   Be cautious: large displacements make the search process slower and less reliable.\n");
-	kwh_disp_max.help.append("   It is best to reduce large rigid body displacements through image volume manipulation.\n");
-	kwh_disp_max.help.append("   Future code development will introduce methods for better management of large displacements.\n");
-	kwh_disp_max.help.append("\n");
-	manual.push_back(kwh_disp_max);
+	kwh_step_max.word.assign("step_max");
+	kwh_step_max.exam.assign("15");
+	kwh_step_max.reqd.assign("yes");
+	kwh_step_max.pool.assign("opt_mthd");
+	kwh_step_max.hint.assign("### maximum displacement in voxels, for range checking and search limits");
+	kwh_step_max.help.assign("   Defines the maximum displacement expected within the reference image volume.\n");
+	kwh_step_max.help.append("   This is a very important paramater used for search process control and memory allocation.\n");
+	kwh_step_max.help.append("   Set to a reasonable value just greater than the actual sample maximum displacement.\n");
+	kwh_step_max.help.append("   Be cautious: large displacements make the search process slower and less reliable.\n");
+	kwh_step_max.help.append("   It is best to reduce large rigid body displacements through image volume manipulation.\n");
+	kwh_step_max.help.append("   Future code development will introduce methods for better management of large displacements.\n");
+	kwh_step_max.help.append("\n");
+	manual.push_back(kwh_step_max);
 
 	kwh_num_srch_dof.word.assign("num_srch_dof");
 	kwh_num_srch_dof.exam.assign("6");
@@ -518,12 +518,12 @@ InputRead::InputRead()
 	kwh_basin_radius.exam.assign("0.0");
 	kwh_basin_radius.reqd.assign("no");
 	kwh_basin_radius.pool.assign("opt_tune");
-	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = disp_max");
+	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = step_max");
 	kwh_basin_radius.help.assign("   The default process uses cloud points sorted from a global start to establish initial disp values.\n");
 	kwh_basin_radius.help.append("   To conduct a coarse search in addition (gridded translation), set basin_radius to a non-zero value.\n");
 	kwh_basin_radius.help.append("   The basin_radius value sets the coarse-search resolution (grid step size).\n");
 	kwh_basin_radius.help.append("   If basin_radius is not specified, the default value of 0.0 voxels is set and no coarse search is done.\n");
-	kwh_basin_radius.help.append("   A small basin_radius (< 1 voxel) will cause very slow execution if disp_max is large.\n");
+	kwh_basin_radius.help.append("   A small basin_radius (< 1 voxel) will cause very slow execution if step_max is large.\n");
 	kwh_basin_radius.help.append("   A large basin_radius (> 5 voxels) will cause unreliable matching if subvol_size is small.\n");
 	kwh_basin_radius.help.append("   Use the ImageJ plugin 'cv_Match_Template' to explore this parameter.\n");
 	kwh_basin_radius.help.append("\n");
@@ -760,7 +760,7 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_min_max(kwh_vol_high, 0, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_vol_tall, 0, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
 
-	subvol_size_max = run->vol_wide;	// used for limiting subvol_size and disp_max
+	subvol_size_max = run->vol_wide;	// used for limiting subvol_size and step_max
 	if (run->vol_high < subvol_size_max) subvol_size_max = run->vol_high;
 	if (run->vol_tall < subvol_size_max) subvol_size_max = run->vol_tall;
 
@@ -778,7 +778,7 @@ int InputRead::input_file_read(RunControl *run)
 		if(parse_line_min_max(kwh_min_vol_fract, 0.0, min_vol_fract_max, run->min_vol_fract, true) != input_line_ok ) return 0;
 	}
 
-	if(parse_line_min_max(kwh_disp_max, 0, subvol_size_max, run->disp_max, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_step_max, 0, subvol_size_max, run->step_max, true) != input_line_ok ) return 0;
 	if(parse_line_vec_val(kwh_num_srch_dof, ok_num_srch_dof, run->num_srch_dof, true) != input_line_ok ) return 0;
 	if(parse_line_vec_val(kwh_obj_function, ok_obj_function, run->obj_function, true) != input_line_ok ) return 0;
 	for (int i=0; i<ok_obj_function.size(); i++)
@@ -813,7 +813,7 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
 	run->basin_radius = 0.0;
-	if(parse_line_min_max(kwh_basin_radius, 0, run->disp_max, run->basin_radius, false) == param_invalid) return 0;
+	if(parse_line_min_max(kwh_basin_radius, 0, run->step_max, run->basin_radius, false) == param_invalid) return 0;
 
 	run->rigid_trans.resize(3, 0.0);
 	std::vector<double> rigid_trans_limit(3);
@@ -1199,7 +1199,7 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "   - The point identifier appears first, folowed by the [x,y,z] location.\n";
 	file << "   - The search status appears next.\n";
 	file << "      - Point_Good = successful search convergence within the max displacement.\n";
-	file << "      - Range_Fail = max displacement exceeded; consider increasing the disp_max parameter.\n";
+	file << "      - Range_Fail = max displacement exceeded; consider increasing the step_max parameter.\n";
 	file << "      - Convg_Fail = maximum iterations exceeded; consider increasing subvol_size &/or npts.\n";
 	file << "\n";
 	file << "   - The magnitude of the objective function value at the end of the search is listed as obj=.\n";
@@ -1308,7 +1308,7 @@ int InputRead::echo_input(RunControl *run)
 
 	// opt_mthd
 
-	sta_file << kwh_disp_max.word << "\t"<< run->disp_max << "\n";
+	sta_file << kwh_step_max.word << "\t"<< run->step_max << "\n";
 	sta_file << kwh_num_srch_dof.word << "\t"<< run->num_srch_dof << "\n";
 	sta_file << kwh_obj_function.word << "\t"<< run->obj_function << "\n";
 	sta_file << kwh_interp_type.word << "\t"<< run->interp_type << "\n";

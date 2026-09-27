@@ -97,7 +97,7 @@ Search::Search(RunControl *run)
 
 	// create another box of subvolume size, then enlarge to accomodate the search region
 	BoundBox act_box_tar_nom = BoundBox(act_box_nom_min, act_box_nom_max);
-	act_box_tar_nom.grow_by(rc->disp_max);		// this increases act_box by step_max to accomdate subvolume movement during iteration
+	act_box_tar_nom.grow_by(rc->step_max);		// this increases act_box by step_max to accomdate subvolume movement during iteration
 
 	if (rc->bspline == true) {
 		const int bspline_order_cfg = rc->bspline_order;
@@ -181,17 +181,17 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	// trap point for objective function mapping
 	if (map_flag && (srch_data->labels[n] == map_id)) {
 		std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
-		// mapping range is taken from the disp_max value in the dvc input file
-		double half_range = rc->disp_max;
+		// mapping range is taken from the step_max value in the dvc input file
+		double half_range = rc->step_max;
 		int num_each_dim = 100;		// hardcode this for now, could be a command line input in future
 		map_objective_function(map_id, half_range, num_each_dim);
 	}
 
 	// coarse search step, this is probably going to phase out, except perhaps for optimization start refinement in special cases
 	// basin_radius = 0.0 in the input file signals no coarse search step
-	if (rc->basin_radius > 0.0) {trgrid_global(rc->disp_max, rc->basin_radius, n, false);}
+	if (rc->basin_radius > 0.0) {trgrid_global(rc->step_max, rc->basin_radius, n, false);}
 	// random search is also reserved for optimization start refinement in special cases, not triggered in current code configuration
-	//	random_global(rc->disp_max, rc->basin_radius);
+	//	random_global(rc->step_max, rc->basin_radius);
 
 /*******************/
 
@@ -1141,7 +1141,7 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 		"interp_type " << inttyp << std::endl <<
 		"obj_fun " << objfun << std::endl <<
 		"num_srch_dof " << run->num_srch_dof << std::endl <<
-		"disp_max " << run->disp_max << std::endl <<
+		"step_max " << run->step_max << std::endl <<
 		"cost_tol (obj) " << std::scientific << std::setprecision(1) << a.rc->cost_tol << std::endl <<
 		"step_tol (par) " << std::scientific << std::setprecision(1) << a.rc->step_tol << std::endl <<
 		"max_iter " << std::fixed << std::setprecision(0) << a.rc->max_iter << std::endl <<
