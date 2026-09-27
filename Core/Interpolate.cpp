@@ -54,31 +54,21 @@ Interpolate::Interpolate(const BoundBox *region, int bspline_order)
 /******************************************************************************/
 void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 {
+	// 
 	//	For consistency with software such as ImageJ:
 
 	//	A slice is wide x high, the horizontal by vertical dimensions.
-	//	I am using tall as the number of slices in a stack.
+	//	Tall as the number of slices in a stack.
 	//	Terminology is consistent between voxel volumes and interp regions.
 	//
 	//	The functioning coordinate system is (x,y,z) <-> (c,r,s).
 	//	The y dimension is not inverted (top = 0).
 	//	The first slice is the top of the stack.
 	//
-	//	Set-up est_box and kern large and deep enough for the moving cloud. It will
-	//	be used for both stable and moving clouds.
 
-		// establish the kernel structure ... check allocation!
-
-	
-	// note - subtracting frame makes the active region smaller that step_max by the size of the frame
-	est_box = new BoundBox(region->min(), region->max());
 	act_box = new BoundBox(region->min(), region->max());
-	act_box->grow_by(-frame);
-
-	// try instead growing the est_box by frame!
-	//est_box = new BoundBox(region->min(), region->max());
-	//act_box = new BoundBox(region->min(), region->max());
-	//act_box->grow_by(-frame);
+	est_box = new BoundBox(region->min(), region->max());
+	est_box->grow_by(frame);
 
 	// diagnostic
 	/*

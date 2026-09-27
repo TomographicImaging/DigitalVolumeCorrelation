@@ -58,7 +58,9 @@ public:
 
 	RunControl *rc;	// gives all member functions of Search direct access to RunControl without passing
 	FloatingCloud *fcld;
+
 	Interpolate *interp;
+	Interpolate *interp_ref;	// try a persistent interpolator for the ref subvolume, similar to interp
 
 	// pointers to the objective function set in RunControl, versions w/ and w/o return of residual vector
 	double (*obj_fcn)(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol);
@@ -68,10 +70,7 @@ public:
 	double subv_rad;	// keep for now, derived
 	int subv_num;		// keep for now, derived
 
-	//int bspline_order = 0;
-
 	BoundBox *vox_box;	// image volume dimensions
-	BoundBox *est_box_nom;	// for allocating an interpolator kernel sized for the correlate volume search range
 
 	std::vector<double> ref_subvol;
 	std::vector<double> tar_subvol;

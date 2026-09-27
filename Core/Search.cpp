@@ -61,48 +61,67 @@ Search::Search(RunControl *run)
 	//	1. They do not contain content, they simply define the boundaries of rectangular prisms in the 3D voxel space. 
 	//	2. Used within the code to define processing regions, validate input parameters, and control processing.
 	//	3. Boxes are nested to support interpolator construction and manage the movement of subvolume sampling points during optimization. 
+	//	4. Boxes are inherently float, but some uses of boxes (i.e. interpolators) are inherently int and need padding - see grow_by(1.0).
 	//
-	// *** box descriptions (large to small):
-	//	1. vox_box = the limits of the full image volume space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
-	//	2. est_box = the total voxel prism of the search space within the correlate image volume, centered on the starting point location
-	//	3. act_box = the accessible region for interpolation returns within the est_box, respecting the frame required for coefficient calculation
+	// *** box descriptions (small to large):
+	//	1. act_box = (active) accessible region for interpolation returns within an est_box, inset by the frame required for coefficient calculation
+	//	2. est_box = (estimation) total voxel prism of an interpolator, including the the frame region reguired for coefficient calculation
+	//	3. vox_box = (voxel)  limits of the full image volume space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
 
 	// create a box with the full dimensions of the image voxel volumes for use in range checking
 	Point vox_box_min(0.0, 0.0, 0.0);
 	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
 	vox_box = new BoundBox(vox_box_min, vox_box_max);
 
-	// est_box_nom belongs to Search, established as the size of the region available for optimization
-	// est_box, the actual estimation box, is held by Interpolate, with position adusjed during potimization
-	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
-	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
-	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
-	est_box_nom->grow_by(rc->disp_max);		// this increases est_box by step_max to accomdate subvolume movement during iteration
+	// form a box the size of the active search region (subvolume size + step_max)
+	// instantiate an interpolator using the box for either bspline or linear/cubic interpolation
+	// the interpolator is persistent and used for all points in a cloud
+	// Interpolate constructor calls an init function that manages the frame (halo) region needed for the est_box
+	// no kernels are set, that requires position information for the cloud point and voxel data from the correlate volume
+	// see process_point -> search_pt_setup for kernel calulation calls 
+	// see min_Lev_Mar -> LM_prep_at -> bspline_jacobian_at/obj_val_at for interpolation taps needed to load tar_subvol at each iteration
+	// search_pt_setup also calls load_ref_subvol for the one-time Interpolator/kernels/taps needed to load the ref_subvol vector
 
-	// interp is instantiated here with new for persistence during optimization function calls
-	// these are for the search region within the correlate volume
+	Point act_box_nom_min = Point(0.0, 0.0, 0.0);
+	Point act_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
+
+	BoundBox act_box_ref_nom = BoundBox(act_box_nom_min, act_box_nom_max);	// box without the additional space for search, no grow_by
+
+	BoundBox act_box_tar_nom = BoundBox(act_box_nom_min, act_box_nom_max);
+	act_box_tar_nom.grow_by(rc->disp_max);		// this increases act_box by step_max to accomdate subvolume movement during iteration
 
 	if (rc->bspline == true) {
 		const int bspline_order_cfg = rc->bspline_order;
-		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
-		// this is the two argument bspline constructor
-		interp = new Interpolate(est_box_nom, bspline_order_cfg);	
+		act_box_tar_nom.grow_by(1.0);	// account for int truncation of point cloud dimensions used for voxel ranges
+		act_box_ref_nom.grow_by(1.0);
+		interp_ref = new Interpolate(&act_box_ref_nom, bspline_order_cfg);
+		interp = new Interpolate(&act_box_tar_nom, bspline_order_cfg);	
 	}
 	else {
 		// compensate for derivatives in interpolator (fixed frame=1.0 internally, so this nets +1.0 margin)
-		est_box_nom->grow_by(2.0);
+		act_box_tar_nom.grow_by(2.0);
+		act_box_ref_nom.grow_by(2.0);
 		// this is the tricubic constructor
-		interp = new Interpolate(est_box_nom);
+		interp_ref = new Interpolate(&act_box_ref_nom);
+		interp = new Interpolate(&act_box_tar_nom);
 	}
 
 	// diagnostic
+	///*
 	std::cout << "interp (persistent, Search constructor) ..." << std::endl;
 	int wide, high, tall;
-	interp->est_box_dims(wide, high, tall);
-	std::cout << "interp est_box = " << wide << " " << high << " " << tall << std::endl;
 	interp->act_box_dims(wide, high, tall);
 	std::cout << "interp act_box = " << wide << " " << high << " " << tall << std::endl;
+	interp->est_box_dims(wide, high, tall);
+	std::cout << "interp est_box = " << wide << " " << high << " " << tall << std::endl;
+
+	interp_ref->act_box_dims(wide, high, tall);
+	std::cout << "interp_ref act_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_ref->est_box_dims(wide, high, tall);
+	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
+
 	std::cout << "... done" << std::endl;
+	//*/
 	//
 
 }
@@ -111,8 +130,9 @@ Search::~Search()
 {
 	// dispose of persistent class instantiations 
 	delete interp;
+	delete interp_ref;
 	delete vox_box;
-	delete est_box_nom;
+	//delete est_box_nom;
 	delete fcld;
 }
 /******************************************************************************/
@@ -397,6 +417,7 @@ ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataClou
 /******************************************************************************/
 void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, loads ref_subvol
 {
+	/*
 	Point ref_vox_box_min = Point(0.0, 0.0, 0.0);
 	Point ref_vox_box_max = Point(rc->vol_wide, rc->vol_high, rc->vol_tall);
 	BoundBox ref_vox_box = BoundBox(ref_vox_box_min, ref_vox_box_max);
@@ -411,8 +432,7 @@ void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, load
 	Interpolate interp_ref = [&]() {
 		if (rc->bspline == true) {
 			const int bspline_order_cfg = rc->bspline_order;
-			double halo = ((bspline_order_cfg + 1) / 2) + 1;
-			ref_box_nom.grow_by(halo);	// the basic halo definition increased by 1
+			ref_box_nom.grow_by(1);		// account for int truncation of point cloud dimensions used for voxel ranges
 			return Interpolate(&ref_box_nom, bspline_order_cfg);
 		}
 		else {
@@ -422,15 +442,17 @@ void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, load
 	}();
 
 	// diagnostic
-	std::cout << std::endl << "interp_ref (perishable, Search::load_ref_subvol) ..." << std::endl;
+	//std::cout << std::endl << "interp_ref (perishable, Search::load_ref_subvol) ..." << std::endl;
 	int wide, high, tall;
-	interp_ref.est_box_dims(wide, high, tall);
-	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
 	interp_ref.act_box_dims(wide, high, tall);
 	std::cout << "interp_ref act_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_ref.est_box_dims(wide, high, tall);
+	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
 	std::cout << "... done" << std::endl;
 	//
-
+	//
+	*/
+	/*
 	interp_ref.center_on(srch_pt);
 	interp_ref.kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
@@ -443,6 +465,21 @@ void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, load
 	if (rc->bspline == true) {
 		interp_ref.kernels_bspline();
 		interp_ref.tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	*/
+
+	interp_ref->center_on(srch_pt);
+	interp_ref->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
+
+	if (rc->int_typ == trilinear) {
+		interp_ref->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->int_typ == tricubic) {
+		interp_ref->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->bspline == true) {
+		interp_ref->kernels_bspline();
+		interp_ref->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
 }
 /******************************************************************************/
