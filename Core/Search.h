@@ -59,8 +59,13 @@ public:
 	RunControl *rc;	// gives all member functions of Search direct access to RunControl without passing
 	FloatingCloud *fcld;
 
-	Interpolate *interp;
-	Interpolate *interp_ref;	// try a persistent interpolator for the ref subvolume, similar to interp
+	// Interpolators instantiated in dvc_cpp and last for all points in a cloud
+	// ref used to load ref_subvol, tar used throughout iteration to load/reload tar_subvolume
+	Interpolate *interp_ref;	// persistent interpolator for the reference subvolume
+	Interpolate *interp_tar;	// persistent interpolator for the target subvolume
+
+	std::vector<double> ref_subvol;		// vector of subvolume sampling point values ("data" in NLS) extracted from reference subvolume
+	std::vector<double> tar_subvol;		// vector of subvolume sampling point values ("model" in NLS) extracted from correlate suvolume
 
 	// pointers to the objective function set in RunControl, versions w/ and w/o return of residual vector
 	double (*obj_fcn)(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol);
@@ -72,9 +77,6 @@ public:
 
 	BoundBox *vox_box;	// image volume dimensions
 
-	std::vector<double> ref_subvol;
-	std::vector<double> tar_subvol;
-
 	// these variables are copied into DataCloud on return after process_point
 	double obj_min;					// objective function value at optimum for the current cloud point
 	std::vector<double> par_min;	// parameter vector at optimum for the current cloud point
@@ -83,8 +85,6 @@ public:
 	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data);
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
-
-	void load_ref_subvol(Point srch_pt);
 
 	void starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 

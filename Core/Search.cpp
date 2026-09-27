@@ -61,32 +61,41 @@ Search::Search(RunControl *run)
 	//	1. They do not contain content, they simply define the boundaries of rectangular prisms in the 3D voxel space. 
 	//	2. Used within the code to define processing regions, validate input parameters, and control processing.
 	//	3. Boxes are nested to support interpolator construction and manage the movement of subvolume sampling points during optimization. 
-	//	4. Boxes are inherently float, but some uses of boxes (i.e. interpolators) are inherently int and need padding - see grow_by(1.0).
+	//	4. Boxes are inherently float, but some uses of boxes (i.e. interpolators) are inherently int and need padding - see grow_by(1.0) below.
 	//
 	// *** box descriptions (small to large):
-	//	1. act_box = (active) accessible region for interpolation returns within an est_box, inset by the frame required for coefficient calculation
+	//	1. act_box = (active) accessible region for interpolation returns within an est_box, inset by the frame (halo) required for coefficient calculation
 	//	2. est_box = (estimation) total voxel prism of an interpolator, including the the frame region reguired for coefficient calculation
-	//	3. vox_box = (voxel)  limits of the full image volume space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
+	//	3. vox_box = (voxel) limits of the full image volume space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
 
 	// create a box with the full dimensions of the image voxel volumes for use in range checking
 	Point vox_box_min(0.0, 0.0, 0.0);
 	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
 	vox_box = new BoundBox(vox_box_min, vox_box_max);
 
-	// form a box the size of the active search region (subvolume size + step_max)
-	// instantiate an interpolator using the box for either bspline or linear/cubic interpolation
-	// the interpolator is persistent and used for all points in a cloud
-	// Interpolate constructor calls an init function that manages the frame (halo) region needed for the est_box
-	// no kernels are set, that requires position information for the cloud point and voxel data from the correlate volume
-	// see process_point -> search_pt_setup for kernel calulation calls 
-	// see min_Lev_Mar -> LM_prep_at -> bspline_jacobian_at/obj_val_at for interpolation taps needed to load tar_subvol at each iteration
-	// search_pt_setup also calls load_ref_subvol for the one-time Interpolator/kernels/taps needed to load the ref_subvol vector
+	// form boxes of suitable size for both ref and tar Interpolators
+	// Instantiate depending on bspline or linear/cubic settings
+	// the interpolators are instantiated ahead of point loop in dvc.cpp and persist for all points in a cloud
+	// (note ... if modifing for subregion instead of single point process this will need reconsideration, interp_tar will need to size adjust)
 
+	// Interpolate constructor calls an init function that manages the frame (halo) region needed for the boxes
+	// no kernels are set here, that requires position information for the reference cloud point and search start positions
+	// see process_point -> search_pt_setup for kernel calulation calls for ref and tar and one-time interpolation taps for ref
+	// see min_Lev_Mar -> LM_prep_at -> bspline_jacobian_at/obj_val_at for interpolation taps needed to load tar_subvol at each iteration
+
+	// there is a subtle aspect to establishing the box sizes
+	// Interpolate construction is inherently voxel-based, with kernel information associated with integer voxel cneters
+	// however, subvolume sampling mini-clouds are floating non-integer values
+	// integer portion of the point locations is used for setting up space for kernel storage
+	// remainder portion is used for positioning interpolation taps within kernel cells
+	// this leaves the bounding subvolume sampling points in an overflow position, requiring the grow_by(1.0) just before instantiation
+
+	// create a box the size of the active region for interp_ref (just the subvolume size)
 	Point act_box_nom_min = Point(0.0, 0.0, 0.0);
 	Point act_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
-
 	BoundBox act_box_ref_nom = BoundBox(act_box_nom_min, act_box_nom_max);	// box without the additional space for search, no grow_by
 
+	// create another box of subvolume size, then enlarge to accomodate the search region
 	BoundBox act_box_tar_nom = BoundBox(act_box_nom_min, act_box_nom_max);
 	act_box_tar_nom.grow_by(rc->disp_max);		// this increases act_box by step_max to accomdate subvolume movement during iteration
 
@@ -95,25 +104,25 @@ Search::Search(RunControl *run)
 		act_box_tar_nom.grow_by(1.0);	// account for int truncation of point cloud dimensions used for voxel ranges
 		act_box_ref_nom.grow_by(1.0);
 		interp_ref = new Interpolate(&act_box_ref_nom, bspline_order_cfg);
-		interp = new Interpolate(&act_box_tar_nom, bspline_order_cfg);	
+		interp_tar = new Interpolate(&act_box_tar_nom, bspline_order_cfg);	
 	}
 	else {
 		// compensate for derivatives in interpolator (fixed frame=1.0 internally, so this nets +1.0 margin)
-		act_box_tar_nom.grow_by(2.0);
-		act_box_ref_nom.grow_by(2.0);
+		act_box_tar_nom.grow_by(1.0);
+		act_box_ref_nom.grow_by(1.0);
 		// this is the tricubic constructor
 		interp_ref = new Interpolate(&act_box_ref_nom);
-		interp = new Interpolate(&act_box_tar_nom);
+		interp_tar = new Interpolate(&act_box_tar_nom);
 	}
 
 	// diagnostic
 	///*
 	std::cout << "interp (persistent, Search constructor) ..." << std::endl;
 	int wide, high, tall;
-	interp->act_box_dims(wide, high, tall);
-	std::cout << "interp act_box = " << wide << " " << high << " " << tall << std::endl;
-	interp->est_box_dims(wide, high, tall);
-	std::cout << "interp est_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_tar->act_box_dims(wide, high, tall);
+	std::cout << "interp_tar act_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_tar->est_box_dims(wide, high, tall);
+	std::cout << "interp_tar est_box = " << wide << " " << high << " " << tall << std::endl;
 
 	interp_ref->act_box_dims(wide, high, tall);
 	std::cout << "interp_ref act_box = " << wide << " " << high << " " << tall << std::endl;
@@ -129,7 +138,7 @@ Search::Search(RunControl *run)
 Search::~Search()
 {
 	// dispose of persistent class instantiations 
-	delete interp;
+	delete interp_tar;
 	delete interp_ref;
 	delete vox_box;
 	//delete est_box_nom;
@@ -141,6 +150,7 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	// n is the index of the current search point
 	Point srch_pt = srch_data->points[n];
 
+	// subvolume sampling mini-clouds are created here for each clouf point to support randomized sampling positions
 	if (rc->sub_geo == sphere) {
 		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
 	}
@@ -212,45 +222,41 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 /******************************************************************************/
 void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 {
-	// Overall strategy is seperate Interpolate constructors for reference and target data interpolation.
+	// target volume interpolation preparation
+	// reading of image data and kernel calculations for the (subvolume) reference box
+	// interpoaltion taps are done here for each search point to fill the ref_subvol vector
 
-	// An interpolator is developed/used for one interpolation of reference volume data in load_ref_subvolume. 
-	//
-	// Kernels are then developed for the presistent interp interpolator and used for the multiple interpolations 	
-	// of correlate volume data to establish tar_subvolume sampling point values as needed during optimization. 
-	//
-	// tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
-	// of voxel values and derivatives at the voxel centers, stored in a matrix for fast mult/sum.
-	//
-	// For tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
-	//		This loads voxel data directly, then calculates derivatives at the voxel locations. 
-	//		tri_lin require no further kernel development.
-	//		tri_cub_leK calls further "on demand" kernel development as needed for individual sampling points.
-	//
-	// For tri_bspline: interp->kernels followed by interp->kernels_bspline
-	//		This reads voxel data, finds voxel derivatives, then calculates the bspline-specific coefficients. 
-	//		This assumes interp = new Interpolate(est_box_nom, bspline_order_cfg) has been invoked with order set. 
-	//	
+	interp_ref->center_on(srch_pt);
+	interp_ref->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
-	// *** reference volume interpolation, limited in size to subvolume size + coefficient borders
+	if (rc->int_typ == trilinear) {
+		interp_ref->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->int_typ == tricubic) {
+		interp_ref->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
+	if (rc->bspline == true) {
+		interp_ref->kernels_bspline();
+		interp_ref->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+	}
 
-	load_ref_subvol(srch_pt);
-
-	// target volume interpolation preparation, reading of image data and kernel calculations for iteration during optimization
-	// interp constructor is invoked in the Search constructor using new to persist durnig the function calls of the iteration process. 
+	// target volume interpolation preparation
+	// reading of image data and kernel calculations for the (subvolume + step_max) target box
+	// no interpolation taps at this stage
+	// requires adjustment of subvolume sampling locations for the current optimization parameter vector values
 
 	starting_param(srch_pt, neigh_res);
 
 	Point offset_pt = srch_pt;
 	offset_pt.move_by(par_min[0], par_min[1], par_min[2]);
-	interp->center_on(offset_pt);
+	interp_tar->center_on(offset_pt);
 
 	// this covers tri_lin/tri_cub_leK and partially grenerates tri_bspline
-	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
+	interp_tar->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
 
 	// this completes kernel development when tri_bspline options are active
 	if (rc->bspline == true) {
-		interp->kernels_bspline();
+		interp_tar->kernels_bspline();
 	}
 }
 /******************************************************************************/
@@ -415,75 +421,6 @@ ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataClou
 	return convg_status;
 }
 /******************************************************************************/
-void Search::load_ref_subvol(Point srch_pt) 	// called once for each point, loads ref_subvol
-{
-	/*
-	Point ref_vox_box_min = Point(0.0, 0.0, 0.0);
-	Point ref_vox_box_max = Point(rc->vol_wide, rc->vol_high, rc->vol_tall);
-	BoundBox ref_vox_box = BoundBox(ref_vox_box_min, ref_vox_box_max);
-
-	Point ref_box_nom_min = Point(0.0, 0.0, 0.0);
-	// if aspect != 1 the overall search boxes may need expansion, check on this
-	Point ref_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
-	// no adjustment for search range, just the subvolume
-	BoundBox ref_box_nom = BoundBox(ref_box_nom_min, ref_box_nom_max);
-
-	// this unusual syntax extends scope of interp_ref beyond the conditional
-	Interpolate interp_ref = [&]() {
-		if (rc->bspline == true) {
-			const int bspline_order_cfg = rc->bspline_order;
-			ref_box_nom.grow_by(1);		// account for int truncation of point cloud dimensions used for voxel ranges
-			return Interpolate(&ref_box_nom, bspline_order_cfg);
-		}
-		else {
-			ref_box_nom.grow_by(2.0);
-			return Interpolate(&ref_box_nom);
-		}
-	}();
-
-	// diagnostic
-	//std::cout << std::endl << "interp_ref (perishable, Search::load_ref_subvol) ..." << std::endl;
-	int wide, high, tall;
-	interp_ref.act_box_dims(wide, high, tall);
-	std::cout << "interp_ref act_box = " << wide << " " << high << " " << tall << std::endl;
-	interp_ref.est_box_dims(wide, high, tall);
-	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
-	std::cout << "... done" << std::endl;
-	//
-	//
-	*/
-	/*
-	interp_ref.center_on(srch_pt);
-	interp_ref.kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
-
-	if (rc->int_typ == trilinear) {
-		interp_ref.tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	if (rc->int_typ == tricubic) {
-		interp_ref.tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	if (rc->bspline == true) {
-		interp_ref.kernels_bspline();
-		interp_ref.tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	*/
-
-	interp_ref->center_on(srch_pt);
-	interp_ref->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
-
-	if (rc->int_typ == trilinear) {
-		interp_ref->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	if (rc->int_typ == tricubic) {
-		interp_ref->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-	if (rc->bspline == true) {
-		interp_ref->kernels_bspline();
-		interp_ref->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
-}
-/******************************************************************************/
-
 void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 {
 /*
@@ -591,11 +528,11 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 	fcld->affine_to(x, x.size());
 
 	if (rc->int_typ == trilinear) {
-		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == tricubic) {
-		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->bspline == true) {
@@ -604,7 +541,7 @@ double Search::obj_val_at(const std::vector<double> x)	// this version uses nomi
 		// stays valid (bsp_valid) across every obj_val_at() call in this
 		// search point's optimization loop, since fcld->affine_to() only
 		// moves query points, it never reloads voxel data.
-		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	double obj_val = obj_fcn(ref_subvol, tar_subvol);
@@ -617,17 +554,17 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 	fcld->affine_to(x, x.size());
 
 	if (rc->int_typ == trilinear) {
-		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == tricubic) {
-		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->bspline == true) {
 		// see obj_val_at(x) above -- kernels_bspline() is primed once in
 		// search_pt_setup(), not on every call here.
-		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	double obj_val = obj_fcn_res(ref_subvol, tar_subvol, residual);
@@ -726,7 +663,7 @@ double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
 	std::vector<double> dfdx(npts), dfdy(npts), dfdz(npts);
 
 	fcld->affine_to(a, ndof);
-	try {interp->tri_bspline_grad(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol, dfdx, dfdy, dfdz);}
+	try {interp_tar->tri_bspline_grad(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol, dfdx, dfdy, dfdz);}
 	catch (Intrp_Fail) {throw Range_Fail();}
 
 	double obj = obj_fcn_res(ref_subvol, tar_subvol, base_res);	// fills base_res
