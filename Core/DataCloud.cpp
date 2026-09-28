@@ -67,6 +67,7 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 }
 /******************************************************************************/
 void DataCloud::sort_order_neighbors(Point starting_point)
+// this is the brute-force version
 {
 	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
 
@@ -196,6 +197,67 @@ void DataCloud::sort_neighbors_kdtree(Point starting_point)
 	}
 
 	std::cout << "... finished" << std::endl;
+}
+/******************************************************************************/
+void DataCloud::sort_neighbor_subsets()
+{
+// load std::vector<NeighborSubset> neighbor_subset using order
+
+	// neighbor_subsets //
+
+	//NeighborSubset a_nbr_sub;
+
+	std::vector<int> touched;	// list of pseudo-processed point indices
+	int point_index;
+	bool untouched;
+
+	int num_nbrs = 27;		// experimenting with less than the max
+
+	for (int i=0; i<(int)neigh.size(); i++) {	// loop through points in procces order
+//	for (int i=0; i<2; i++) {	// loop through points in procces order
+
+		NeighborSubset a_nbr_sub;	// fresh copy of the struct
+
+//		for (int j=0; j<(int)neigh[i].size(); j++) {	// loop through neighbors of points
+		for (int j=0; j<num_nbrs; j++) {	// loop through neighbors of points
+
+			point_index = neigh[order[i]][j];
+
+			// check if point was a part of an earlier neighbor_subset, if not add to touched list
+
+			untouched = true;
+			for (int k=0; k<(int)touched.size(); k++) {
+				if (point_index == touched[k]) {
+					untouched = false;
+					break;
+				}
+			}
+			if (untouched == true) { 
+				touched.push_back(point_index);
+				a_nbr_sub.run_list.push_back(point_index);
+			}
+		}
+
+		if (a_nbr_sub.run_list.size() != 0) {
+			neighbor_subsets.push_back(a_nbr_sub);
+		}
+
+	}
+
+	std::cout << std::endl << "neighbor_subsets.size() = " << neighbor_subsets.size() << std::endl;
+//	for (int i=0; i<neighbor_subsets.size(); i++) {
+//		std::cout << "list_size " << i << "= " << neighbor_subsets[i].run_list.size() << std::endl;
+//	}
+
+//	std::cout << "list_size 0 = " << neighbor_subsets[0].run_list.size() << std::endl;
+//	std::cout << "list_size 1 = " << neighbor_subsets[1].run_list.size() << std::endl;
+
+	// touched list now contains all of the points in the cloud
+
+	//std::cout << std::endl << "neigh size " << (int)neigh.size() << " " << "number touched = " << (int)touched.size() << std::endl << std::endl;
+//	std::cout << std::endl << "neighbor_subsets.size() = " << neighbor_subsets.size() << std::endl;
+//	std::cout << "min_size = " << min_size << " " << "max_size = " << max_size << std::endl<< std::endl;
+
 }
 /******************************************************************************/
 

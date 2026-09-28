@@ -375,6 +375,12 @@ struct ResultRecord
     Iter_Stats iter_stats;     // iteration tracking data
 };
 /******************************************************************************/
+struct NeighborSubset
+{
+    std::vector<int> run_list;      // list of cloud points to process
+    //BoundBox                      // box enclosing all the points in run_list
+};
+/******************************************************************************/
 // instantiated in dvc.cpp, initialized and organized in DataCloud::organize_cloud, passed as a pointer into Search::process_point
 class CCPI_EXPORT DataCloud
 {
@@ -389,6 +395,10 @@ public:
 
 	// new version base don kd tree, much, much faster
 	void sort_neighbors_kdtree(Point starting_point);
+
+    // support for neighbor_subset processing
+    // runs after initial sorting, uses the result stored in order
+    void sort_neighbor_subsets();
 	
 	int nbr_num_save() const {return nbr_num_save_default;}
 
@@ -406,6 +416,9 @@ public:
 	
 	// indices of neighbors of a search point
 	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
+
+    // list of neighbor_subsets to process
+    std::vector<NeighborSubset> neighbor_subsets;
 	
     // this is set-up for potentially multiple targets (correlate volumes) with updating in mind
     // ntrg is 1 for standard single correlate volume searches

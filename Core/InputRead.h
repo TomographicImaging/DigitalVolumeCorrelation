@@ -114,7 +114,7 @@ public:
 
 	// keywords in pool opt_tune
 	key_word_help kwh_rigid_trans;
-	key_word_help kwh_basin_radius;
+//	key_word_help kwh_basin_radius;		// deactivated
 	key_word_help kwh_subvol_aspect;
 	key_word_help kwh_num_points_to_process;
 	key_word_help kwh_starting_point;

@@ -220,7 +220,7 @@ InputRead::InputRead()
 	kwh_interp_type.good = limits_to_string(ok_interp_type);
 
 	kwh_rigid_trans.good.assign("abs(x,y,z) limited to the dimensions of the voxel space");
-	kwh_basin_radius.good.assign("0.0 <= double <= step_max");
+//	kwh_basin_radius.good.assign("0.0 <= double <= step_max");
 	kwh_subvol_aspect.good.assign("0.1 <= double <= 10.0 for each component in (x,y,z)");
 	aspect_min = 0.1;
 	aspect_max = 10.0;
@@ -514,6 +514,7 @@ InputRead::InputRead()
 	kwh_rigid_trans.help.append("\n");
 	manual.push_back(kwh_rigid_trans);
 
+/*
 	kwh_basin_radius.word.assign("basin_radius");
 	kwh_basin_radius.exam.assign("0.0");
 	kwh_basin_radius.reqd.assign("no");
@@ -528,6 +529,7 @@ InputRead::InputRead()
 	kwh_basin_radius.help.append("   Use the ImageJ plugin 'cv_Match_Template' to explore this parameter.\n");
 	kwh_basin_radius.help.append("\n");
 	manual.push_back(kwh_basin_radius);
+*/
 
 	kwh_subvol_aspect.word.assign("subvol_aspect");
 	kwh_subvol_aspect.exam.assign("1.0 1.0 1.0");
@@ -812,8 +814,8 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
 	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
-	run->basin_radius = 0.0;
-	if(parse_line_min_max(kwh_basin_radius, 0, run->step_max, run->basin_radius, false) == param_invalid) return 0;
+//	run->basin_radius = 0.0;
+//	if(parse_line_min_max(kwh_basin_radius, 0, run->step_max, run->basin_radius, false) == param_invalid) return 0;
 
 	run->rigid_trans.resize(3, 0.0);
 	std::vector<double> rigid_trans_limit(3);
@@ -1317,7 +1319,7 @@ int InputRead::echo_input(RunControl *run)
 	// opt_tune
 
 	sta_file << kwh_rigid_trans.word << "\t" << run->rigid_trans[0] << "\t" << run->rigid_trans[1] << "\t" << run->rigid_trans[2] << "\n";
-	sta_file << kwh_basin_radius.word << "\t" << run->basin_radius << "\n";
+//	sta_file << kwh_basin_radius.word << "\t" << run->basin_radius << "\n";
 	sta_file << kwh_subvol_aspect.word << "\t" << run->subvol_aspect[0] << "\t" << run->subvol_aspect[1] << "\t" << run->subvol_aspect[2] << "\n";
 
 	// point cloud and version information

@@ -188,8 +188,9 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	}
 
 	// coarse search step, this is probably going to phase out, except perhaps for optimization start refinement in special cases
+	// removed from input file, code blocks remain but not called
 	// basin_radius = 0.0 in the input file signals no coarse search step
-	if (rc->basin_radius > 0.0) {trgrid_global(rc->step_max, rc->basin_radius, n, false);}
+	// if (rc->basin_radius > 0.0) {trgrid_global(rc->step_max, rc->basin_radius, n, false);}
 	// random search is also reserved for optimization start refinement in special cases, not triggered in current code configuration
 	//	random_global(rc->step_max, rc->basin_radius);
 
