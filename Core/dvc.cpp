@@ -123,6 +123,10 @@ int main(int argc, char *argv[])
 		in.print_manual_output(dvc_man);
 		dvc_man.seekp(0, dvc_man.beg);
 		dvc_man.close();
+
+    	std::ofstream html("dvc_manual.html");
+    	in.print_manual_html(html);
+
 		return 0;
 	}
 
@@ -153,35 +157,6 @@ int main(int argc, char *argv[])
 	DataCloud data;
 	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
 	data.organize_cloud(&run);		// sort overall by distance from global starting_point and establish heighbors
-
-	// setting up a process for cloud subset searches based on neighbors: neighbor_subset
-	// the goal is more efficiency, with fewer and larger interpolators covering more points at a time 
-	// (current Search needs some adjustment, move instantiation of interpolators into dvc.cpp and pointers into RunControl)
-	// the concept is to break up the cloud into subsets based on the point neighbors
-	// the logic:
-	//	1. starting with point 1 in the run order, process n members of the local neighborhood (adjustable n for memory allocation capacity)
-	//	2. instead of independant processing, create interpolators capable of processing the full subset
-	//	3. as usual, all of these points are marked with a search result, removing the initial not_search designation
-	//	4. move through the global list for the next point with not_search status (automatically adjacent to a group of points already run)
-	//	5. within neighbors of this new point, process all unprocessed points within it's local neighborhood
-	//	6. repeat
-	//
-	//	pre-sorting:
-	//	1. this can be organized ahead of time by another cloud organization process following organize_cloud step
-	//	2. create a neighbor_subset struct that contains:
-	//		a. variable length vector of point indices to process
-	//		b. a bbox that encompasses the point full point subset (used subsequently for interpolator instantiation)
-	//	3. loop through the neighbor_subset list, loop through indices list, done
-	//	4. the normal process of establishing starting point estimates from neighborhood informaiton is undisturbed
-	//	5. the neighbor subsets and lists within can be established ahead of time through another sort neighbors type process
-	//		a. go through the point list as described in logic creating a list of "already touched" points
-	//		b. check this list , and do not include "already touched" points as new neighbor subsets are established
-
-	// doesn't look like a good option ... in a random test with a 10000 pt rand cloud ...
-	// number of unprocessed neighbors drops quickly to very low numbers
-	// ended up with ~ 5000 neighbor subsets, many with 1 or two point, for trials of 75 and 27 and 8 neighbors considered
-	// 
-	//data.sort_neighbor_subsets();
 
 	/**/
 	//std::cout << std::endl << "data.results.size() = " << data.results.size() << std::endl;

@@ -114,7 +114,7 @@ public:
 
 	// keywords in pool opt_tune
 	key_word_help kwh_rigid_trans;
-//	key_word_help kwh_basin_radius;		// deactivated
+//	key_word_help kwh_basin_radius;
 	key_word_help kwh_subvol_aspect;
 	key_word_help kwh_num_points_to_process;
 	key_word_help kwh_starting_point;
@@ -147,6 +147,11 @@ public:
 	double min_vol_fract_min, min_vol_fract_max;
 
 	// note, the const_tol variable itself is owned by Utility.h as part of RunControl
+
+	const int step_max_min = 1;
+	const int step_max_max = 15;
+	const int step_max_def = 5;
+
 	const double cost_tol_min = 1e-10;
 	const double step_tol_min = 1e-10;
 	const double grad_tol_min = 1e-10;
@@ -163,6 +168,12 @@ public:
 	const int max_iter_max = 100;
 	const int max_iter_def = 20;
 
+	const double subvol_aspect_min = 0.1;
+	const double subvol_aspect_max = 10.0;
+	const double subvol_aspect_def = 1.0;
+
+
+
 	std::vector<int> ok_num_srch_dof;
 	
 	std::vector<std::string> ok_obj_function;
@@ -171,8 +182,8 @@ public:
 
 	std::vector<std::string> ok_fine_srch;
 	
-	double aspect_min;
-	double aspect_max;
+	//double aspect_min;
+	//double aspect_max;
 
 	std::string limits_to_string(int min, int max);
 	std::string limits_to_string(double min, double max);
@@ -209,6 +220,12 @@ public:
 	int print_manual_section(std::ofstream &file, std::string pool);
 	int print_manual_output(std::ofstream &file);
 	int print_input_example(std::ofstream &file, std::string pool);
+
+	// HTML manual (single self-contained file; print to PDF from a browser)
+	int print_manual_html(std::ofstream &file);
+	static std::string html_escape(const std::string &s);
+	std::string html_link_keywords(const std::string &text, const std::string &self);
+	std::string help_to_html(const std::string &help, const std::string &self);
 	int print_current_version();
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
