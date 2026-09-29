@@ -112,6 +112,8 @@ int main(int argc, char *argv[])
 	// trap manual on the command line
 	if (argv[1] == manual)
 	{
+		// this is the old text manual, not currently used
+		/*
 		std::cout << "\ndvc_manual printed in the current working directory" << endl << endl;
 		std::ofstream dvc_man("dvc_manual");
 		in.print_manual_intro(dvc_man);
@@ -123,8 +125,11 @@ int main(int argc, char *argv[])
 		in.print_manual_output(dvc_man);
 		dvc_man.seekp(0, dvc_man.beg);
 		dvc_man.close();
+		*/
 
-    	std::ofstream html("dvc_manual.html");
+		// this is the new and improved html manual
+		std::cout << "\nDVC_manual.html written to the current working directory" << endl << endl;
+    	std::ofstream html("DVC_manual.html");
     	in.print_manual_html(html);
 
 		return 0;

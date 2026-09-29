@@ -1536,7 +1536,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "</ul>\n</nav>\n<main>\n";
 
 	// ---------- introduction ----------
-	file << "<h1 id=\"intro\">A brief (and hopefully useful) manual for the dvc code</h1>\n"
+	file << "<h1 id=\"intro\">A brief manual for the DVC executable</h1>\n"
 	        "<p class=\"meta\">Version " << html_escape(ver.str())
 	     << " &middot; Revised " << html_escape(rev.str())
 	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
