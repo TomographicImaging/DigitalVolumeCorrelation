@@ -117,7 +117,7 @@ Search::Search(RunControl *run)
 
 	// diagnostic
 	///*
-	std::cout << "interp (persistent, Search constructor) ..." << std::endl;
+	std::cout << std::endl << "interp (persistent, Search constructor) ..." << std::endl;
 	int wide, high, tall;
 	interp_tar->act_box_dims(wide, high, tall);
 	std::cout << "interp_tar act_box = " << wide << " " << high << " " << tall << std::endl;
@@ -489,7 +489,7 @@ void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 	// std::cout << "good = " << good << "\t" << "est = " << past_srch_x << "\t" << past_srch_y << "\t" << past_srch_z << "\n";
 
 	// *** use starting information to form initial parameter vector
-	// note: with no past points found and no rigid_trans set initial becomes zero
+	// note: with no past points found and no start_estimate set initial becomes zero
 
 	if (good != 0)
 	{
@@ -498,9 +498,9 @@ void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 		par_min[2] =  past_srch_z;
 	} else
 	{
-		par_min[0] =  rc->rigid_trans[0];
-		par_min[1] =  rc->rigid_trans[1];
-		par_min[2] =  rc->rigid_trans[2];
+		par_min[0] =  rc->start_estimate[0];
+		par_min[1] =  rc->start_estimate[1];
+		par_min[2] =  rc->start_estimate[2];
 	}
 
 	// *** set higher-order initial values to zero for now

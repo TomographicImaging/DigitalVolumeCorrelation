@@ -171,7 +171,7 @@ InputRead::InputRead()
 	// parameter limits
 	kwh_ref_fname.good.assign("name of raw image file (in working directory) or a full path");
 	kwh_cor_fname.good.assign("name of raw image file (in working directory) or a full path");
-	kwh_pts_fname.good.assign("name of tab-txt nxyz file (in working directory) or a full path");
+//	kwh_pts_fname.good.assign("name of tab-txt nxyz file (in working directory) or a full path");
 	kwh_out_fname.good.assign("valid file name (for working directory) or a writeable path");
 
 	ok_vol_bit_depth.push_back(8);
@@ -226,7 +226,7 @@ InputRead::InputRead()
 	ok_interp_type = line_to_vect(ok_interp_mthd_line);
 	kwh_interp_type.good = limits_to_string(ok_interp_type);
 
-	kwh_rigid_trans.good.assign("abs(x,y,z) limited to the dimensions of the voxel space");
+	kwh_start_estimate.good.assign("abs(x,y,z) limited to the dimensions of the voxel space");
 
 
 	// file name keywords
@@ -261,18 +261,20 @@ InputRead::InputRead()
 	kwh_pts_fname.exam.assign("ROI_points_nxyz.txt");
 	kwh_pts_fname.reqd.assign("yes");
 	kwh_pts_fname.pool.assign("fio_name");
+	kwh_pts_fname.good.assign("name of nxyz format txt file (in working directory) or a full path");
 	kwh_pts_fname.hint.assign("### tab delimited text file containing Region of Interest point labels (n) and (xyz) locations");
 	kwh_pts_fname.help.assign("   Specify the file containing data for all measurement points in the Region of Interest (ROI).\n");
 	kwh_pts_fname.help.append("   The ROI is defined as a cloud of points that fill a geometric region within the reference volume.\n");
 	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n");
-	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry and reflect measurement objectives yield the best results.\n");
+	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry and measurement objectives yield the best results.\n");
 	kwh_pts_fname.help.append("   Finite element meshing or other geometry discretization software is very useful for creating point clouds.\n");
 	kwh_pts_fname.help.append("   Each line in the tab delimited file contains an integer point label followed by the x,y,z point location, e.g.\n");
-	kwh_pts_fname.help.append("      1   300   750.2  208 \n");
-	kwh_pts_fname.help.append("      2   300   750.2  209 \n");
+	kwh_pts_fname.help.append("      1   300.7   750.2  208.4 \n");
+	kwh_pts_fname.help.append("      2   299.3   750.2  209.6 \n");
 	kwh_pts_fname.help.append("      etc. \n");
 	kwh_pts_fname.help.append("   Non-integer voxel locations are admitted, with reference volume interpolation used as needed.\n");
-	kwh_pts_fname.help.append("   The first point is significant, as it is used as a global starting point and reference for the rigid_trans variable.\n");
+	kwh_pts_fname.help.append("   If the optional input start_position is not used, the first point in the cloud is used as a global starting point.\n");
+	kwh_pts_fname.help.append("   The start_estimate parameter is key. It contains the initial displacement of the global starting point in the correalte image volume.\n");
 	kwh_pts_fname.help.append("   Place the file in the current working directory or include path information.\n");
 	kwh_pts_fname.help.append("\n");
 	manual.push_back(kwh_pts_fname);
@@ -281,6 +283,7 @@ InputRead::InputRead()
 	kwh_out_fname.exam.assign("\tmyproject_results");
 	kwh_out_fname.reqd.assign("yes");
 	kwh_out_fname.pool.assign("fio_name");
+	kwh_out_fname.good.assign("valid file name (for working directory) or a writeable path");
 	kwh_out_fname.hint.assign("### base name for run status (.stat) and displacement data (.disp) output files");
 	kwh_out_fname.help.assign("   Specify a base output file name for results of dvc code execution.\n");
 	kwh_out_fname.help.append("   If a filename alone is given, output files are placed in the current working directory.\n");
@@ -513,20 +516,20 @@ InputRead::InputRead()
 
 	// optimization tuning parameters
 
-	kwh_rigid_trans.word.assign("rigid_trans");
-	kwh_rigid_trans.exam.assign("0.0 0.0 0.0");
-	kwh_rigid_trans.reqd.assign("no");
-	kwh_rigid_trans.pool.assign("opt_tune");
-	kwh_rigid_trans.hint.assign("### x,y,z voxel offset of target volume from reference volume at first point in ROI cloud");
-	kwh_rigid_trans.help.assign("   A rigid body offset between reference and target volumes complicates template matching.\n");
-	kwh_rigid_trans.help.append("   If you have done a rigid body registration do not use this option, or set to (0.0,0.0,0.0).\n");
-	kwh_rigid_trans.help.append("   If you have not, but know the offset, then provide the displacement vector here.\n");
-	kwh_rigid_trans.help.append("   Use the FIRST POINT of the ROI cloud for rigid body registration or rigid_trans specification.\n");
-	kwh_rigid_trans.help.append("   Notes: \n");
-	kwh_rigid_trans.help.append("     1. Only do rigid body registration with whole voxel translations, do not use interpolation.\n");
-	kwh_rigid_trans.help.append("     2. The first point of the ROI cloud is used as a global starting point and therefore as a translation reference.\n");
-	kwh_rigid_trans.help.append("\n");
-	manual.push_back(kwh_rigid_trans);
+	kwh_start_estimate.word.assign("start_estimate");
+	kwh_start_estimate.exam.assign("0.0 0.0 0.0");
+	kwh_start_estimate.reqd.assign("no");
+	kwh_start_estimate.pool.assign("opt_tune");
+	kwh_start_estimate.hint.assign("### x,y,z voxel offset of target volume from reference volume at first point in ROI cloud");
+	kwh_start_estimate.help.assign("   A rigid body offset between reference and target volumes complicates template matching.\n");
+	kwh_start_estimate.help.append("   If you have done a rigid body registration do not use this option, or set to (0.0,0.0,0.0).\n");
+	kwh_start_estimate.help.append("   If you have not, but know the offset, then provide the displacement vector here.\n");
+	kwh_start_estimate.help.append("   Use the FIRST POINT of the ROI cloud for rigid body registration or start_estimate specification.\n");
+	kwh_start_estimate.help.append("   Notes: \n");
+	kwh_start_estimate.help.append("     1. Only do rigid body registration with whole voxel translations, do not use interpolation.\n");
+	kwh_start_estimate.help.append("     2. The first point of the ROI cloud is used as a global starting point and therefore as a translation reference.\n");
+	kwh_start_estimate.help.append("\n");
+	manual.push_back(kwh_start_estimate);
 /*
 	kwh_basin_radius.word.assign("basin_radius");
 	kwh_basin_radius.exam.assign("0.0");
@@ -572,14 +575,16 @@ InputRead::InputRead()
 	kwh_num_points_to_process.help.append("\n");
 	manual.push_back(kwh_num_points_to_process);
 
-	kwh_starting_point.word.assign("starting_point");
-	kwh_starting_point.exam.assign("0.0 0.0 0.0");
-	kwh_starting_point.reqd.assign("no");
-	kwh_starting_point.pool.assign("opt_tune");
-	kwh_starting_point.hint.assign("### x,y,z location of starting point for DVC analysis\n");
-	kwh_starting_point.help.assign("If not set, the first point in the point cloud will be used as starting point\n");
-	kwh_starting_point.help.append("\n");
-	manual.push_back(kwh_starting_point);
+	kwh_start_position.word.assign("start_position");
+	kwh_start_position.exam.assign("0.0 0.0 0.0");
+	kwh_start_position.reqd.assign("yes");
+	kwh_start_position.pool.assign("opt_tune");
+	kwh_start_position.hint.assign("### x,y,z location of starting point for DVC analysis\n");
+	kwh_start_position.help.assign("If not set, the first point in the point cloud will be used as starting point\n");
+	kwh_start_position.help.append("\n");
+	manual.push_back(kwh_start_position);
+
+
 
 	// cost_tol
 	kwh_cost_tol.word.assign("cost_tol");
@@ -818,6 +823,7 @@ int InputRead::input_file_read(RunControl *run)
 		}
 
 	// optional parameters
+	// 
 
 	// new code process, set min/max/def in InputRead.h as const
 	run->cost_tol = cost_tol_def;
@@ -833,22 +839,30 @@ int InputRead::input_file_read(RunControl *run)
 //	run->basin_radius = 0.0;
 //	if(parse_line_min_max(kwh_basin_radius, 0, run->step_max, run->basin_radius, false) == param_invalid) return 0;
 
-	run->rigid_trans.resize(3, 0.0);
-	std::vector<double> rigid_trans_limit(3);
-	rigid_trans_limit[0] = (double)run->vol_wide;
-	rigid_trans_limit[1] = (double)run->vol_high;
-	rigid_trans_limit[2] = (double)run->vol_tall;
-	if(parse_line_dvect(kwh_rigid_trans, rigid_trans_limit, run->rigid_trans, false) == param_invalid) return 0;
 
 	run->subvol_aspect.resize(3, subvol_aspect_def);
 	if(parse_line_dvect(kwh_subvol_aspect, subvol_aspect_min, subvol_aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
 	
-	run->starting_point.resize(3, std::nan(""));
-	std::vector<double> starting_point_limit(3);
-	starting_point_limit[0] = (double)run->vol_wide;
-	starting_point_limit[1] = (double)run->vol_high;
-	starting_point_limit[2] = (double)run->vol_tall;
-	if (parse_line_dvect(kwh_starting_point, starting_point_limit, run->starting_point, false) == param_invalid) return 0;
+
+	run->start_position.resize(3, std::nan(""));
+	std::vector<double> start_position_limit(3);
+	start_position_limit[0] = (double)run->vol_wide;
+	start_position_limit[1] = (double)run->vol_high;
+	start_position_limit[2] = (double)run->vol_tall;
+	if (parse_line_dvect(kwh_start_position, start_position_limit, run->start_position, false) == param_invalid) return 0;
+
+	std::cout << "start_position: " << run->start_position[0] << " " << run->start_position[1] << " " << run->start_position[2] << std::endl;
+
+
+	run->start_estimate.resize(3, 0.0);
+	std::vector<double> start_estimate_limit(3);
+	start_estimate_limit[0] = (double)run->vol_wide;
+	start_estimate_limit[1] = (double)run->vol_high;
+	start_estimate_limit[2] = (double)run->vol_tall;
+	if(parse_line_dvect(kwh_start_estimate, start_estimate_limit, run->start_estimate, false) == param_invalid) return 0;
+
+	std::cout << "start_estimate: " << run->start_estimate[0] << " " << run->start_estimate[1] << " " << run->start_estimate[2] << std::endl;
+
 
 	// this is a silly max, but we accommodate every request!
 	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
@@ -1536,7 +1550,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "</ul>\n</nav>\n<main>\n";
 
 	// ---------- introduction ----------
-	file << "<h1 id=\"intro\">A brief manual for the DVC executable</h1>\n"
+	/*file << "<h1 id=\"intro\">A brief manual for the DVC executable</h1>\n"
 	        "<p class=\"meta\">Version " << html_escape(ver.str())
 	     << " &middot; Revised " << html_escape(rev.str())
 	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
@@ -1544,7 +1558,31 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "At present only a single external library (Eigen) is used for sparse matrix interpolation calculations.</p>\n"
 	        "<p>Compilation is Makefile controlled. To do a complete rebuild:</p>\n"
 	        "<ol><li>Delete all object (<code>.o</code>) files in <code>/include/objects</code>.</li>\n"
-	        "<li>Enter <code>make</code> from a terminal window in the main distribution directory.</li></ol>\n";
+	        "<li>Enter <code>make</code> from a terminal window in the main distribution directory.</li></ol>\n";*/
+
+	file << "<h1 id=\"intro\">A brief manual for the iDVC executable</h1>\n"
+	        "<p class=\"meta\">Version " << html_escape(ver.str())
+	     << " &middot; Revised " << html_escape(rev.str())
+	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
+		 	"<p>"
+	        "The iDVC software was inspired by a need for research-level code with access to internal methods and settings. "
+			"Aditional objectives were established to facilitate accessibility and portability among research groups: "
+			"c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. "
+	        "</p>\n"
+		 	"<p>"
+	        "An early and continuing area of focus is biological tissues evaluated through <i>in situ</i> x-ray tomography. "
+	        "Challenges within that application environment have driven development of the overall algorithmic approach and broadened its aplicability. "
+			"Beginning from a highly generalized context has provided flexibility in managing a range of experimental scenarios. "
+			"</p>\n"
+			"The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. "
+			"Test samples are often geometrically complex and benefit from microstructure-based point clouds as opposed to regular grid regions of interest. "
+			"Large displacement and strain fields are frequently encountered and inspired a wavefront/neighborhood approach to point cloud processing. "
+			"These requirements translated into code that focuses on the basic DVC subvolume tracking process with limited assumptions about sample response. "
+	        "</p>\n";
+
+
+
+
 
 	file << "<h2 id=\"running\" class=\"nobreak\">Running the code</h2>\n"
 	        "<table class=\"grid\">\n<tr><th>Command</th><th>Action</th></tr>\n"
@@ -1757,7 +1795,7 @@ int InputRead::echo_input(RunControl *run)
 
 	// opt_tune
 
-	sta_file << kwh_rigid_trans.word << "\t" << run->rigid_trans[0] << "\t" << run->rigid_trans[1] << "\t" << run->rigid_trans[2] << "\n";
+	sta_file << kwh_start_estimate.word << "\t" << run->start_estimate[0] << "\t" << run->start_estimate[1] << "\t" << run->start_estimate[2] << "\n";
 //	sta_file << kwh_basin_radius.word << "\t" << run->basin_radius << "\n";
 	sta_file << kwh_subvol_aspect.word << "\t" << run->subvol_aspect[0] << "\t" << run->subvol_aspect[1] << "\t" << run->subvol_aspect[2] << "\n";
 

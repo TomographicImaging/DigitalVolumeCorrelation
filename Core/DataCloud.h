@@ -391,10 +391,10 @@ public:
 
 	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
 	// needs points and labels already available, generates order and neigh
-	void sort_order_neighbors(Point starting_point);
+	void sort_order_neighbors(Point start_position);
 
 	// new version base don kd tree, much, much faster
-	void sort_neighbors_kdtree(Point starting_point);
+	void sort_neighbors_kdtree(Point start_position);
 
     // support for neighbor_subset processing
     // runs after initial sorting, uses the result stored in order

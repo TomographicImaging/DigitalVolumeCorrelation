@@ -113,11 +113,11 @@ public:
 	key_word_help kwh_interp_type;
 
 	// keywords in pool opt_tune
-	key_word_help kwh_rigid_trans;
+	key_word_help kwh_start_estimate;
 //	key_word_help kwh_basin_radius;
 	key_word_help kwh_subvol_aspect;
 	key_word_help kwh_num_points_to_process;
-	key_word_help kwh_starting_point;
+	key_word_help kwh_start_position;
 
 	key_word_help kwh_cost_tol;
 	key_word_help kwh_step_tol;

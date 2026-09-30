@@ -66,7 +66,7 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 	sorted_pc_file.close();
 }
 /******************************************************************************/
-void DataCloud::sort_order_neighbors(Point starting_point)
+void DataCloud::sort_order_neighbors(Point start_position)
 // this is the brute-force version
 {
 	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
@@ -86,7 +86,7 @@ void DataCloud::sort_order_neighbors(Point starting_point)
 	std::vector<DualSort> indx_dist(points.size());
 	for (int i=0; i<points.size(); i++) {
 		indx_dist[i].index = i;
-		indx_dist[i].value = starting_point.pt_dist(points[i]);
+		indx_dist[i].value = start_position.pt_dist(points[i]);
 	}
 	std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
 	
@@ -144,7 +144,7 @@ void DataCloud::sort_order_neighbors(Point starting_point)
    
 }
 /******************************************************************************/
-void DataCloud::sort_neighbors_kdtree(Point starting_point)
+void DataCloud::sort_neighbors_kdtree(Point start_position)
 {
 	std::cout << std::endl << "kdtree sorting ..." << std::endl;
 
@@ -158,7 +158,7 @@ void DataCloud::sort_neighbors_kdtree(Point starting_point)
 	std::vector<DualSort> indx_dist(points.size());
 	for (int i=0; i<points.size(); i++) {
 		indx_dist[i].index = i;
-		indx_dist[i].value = starting_point.pt_dist(points[i]);
+		indx_dist[i].value = start_position.pt_dist(points[i]);
 	}
 	std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
 	
@@ -292,18 +292,18 @@ void DataCloud::sort_neighbor_subsets()
 void DataCloud::organize_cloud(RunControl *run)
 {
 	// logic to determine if a starting point is given or I should use the default
-	Point starting_point = this->points[0];
-	std::vector<double> nan_starting_point = { std::nan(""), std::nan(""), std::nan("")  };
-	if (nan_starting_point != run->starting_point) {
-		starting_point = Point(run->starting_point[0], run->starting_point[1], run->starting_point[2]);
+	Point start_position = this->points[0];
+	std::vector<double> nan_start_position = { std::nan(""), std::nan(""), std::nan("")  };
+	if (nan_start_position != run->start_position) {
+		start_position = Point(run->start_position[0], run->start_position[1], run->start_position[2]);
 	}
 	// establish point processing order and neighborhoods using brute force search (original method)
-	//sort_order_neighbors(starting_point);
+	//sort_order_neighbors(start_position);
 	// write sort file
 	//write_sort_file(run->pts_fname, neigh);
 
 	// establish point processing order and neighborhoods using kdtree approach (much faster)
-	sort_neighbors_kdtree(starting_point);
+	sort_neighbors_kdtree(start_position);
 	// write sort file
 	write_sort_file(run->pts_fname, neigh);
 

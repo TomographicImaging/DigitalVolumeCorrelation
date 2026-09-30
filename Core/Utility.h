@@ -139,10 +139,10 @@ struct RunControl
 
 	int max_iter;
 
-	std::vector<double> rigid_trans;
+	std::vector<double> start_estimate;
 	double basin_radius;
 	std::vector<double> subvol_aspect;
-	std::vector<double> starting_point;
+	std::vector<double> start_position;
 
 	std::string fine_srch;
 };
