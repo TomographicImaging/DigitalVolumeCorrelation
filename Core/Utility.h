@@ -115,10 +115,12 @@ struct RunControl
 	int subvol_size;
 	int subvol_npts;
 	
+	/*
 	std::string subvol_thresh;
 	double gray_thresh_min;
 	double gray_thresh_max;
 	double min_vol_fract;
+	*/
 
 	int step_max;
 	int num_srch_dof;

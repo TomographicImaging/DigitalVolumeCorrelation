@@ -87,6 +87,7 @@ public:
 	key_word_help kwh_cor_fname;
 	key_word_help kwh_pts_fname;
 	key_word_help kwh_out_fname;
+	key_word_help kwh_num_points_to_process;	// optional, default (0) is run all points
 
 	// keywords in pool vox_data
 	key_word_help kwh_vol_bit_depth;
@@ -100,34 +101,23 @@ public:
 	key_word_help kwh_subvol_geom;
 	key_word_help kwh_subvol_size;
 	key_word_help kwh_subvol_npts;
-
-	key_word_help kwh_subvol_thresh;
-	key_word_help kwh_gray_thresh_min;
-	key_word_help kwh_gray_thresh_max;
-	key_word_help kwh_min_vol_fract;
+	key_word_help kwh_subvol_aspect;	// optional
 
 	// keywords in pool opt_mthd
-	key_word_help kwh_step_max;
 	key_word_help kwh_num_srch_dof;
 	key_word_help kwh_obj_function;
 	key_word_help kwh_interp_type;
+	key_word_help kwh_start_position;
+	key_word_help kwh_start_estimate;
+	key_word_help kwh_step_max;
 
 	// keywords in pool opt_tune
-	key_word_help kwh_start_estimate;
-//	key_word_help kwh_basin_radius;
-	key_word_help kwh_subvol_aspect;
-	key_word_help kwh_num_points_to_process;
-	key_word_help kwh_start_position;
-
-	key_word_help kwh_cost_tol;
-	key_word_help kwh_step_tol;
-	key_word_help kwh_grad_tol;
-	key_word_help kwh_max_iter;
-
-	key_word_help kwh_fine_srch;		// not implemented
+	key_word_help kwh_cost_tol;		// optional
+	key_word_help kwh_step_tol;		// optional
+	// key_word_help kwh_grad_tol;	// optional
+	key_word_help kwh_max_iter;		// optional
 
 	// organized for creation of a manual
-
 	std::vector<key_word_help> manual;
 
 	// data used for value checking
@@ -143,7 +133,7 @@ public:
 	std::vector<std::string> ok_subvol_geom;
 	int subvol_size_min, subvol_size_max;
 	int subvol_npts_min, subvol_npts_max;
-	std::vector<std::string> ok_subvol_thresh;
+
 	double min_vol_fract_min, min_vol_fract_max;
 
 	// note, the const_tol variable itself is owned by Utility.h as part of RunControl
@@ -172,8 +162,6 @@ public:
 	const double subvol_aspect_max = 10.0;
 	const double subvol_aspect_def = 1.0;
 
-
-
 	std::vector<int> ok_num_srch_dof;
 	
 	std::vector<std::string> ok_obj_function;
@@ -193,6 +181,11 @@ public:
 	std::vector<std::string> line_to_vect(std::string line);
 
 	void clear_stream_str(std::ostringstream &the_stream, std::string &the_str);
+
+	std::string set_stream_str(double min, double max, double def, std::string notation, int ndp);
+	std::string set_stream_str(int min, int max, int def);
+	std::string set_num_str(double num, std::string notation, int ndp);
+	std::string set_num_str(int num);
 
 	// get and parse line functions
 	int check_eol(std::ifstream &file, char &eol, std::string &term);
@@ -233,6 +226,15 @@ public:
 
 	int result_header(std::string fname, int num_params);
 	int append_result(std::string fname, int n, Point pt, const int status, double obj_min, std::vector<double> result);
+
+	// threshold inputs deactivated, option not implemented in code
+	/*
+	key_word_help kwh_subvol_thresh;
+	key_word_help kwh_gray_thresh_min;
+	key_word_help kwh_gray_thresh_max;
+	key_word_help kwh_min_vol_fract;
+	std::vector<std::string> ok_subvol_thresh;
+	*/
 
 private:
 
