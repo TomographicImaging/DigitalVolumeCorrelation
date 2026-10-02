@@ -138,7 +138,6 @@ struct RunControl
 	int bspline_order;
 
 	double cost_tol, step_tol, grad_tol;
-
 	int max_iter;
 
 	std::vector<double> start_estimate;

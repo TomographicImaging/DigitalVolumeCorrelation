@@ -52,6 +52,7 @@ public:
 	std::string exam; // an example (default?) values for the parameter
 	std::string reqd; // yes, or the conditions where it is required
 	std::string good; // a description of good values for this keyword
+	std::string dflt; // default setting, if one exists, or "none"
 	std::string pool; // fio_name, vox_data, sub_vols, opt_mthd, opt_tune
 	std::string hint; // a brief description of the keyword
 	std::string help; // a detailed description of the keyword
@@ -122,19 +123,26 @@ public:
 
 	// data used for value checking
 
-	std::vector<int> ok_vol_bit_depth;
+//	std::vector<int> ok_vol_bit_depth;
 	std::vector<std::string> ok_vol_endian;
-	int vol_dim_min, vol_dim_max;
-	int vol_hdr_min, vol_hdr_max;
+//	int vol_dim_min, vol_dim_max;
+//	int vol_hdr_min, vol_hdr_max;
 	unsigned long ref_file_length;
 	unsigned long cor_file_length;
 	unsigned long pts_file_length;
 
 	std::vector<std::string> ok_subvol_geom;
 
-	double min_vol_fract_min, min_vol_fract_max;
+	const int num_points_to_process_def = 0;	// process all points
 
-	// note, the const_tol variable itself is owned by Utility.h as part of RunControl
+	const std::vector<int> ok_bit_depth = {8,16};
+	const int vol_bit_depth_def = 8;
+
+	const int vol_hdr_min = 0;
+	const int vol_hdr_max = 4096;
+
+	const int vol_dim_min = 0;
+	const int vol_dim_max = 8000;
 
 	const int subvol_size_min = 10;
 	const int subvol_size_max = 100;
@@ -149,6 +157,10 @@ public:
 	const double subvol_aspect_def = 1.0;
 
 	const std::vector<int> ok_srch_dof = {3, 6, 12};
+	const int srch_dof_def = 12;
+
+	const int obj_function_def = 3;		// array/enum value of znssd
+	const int interp_type_def = 2;		// array/enum value of tri_bspline_3
 
 	const int step_max_min = 1;
 	const int step_max_max = 15;
@@ -192,9 +204,12 @@ public:
 	void clear_stream_str(std::ostringstream &the_stream, std::string &the_str);
 
 	std::string set_stream_str(double min, double max, double def, std::string notation, int ndp);
+	std::string set_stream_str(double min, double max, std::string notation, int ndp);
 	std::string set_stream_str(int min, int max, int def);
+	std::string set_stream_str(int min, int max);
 	std::string set_num_str(double num, std::string notation, int ndp);
 	std::string set_num_str(int num);
+	std::string set_num_str(int num, std::string comment);
 
 	// get and parse line functions
 	int check_eol(std::ifstream &file, char &eol, std::string &term);
@@ -238,6 +253,7 @@ public:
 
 	// threshold inputs deactivated, option not implemented in code
 	/*
+	double min_vol_fract_min, min_vol_fract_max;
 	key_word_help kwh_subvol_thresh;
 	key_word_help kwh_gray_thresh_min;
 	key_word_help kwh_gray_thresh_max;
