@@ -224,10 +224,10 @@ InputRead::InputRead()
 	std::string a_str;
 
 	// parameter limits
-	kwh_ref_fname.good.assign("name of raw image file (in working directory) or a full path");
-	kwh_cor_fname.good.assign("name of raw image file (in working directory) or a full path");
-//	kwh_pts_fname.good.assign("name of tab-txt nxyz file (in working directory) or a full path");
-	kwh_out_fname.good.assign("valid file name (for working directory) or a writeable path");
+
+
+
+
 
 	ok_vol_bit_depth.push_back(8);
 	ok_vol_bit_depth.push_back(16);
@@ -251,17 +251,13 @@ InputRead::InputRead()
 	ok_subvol_geom = line_to_vect(ok_subvol_geom_line);
 	kwh_subvol_geom.good = limits_to_string(ok_subvol_geom);
 
-	kwh_subvol_size.good.assign("1 <= int <= smallest dimension of the image volumes");
-
-	subvol_npts_min = 1;
-	subvol_npts_max = 50000;
-	kwh_subvol_npts.good = limits_to_string(subvol_npts_min, subvol_npts_max);
+	
 
 
-	ok_num_srch_dof.push_back(3);
-	ok_num_srch_dof.push_back(6);
-	ok_num_srch_dof.push_back(12);
-	kwh_num_srch_dof.good = limits_to_string(ok_num_srch_dof);
+	for (int i=0; i<ok_srch_dof.size(); i++) { std::cout << ok_srch_dof[i] << std::endl;}
+
+
+	
 	
 	// keyword obj_function
 	ok_obj_function = line_to_vect(ok_obj_fcn_line);
@@ -271,7 +267,7 @@ InputRead::InputRead()
 	ok_interp_type = line_to_vect(ok_interp_mthd_line);
 	kwh_interp_type.good = limits_to_string(ok_interp_type);
 
-	kwh_start_estimate.good.assign("abs(x,y,z) limited to the dimensions of the voxel space");
+	
 
 
 	// fio_name
@@ -281,12 +277,12 @@ InputRead::InputRead()
 	kwh_ref_fname.reqd = "yes";
 	kwh_ref_fname.pool = "fio_name";
 	kwh_ref_fname.hint = "### single raster file (raw) of same dimensions as the correlate_volume";
+	kwh_ref_fname.good = "name of raw image file (in working directory) or a full path";
 	kwh_ref_fname.help.assign("   Specify the file containing the reference image volume.\n");
 	kwh_ref_fname.help.append("   Format as a single uncompressed raw data file with fixed-length (or no) header.\n");
-	kwh_ref_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data ....\n");
+	kwh_ref_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data.");
 	kwh_ref_fname.help.append("   Place the file in the current working directory or include path information.\n");
 	kwh_ref_fname.help.append("   Reference and Correlate files must have same dimensionality (header, wide, high, tall parameters).\n");
-	kwh_ref_fname.help.append("\n");
 	manual.push_back(kwh_ref_fname);
 
 	kwh_cor_fname.word = "correlate_filename";
@@ -294,12 +290,12 @@ InputRead::InputRead()
 	kwh_cor_fname.reqd = "yes";
 	kwh_cor_fname.pool = "fio_name";
 	kwh_cor_fname.hint = "### single raster file (raw) of same dimensions as the reference_volume";
+	kwh_cor_fname.good = "name of raw image file (in working directory) or a full path";
 	kwh_cor_fname.help.assign("   Specify the file containing the correlation image volume.\n");
 	kwh_cor_fname.help.append("   Format as a single uncompressed raw data file with fixed-length (or no) header.\n");
-	kwh_cor_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data ....\n");
+	kwh_cor_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data.\n");
 	kwh_cor_fname.help.append("   Place the file in the current working directory or include path information.\n");
 	kwh_cor_fname.help.append("   Reference and Correlate files must have same dimensionality (header, wide, high, tall parameters).\n");
-	kwh_cor_fname.help.append("\n");
 	manual.push_back(kwh_cor_fname);
 
 	kwh_pts_fname.word = "point_cloud_filename";
@@ -307,21 +303,18 @@ InputRead::InputRead()
 	kwh_pts_fname.reqd = "yes";
 	kwh_pts_fname.pool = "fio_name";
 	kwh_pts_fname.hint = "### tab delimited text file containing Region of Interest point labels (n) and (xyz) locations";
-	kwh_pts_fname.good.assign("name of nxyz format txt file (in working directory) or a full path");
+	kwh_pts_fname.good = "name of nxyz format txt file (in working directory) or a full path";
 	kwh_pts_fname.help.assign("   Specify the file containing data for all measurement points in the Region of Interest (ROI).\n");
 	kwh_pts_fname.help.append("   The ROI is defined as a cloud of points that fill a geometric region within the reference volume.\n");
 	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n");
 	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry and measurement objectives yield the best results.\n");
 	kwh_pts_fname.help.append("   Finite element meshing or other geometry discretization software is very useful for creating point clouds.\n");
 	kwh_pts_fname.help.append("   Each line in the tab delimited file contains an integer point label followed by the x,y,z point location, e.g.\n");
-	kwh_pts_fname.help.append("      1   300.7   750.2  208.4 \n");
-	kwh_pts_fname.help.append("      2   299.3   750.2  209.6 \n");
-	kwh_pts_fname.help.append("      etc. \n");
+	kwh_pts_fname.help.append("      1   300.7   750.2  208.4  \n");
+	kwh_pts_fname.help.append("      2   299.3   750.2  209.6  \n");
+	kwh_pts_fname.help.append("      etc.  \n");
 	kwh_pts_fname.help.append("   Non-integer voxel locations are admitted, with reference volume interpolation used as needed.\n");
-	kwh_pts_fname.help.append("   If the optional input start_position is not used, the first point in the cloud is used as a global starting point.\n");
-	kwh_pts_fname.help.append("   The start_estimate parameter is key. It contains the initial displacement of the global starting point in the correalte image volume.\n");
 	kwh_pts_fname.help.append("   Place the file in the current working directory or include path information.\n");
-	kwh_pts_fname.help.append("\n");
 	manual.push_back(kwh_pts_fname);
 
 	kwh_out_fname.word = "output_filename";
@@ -334,7 +327,6 @@ InputRead::InputRead()
 	kwh_out_fname.help.append("   If a filename alone is given, output files are placed in the current working directory.\n");
 	kwh_out_fname.help.append("   Alternatively, a full Unix-style path can precede the filename.\n");
 	kwh_out_fname.help.append("   The terminal window owner must have write permission for the target directory.\n");
-	kwh_out_fname.help.append("\n");
 	manual.push_back(kwh_out_fname);
 
 	kwh_num_points_to_process.word = "num_points_to_process";
@@ -342,9 +334,10 @@ InputRead::InputRead()
 	kwh_num_points_to_process.reqd = "no";
 	kwh_num_points_to_process.pool = "fio_name";
 	kwh_num_points_to_process.hint = "### Number of points in the point cloud to process";
+	kwh_num_points_to_process.good = "between 1 and the number of points in the point cloud file ";
 	kwh_num_points_to_process.help.assign("   Defines the maximum number of points in the point cloud to process.\n");
 	kwh_num_points_to_process.help.append("   If unset, or set to 0, it will process all points in the point cloud.\n");
-	kwh_num_points_to_process.help.append("\n");
+	kwh_num_points_to_process.help.append("   Useful for trial runs to evaluate and set input file parameters.\n");
 	manual.push_back(kwh_num_points_to_process);
 
 	// vox_data
@@ -424,28 +417,31 @@ InputRead::InputRead()
 	manual.push_back(kwh_subvol_geom);
 
 	kwh_subvol_size.word = "subvol_size";
-	kwh_subvol_size.exam = "30";
+	kwh_subvol_size.exam = set_num_str(subvol_size_def);
 	kwh_subvol_size.reqd = "yes";
 	kwh_subvol_size.pool = "sub_vols";
 	kwh_subvol_size.hint = "### side length or diameter, in voxels";
-	kwh_subvol_size.help.assign("   Defines size (in voxels) of the subvolumes created around each search point.\n");
-	kwh_subvol_size.help.append("   Values indicate a characteristic dimension (edge length or diameter) of the subvolumes.\n");
-	kwh_subvol_size.help.append("   This parameter is completely independent of subvol_npts.\n");
-	kwh_subvol_size.help.append("\n");
+	kwh_subvol_size.good = set_stream_str(subvol_size_min, subvol_size_max, subvol_size_def);
+	kwh_subvol_size.help.assign("Defines size (in voxels, side length or diameter) of the subvolumes created around each cloud point.\n");
+	kwh_subvol_size.help.append("This is a fundamental DVC parameter. Selection can be challenging with the variety of textures encountered in volumetric imaging.\n");
+	kwh_subvol_size.help.append("The general guideline is to encompass three distinctly resolved features along each coordinate direction.\n");
+	kwh_subvol_size.help.append("Larger subvolumes reduce displacement variability but also reduce spatial resolution of the results.\n");
+	kwh_subvol_size.help.append("Smaller subvolumes exhibit more displacement variability but at better spatial resolution.\n");
+	kwh_subvol_size.help.append("The companion iDVC code provides tools for evaluating and documenting the selection of subvolume size.\n");
 	manual.push_back(kwh_subvol_size);
 
 	kwh_subvol_npts.word = "subvol_npts";
-	kwh_subvol_npts.exam = "5000";
+	kwh_subvol_npts.exam = set_num_str(subvol_npts_def);
 	kwh_subvol_npts.reqd = "yes";
 	kwh_subvol_npts.pool = "sub_vols";
 	kwh_subvol_npts.hint = "### number of points to distribute within the subvol";
-	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume (max is 50000).\n");
+	kwh_subvol_npts.good = set_stream_str(subvol_npts_min, subvol_npts_max, subvol_npts_def);
+	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume.\n");
 	kwh_subvol_npts.help.append("   In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n");
 	kwh_subvol_npts.help.append("   Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n");
 	kwh_subvol_npts.help.append("   For cubes a uniform grid of approximately subvol_npts is generated.\n");
 	kwh_subvol_npts.help.append("   For spheres subvol_npts are randomly distributed within the subvolume.\n");
 	kwh_subvol_npts.help.append("   This parameter has a strong effect on computation time, so be careful.\n");
-	kwh_subvol_npts.help.append("\n");
 	manual.push_back(kwh_subvol_npts);
 
 	kwh_subvol_aspect.word = "subvol_aspect";
@@ -458,25 +454,24 @@ InputRead::InputRead()
 	kwh_subvol_aspect.help.append("   This parameter describes a change in shape of the subvolume to accommodate elongated texture.\n");
 	kwh_subvol_aspect.help.append("   It is only useful if the texture direction is consistent, and aligned with a coordinate direction.\n");
 	kwh_subvol_aspect.help.append("   The aspect change is specified as three doubles, indicating stretch/contract in the coordinate directions.\n");
-	kwh_subvol_aspect.help.append("\n");
 	manual.push_back(kwh_subvol_aspect);
 
 	// opt_mthd
 
 	kwh_num_srch_dof.word = "num_srch_dof";
-	kwh_num_srch_dof.exam = "6";
+	kwh_num_srch_dof.exam = "12";
 	kwh_num_srch_dof.reqd = "yes";
 	kwh_num_srch_dof.pool = "opt_mthd";
 	kwh_num_srch_dof.hint = "### 3 (translation), 6 (+rotation), or 12 (+strain)";
+	kwh_num_srch_dof.good = limits_to_string(ok_srch_dof);
 	kwh_num_srch_dof.help.assign("   Defines the degree-of-freedom set for the final stage of the search.\n");
 	kwh_num_srch_dof.help.append("   The actual search process introduces degrees-of-freedom in stages up to this value.\n");
 	kwh_num_srch_dof.help.append("   Translation only suffices for a quick, preliminary investigation.\n");
 	kwh_num_srch_dof.help.append("   Adding rotation will significantly improve displacement accuracy in most cases.\n");
-	kwh_num_srch_dof.help.append("   Reserve strain degrees-of-freedom for cases when the highest precision is required.\n");
+	kwh_num_srch_dof.help.append("   Strain degrees-of-freedom account for deformation of the subvolumes and improve match accuracy.\n");
 	kwh_num_srch_dof.help.append("   3  = translation only\n");
 	kwh_num_srch_dof.help.append("   6  = translation plus rotation\n");
 	kwh_num_srch_dof.help.append("   12 = translation, rotation and strain\n");
-	kwh_num_srch_dof.help.append("\n");
 	manual.push_back(kwh_num_srch_dof);
 
 	kwh_obj_function.word = "obj_function";
@@ -494,7 +489,6 @@ InputRead::InputRead()
 	kwh_obj_function.help.append("      1. Functions nssd and znssd are preferred, as quality of match can be quantified.\n");
 	kwh_obj_function.help.append("      2. The natural range of nssd is [0.0 to 2.0], and of znssd is [0.0 to 4.0].\n");
 	kwh_obj_function.help.append("      3. Both are scaled for output into the [0.0 to 1.0] range for ease of comparison.\n");
-	kwh_obj_function.help.append("\n");
 	manual.push_back(kwh_obj_function);
 
 	kwh_interp_type.word = "interp_type";
@@ -507,31 +501,36 @@ InputRead::InputRead()
 	kwh_interp_type.help.append("   Tricubic is slower but a good choice for general DVC.\n");
 	kwh_interp_type.help.append("   Tri_bspline_3 _5 and _7 are standard bspline interpolation of cubic, quintic, and septic orders.\n");
 	kwh_interp_type.help.append("   Selection is best evaluated against correlate image volumes with known displacement/strain fields.\n");
-	kwh_interp_type.help.append("\n");
 	manual.push_back(kwh_interp_type);
 
 	kwh_start_position.word = "start_position";
-	kwh_start_position.exam = "0.0 0.0 0.0";
+	kwh_start_position.exam = "300.0 100.0 200.0";
 	kwh_start_position.reqd = "yes";
 	kwh_start_position.pool = "opt_mthd";
-	kwh_start_position.hint = "### x,y,z location of starting point for DVC analysis\n";
-	kwh_start_position.help.assign("If not set, the first point in the point cloud will be used as starting point\n");
-	kwh_start_position.help.append("\n");
+	kwh_start_position.hint = "### x,y,z location near a cloud point with a reliable start_estimate ";
+	kwh_start_position.good.assign("limited to the dimensions of the voxel space");
+	kwh_start_position.help.assign("This is a very important parameter, and proper setting requires an understanding of the overall DVC process.\n");
+	kwh_start_position.help.append("Point cloud processing begins at a single defined point then progresses in order by distance from that point.\n");
+	kwh_start_position.help.append("This wavefront approach facilitates the determination of an accurate parameter estimate to initiate each optimizion step.\n");
+	kwh_start_position.help.append("But the first point needs its own parameter estimate. That information is provided under the start_estimate keyword.\n");
+	kwh_start_position.help.append("Choose a start_position at a location within or in contact with the point cloud.\n");
+	kwh_start_position.help.append("Select a position where image data and sample texture are good, and displacement between reference and correlate volumes is small.\n");
 	manual.push_back(kwh_start_position);
 
 	kwh_start_estimate.word = "start_estimate";
 	kwh_start_estimate.exam = "3.0 1.0 -2.0";
 	kwh_start_estimate.reqd = "yes";
 	kwh_start_estimate.pool = "opt_mthd";
-	kwh_start_estimate.hint = "### x,y,z voxel offset of target volume from reference volume at start_position";
-	kwh_start_estimate.help.assign("   A rigid body offset between reference and target volumes complicates template matching. ");
-	kwh_start_estimate.help.append("   If you have done a rigid body registration do not use this option, or set to (0.0,0.0,0.0). ");
-	kwh_start_estimate.help.append("   If you have not, but know the offset, then provide the displacement vector here. ");
-	kwh_start_estimate.help.append("   Use the FIRST POINT of the ROI cloud for rigid body registration or start_estimate specification. ");
-	kwh_start_estimate.help.append("   Notes:  ");
-	kwh_start_estimate.help.append("     1. Only do rigid body registration with whole voxel translations, do not use interpolation. ");
-	kwh_start_estimate.help.append("     2. The first point of the ROI cloud is used as a global starting point and therefore as a translation reference. ");
-	kwh_start_estimate.help.append(" ");
+	kwh_start_estimate.hint = "### x,y,z displacement (u,v,w) in voxels of at the start_position";
+	kwh_start_estimate.good.assign("each component typically a few voxels, limited to the dimensions of the voxel space");
+	kwh_start_estimate.help.assign("This parameter coordinates closely with the start_position specification.\n");
+	kwh_start_estimate.help.append("All cloud points need a good initial estimate at the beginning of the optimization proccess that determines point displacement.\n");
+	kwh_start_estimate.help.append("This parameter defines the initial estimate for the very first point in the cloud to seed the wavefront process.\n");
+	kwh_start_estimate.help.append("The companion iDVC graphical interface provides automated and manual visualization-guided means of determining the start_estimate.\n");
+	kwh_start_estimate.help.append("But the process can be done manually with clever use of software such as ImageJ.\n");
+	kwh_start_estimate.help.append("The goal is to determine how much to move the start position to align it in the correlate volume.\n");
+	kwh_start_estimate.help.append("The information needed is an estimate, at best within a voxel or two, at worst on the order of the step_max parameter.\n");
+	kwh_start_estimate.help.append("The optimization procss refines further from there.\n");
 	manual.push_back(kwh_start_estimate);
 
 	kwh_step_max.word = "step_max";
@@ -540,14 +539,14 @@ InputRead::InputRead()
 	kwh_step_max.pool = "opt_mthd";
 	kwh_step_max.hint = "### maximum parameter step allowed during optimization, see also step_tol";
 	kwh_step_max.good = set_stream_str(step_max_min, step_max_max, step_max_def);
-	kwh_step_max.help.assign("Defines the maximum step allowed during optimization from the initial starting estimate. ");
-	kwh_step_max.help.append("This is a very important parameter used for search process control and execution speed management. ");
-	kwh_step_max.help.append("Cloud points process very quickly if the search is limited to a small region beyond a starting estimate. ");
-	kwh_step_max.help.append("Starting estimates are derived from results of successful processing of nearby (neighborhood) points. ");
-	kwh_step_max.help.append("The step_max parameter sets the size of the search region.  ");
-	kwh_step_max.help.append("A small value speeds processing and limits access to local optima.  ");
-	kwh_step_max.help.append("Range_Fail results for points are an indication of too small a value for step_max. ");
-	kwh_step_max.help.append("Slow processing and erratic results may appear if the value is too large and the starting estimates are poor. ");
+	kwh_step_max.help.assign("Defines the maximum step allowed during optimization from the initial starting estimate.\n");
+	kwh_step_max.help.append("This is a very important parameter used for search process control and execution speed management.\n");
+	kwh_step_max.help.append("Cloud points process very quickly if the search is limited to a small region beyond a starting estimate.\n");
+	kwh_step_max.help.append("Starting estimates are derived from results of successful processing of nearby (neighborhood) points.\n");
+	kwh_step_max.help.append("The step_max parameter sets the size of the search region. \n");
+	kwh_step_max.help.append("A small value speeds processing and limits access to local optima. \n");
+	kwh_step_max.help.append("Range_Fail results for points are an indication of too small a value for step_max.\n");
+	kwh_step_max.help.append("Slow processing and erratic results may appear if the value is too large and the starting estimates are poor.\n");
 	manual.push_back(kwh_step_max);
 
 	// opt_tune
@@ -558,10 +557,10 @@ InputRead::InputRead()
 	kwh_cost_tol.pool = "opt_tune";
 	kwh_cost_tol.hint = "### optional tuning of objective function convergence tolerance";
 	kwh_cost_tol.good = set_stream_str(cost_tol_min, cost_tol_max, cost_tol_def, scientific, 0);
-	kwh_cost_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed. ");
-	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol. ");
-	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed. ");
-	kwh_cost_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance. ");
+	kwh_cost_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
+	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol.\n");
+	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
+	kwh_cost_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
 	manual.push_back(kwh_cost_tol);
 
 	kwh_step_tol.word = "step_tol";
@@ -570,11 +569,11 @@ InputRead::InputRead()
 	kwh_step_tol.pool = "opt_tune";
 	kwh_step_tol.hint = "### optional tuning of parameter vector convergence tolerance";
 	kwh_step_tol.good = set_stream_str(step_tol_min, step_tol_max, step_tol_def, scientific, 0);
-	kwh_step_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed. ");
-	kwh_step_tol.help.append("A cloud point search is considered converged if the final parameter vector (step) change is below step_tol. ");
-	kwh_step_tol.help.append("A second control on optimization is step_max which defines the largest overall step allowed during iteration. ");
-	kwh_step_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed. ");
-	kwh_step_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.");
+	kwh_step_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
+	kwh_step_tol.help.append("A cloud point search is considered converged if the final parameter vector (step) change is below step_tol.\n");
+	kwh_step_tol.help.append("A second control on optimization is step_max which defines the largest overall step allowed during iteration.\n");
+	kwh_step_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
+	kwh_step_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
 	manual.push_back(kwh_step_tol);
 	
 
@@ -584,10 +583,10 @@ InputRead::InputRead()
 	kwh_max_iter.pool = "opt_tune";
 	kwh_max_iter.hint = "### optional change in the maximum number of optimization iterations";
 	kwh_max_iter.good = set_stream_str(max_iter_min, max_iter_max, max_iter_def);
-	kwh_max_iter.help.assign("Optimization is limited to a set number of iterations to manage cases of unreasonably slow convergence. ");
-	kwh_max_iter.help.append("In general a well-posed DVC problem with a good starting point will converge in a few iterations. ");
-	kwh_max_iter.help.append("There is no performance benefit from reducing max_iter as convergence checks break early from the update loop. ");
-	kwh_max_iter.help.append("In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help. ");
+	kwh_max_iter.help.assign("Optimization is limited to a set number of iterations to manage cases of unreasonably slow convergence.\n");
+	kwh_max_iter.help.append("In general a well-posed DVC problem with a good starting point will converge in a few iterations.\n");
+	kwh_max_iter.help.append("There is no performance benefit from reducing max_iter as convergence checks break early from the update loop.\n");
+	kwh_max_iter.help.append("In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help.\n");
 	manual.push_back(kwh_max_iter);
 
 
@@ -720,6 +719,8 @@ int InputRead::input_file_read(RunControl *run)
 	// -2 = parameters bad
 	// if( ... != 1) traps any error, if == traps a specific error
 
+	// fio_name
+
 	if(parse_line_old_file(kwh_ref_fname, run->ref_fname, ref_file_length, true) != input_line_ok ) return 0;
 	if(parse_line_old_file(kwh_cor_fname, run->cor_fname, cor_file_length, true) != input_line_ok ) return 0;
 	if(parse_line_old_file(kwh_pts_fname, run->pts_fname, pts_file_length, true) != input_line_ok ) return 0;
@@ -727,6 +728,11 @@ int InputRead::input_file_read(RunControl *run)
 
 	run->res_fname = run->out_fname + ".disp";
 	run->sta_fname = run->out_fname + ".stat";
+
+	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
+	std::cout << "Number of points to process: " << run->num_points_to_process << std::endl;
+
+	// vox_data
 
 	if(parse_line_vec_val(kwh_vol_bit_depth, ok_vol_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
 	if(run->vol_bit_depth != 8)
@@ -739,19 +745,23 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_min_max(kwh_vol_high, 0, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_vol_tall, 0, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
 
-	subvol_size_max = run->vol_wide;	// used for limiting subvol_size
-	if (run->vol_high < subvol_size_max) subvol_size_max = run->vol_high;
-	if (run->vol_tall < subvol_size_max) subvol_size_max = run->vol_tall;
+	// sub_vols
 
 	if(parse_line_vec_val(kwh_subvol_geom, ok_subvol_geom, run->subvol_geom, true) != input_line_ok ) return 0;
 	for (int i=0; i<ok_subvol_geom.size(); i++)
 		if (run->subvol_geom == ok_subvol_geom[i]) run->sub_geo = (Subvol_Type)i;
-	if(parse_line_min_max(kwh_subvol_size, 0, subvol_size_max, run->subvol_size, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_subvol_npts, 0, subvol_npts_max, run->subvol_npts, true) != input_line_ok ) return 0;
 
-	if(parse_line_min_max(kwh_step_max, step_max_min, step_max_max, run->step_max, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_subvol_size, subvol_size_min, subvol_size_max, run->subvol_size, true) != input_line_ok ) return 0;
 
-	if(parse_line_vec_val(kwh_num_srch_dof, ok_num_srch_dof, run->num_srch_dof, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_subvol_npts, subvol_npts_min, subvol_npts_max, run->subvol_npts, true) != input_line_ok ) return 0;
+
+	run->subvol_aspect.resize(3, subvol_aspect_def);
+	if(parse_line_dvect(kwh_subvol_aspect, subvol_aspect_min, subvol_aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
+
+	// opt_mthd
+
+	if(parse_line_vec_val(kwh_num_srch_dof, ok_srch_dof, run->num_srch_dof, true) != input_line_ok ) return 0;
+
 	if(parse_line_vec_val(kwh_obj_function, ok_obj_function, run->obj_function, true) != input_line_ok ) return 0;
 	for (int i=0; i<ok_obj_function.size(); i++)
 		if (run->obj_function == ok_obj_function[i]) run->obj_fcn = (Objfcn_Type)i;
@@ -759,7 +769,7 @@ int InputRead::input_file_read(RunControl *run)
 	run->bspline = false;
 	run->bspline_order = 0;
 	if(parse_line_vec_val(kwh_interp_type, ok_interp_type, run->interp_type, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_interp_type.size(); i++)
+	for (int i=0; i<ok_interp_type.size(); i++) {
 		if (run->interp_type == ok_interp_type[i]) {
 			run->int_typ = (Interp_Type)i;
 			// bspline types are broken into a boolean flag bspline (true) and a numerical bspline_order (3,5,7)
@@ -770,9 +780,22 @@ int InputRead::input_file_read(RunControl *run)
 				run->bspline = true;
 			}
 		}
+	}
+	
+	std::vector<double> vol_limits(3);
+	vol_limits[0] = (double)run->vol_wide;
+	vol_limits[1] = (double)run->vol_high;
+	vol_limits[2] = (double)run->vol_tall;
 
-	// optional parameters
-	// 
+	run->start_position.resize(3, std::nan(""));
+	if (parse_line_dvect(kwh_start_position, vol_limits, run->start_position, true) != input_line_ok) return 0;
+
+	run->start_estimate.resize(3, 0.0);
+	if(parse_line_dvect(kwh_start_estimate, vol_limits, run->start_estimate, true) != input_line_ok) return 0;
+
+	if(parse_line_min_max(kwh_step_max, step_max_min, step_max_max, run->step_max, true) != input_line_ok ) return 0;
+	
+	// opt_tune
 
 	// new code process, set min/max/def in InputRead.h as const
 	run->cost_tol = cost_tol_def;
@@ -785,52 +808,28 @@ int InputRead::input_file_read(RunControl *run)
 //	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
 	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
-	std::cout << "here1" << "kwh_subvol_aspect.reqd = " << kwh_subvol_aspect.reqd << std::endl;
-
-	run->subvol_aspect.resize(3, subvol_aspect_def);
-	if(parse_line_dvect(kwh_subvol_aspect, subvol_aspect_min, subvol_aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
-
-	std::cout << std::endl << run->subvol_aspect[0] << " " << run->subvol_aspect[1] << " " << run->subvol_aspect[2] << std::endl;
-
-	std::cout << "here2" << std::endl;
-
-	run->start_position.resize(3, std::nan(""));
-	std::vector<double> start_position_limit(3);
-	start_position_limit[0] = (double)run->vol_wide;
-	start_position_limit[1] = (double)run->vol_high;
-	start_position_limit[2] = (double)run->vol_tall;
-	if (parse_line_dvect(kwh_start_position, start_position_limit, run->start_position, true) != input_line_ok) return 0;
-
-	run->start_estimate.resize(3, 0.0);
-	std::vector<double> start_estimate_limit(3);
-	start_estimate_limit[0] = (double)run->vol_wide;
-	start_estimate_limit[1] = (double)run->vol_high;
-	start_estimate_limit[2] = (double)run->vol_tall;
-	if(parse_line_dvect(kwh_start_estimate, start_estimate_limit, run->start_estimate, true) != input_line_ok) return 0;
-
-	// this is a silly max, but we accommodate every request!
-	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
-
-	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
-
 	// check image volumes
-	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth + (unsigned long) run->vol_wide *  (unsigned long) run->vol_high * (unsigned long) run->vol_tall * (unsigned long) (run->vol_bit_depth / 8);
+	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth 
+											+ (unsigned long) run->vol_wide *  
+											  (unsigned long) run->vol_high * 
+											  (unsigned long) run->vol_tall * 
+											  (unsigned long) (run->vol_bit_depth / 8);
 
 	if (ref_file_length != expected_vol_file_size)
 	{
-		std::cout << "\n";
-		std::cout << "Reference volume file size does not match the volume description.\n";
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall.\n";
-		std::cout << "\n";
+		std::cout << std::endl;
+		std::cout << "Reference volume file size does not match the volume description." << std::endl;
+		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
+		std::cout << std::endl;
 		return 0;
 	}
 
 	if (cor_file_length != expected_vol_file_size)
 	{
-		std::cout << "\n";
-		std::cout << "Correlate volume file size does not match the volume description.\n";
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall.\n";
-		std::cout << "\n";
+		std::cout << std::endl;
+		std::cout << "Correlate volume file size does not match the volume description." << std::endl;
+		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
+		std::cout << std::endl;
 		return 0;
 	}
 
@@ -915,13 +914,13 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 
 	if (count == 0)
 	{
-		std::cout << "\n";
-		std::cout << "No points were read, the Point Cloud file may be improperly formatted.\n";
-		std::cout << "The expected format is plain text, tab (or other 'white space') delimited.\n";
-		std::cout << "Header info is OK as long as it does not match the format of a point description.\n";
-		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:\n\n";
-		std::cout << "5\t10.72\t15.87\t23.45\n\n";
-		std::cout << "\n";
+		std::cout << std::endl;
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted." << std::endl;
+		std::cout << "The expected format is plain text, tab (or other 'white space') delimited." << std::endl;
+		std::cout << "Header info is OK as long as it does not match the format of a point description." << std::endl;
+		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:" << std::endl;
+		std::cout << "5\t10.72\t15.87\t23.45" << std::endl;
+		std::cout << std::endl;
 		return 0;
 	}
 
@@ -1978,8 +1977,8 @@ int InputRead::parse_line_old_file(key_word_help kwh, std::string &arg1, unsigne
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " cannot find file: " << str1 << "\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " cannot find file: " << str1 << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2015,8 +2014,8 @@ int InputRead::parse_line_new_file(key_word_help kwh, std::string &arg1, bool re
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2046,8 +2045,8 @@ int InputRead::parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int 
 		}
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2077,8 +2076,8 @@ int InputRead::parse_line_vec_val(key_word_help kwh, std::vector<std::string> va
 		}
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2105,8 +2104,8 @@ int InputRead::parse_line_min_max(key_word_help kwh, int min, int max, int &arg1
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2133,8 +2132,8 @@ int InputRead::parse_line_min_max(key_word_help kwh, unsigned int min, unsigned 
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2162,8 +2161,8 @@ int InputRead::parse_line_min_max(key_word_help kwh, double min, double max, dou
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2192,8 +2191,8 @@ int InputRead::parse_line_min_max_rel(key_word_help kwh, double min, double max,
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2223,8 +2222,8 @@ int InputRead::parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim
 
 	if (ok == vect.size()) return 1;
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -2254,8 +2253,8 @@ int InputRead::parse_line_dvect(key_word_help kwh, double min, double max, std::
 
 	if (ok == vect.size()) return 1;
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter." << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }

@@ -131,36 +131,45 @@ public:
 	unsigned long pts_file_length;
 
 	std::vector<std::string> ok_subvol_geom;
-	int subvol_size_min, subvol_size_max;
-	int subvol_npts_min, subvol_npts_max;
 
 	double min_vol_fract_min, min_vol_fract_max;
 
 	// note, the const_tol variable itself is owned by Utility.h as part of RunControl
+
+	const int subvol_size_min = 10;
+	const int subvol_size_max = 100;
+	const int subvol_size_def = 25;
+
+	const int subvol_npts_min = 100;
+	const int subvol_npts_max = 50000;
+	const int subvol_npts_def = 5000;
+
+	const double subvol_aspect_min = 0.1;
+	const double subvol_aspect_max = 10.0;
+	const double subvol_aspect_def = 1.0;
+
+	const std::vector<int> ok_srch_dof = {3, 6, 12};
 
 	const int step_max_min = 1;
 	const int step_max_max = 15;
 	const int step_max_def = 5;
 
 	const double cost_tol_min = 1e-10;
-	const double step_tol_min = 1e-10;
-	const double grad_tol_min = 1e-10;
-
 	const double cost_tol_max = 1e-2;
-	const double step_tol_max = 1e-2;
-	const double grad_tol_max = 1e-2;
-
 	const double cost_tol_def = 1e-6;
+
+	const double step_tol_min = 1e-10;
+	const double step_tol_max = 1e-2;
 	const double step_tol_def = 1e-4;
+
+	const double grad_tol_min = 1e-10;
+	const double grad_tol_max = 1e-2;
 	const double grad_tol_def = 1e-8;
 
 	const int max_iter_min = 1;
 	const int max_iter_max = 100;
 	const int max_iter_def = 20;
 
-	const double subvol_aspect_min = 0.1;
-	const double subvol_aspect_max = 10.0;
-	const double subvol_aspect_def = 1.0;
 
 	std::vector<int> ok_num_srch_dof;
 	
