@@ -69,6 +69,9 @@ public:
 
 	std::ifstream input_file;
 
+	int input_file_read(RunControl *run);
+	int read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels);	
+
 	int find_flag(std::string flag, int &argc, char *argv[]);
 	int find_flag(std::string flag, int &argc, char *argv[], int &val);
 	int find_flag(std::string flag, int &argc, char *argv[], double &val);
@@ -76,9 +79,8 @@ public:
 
 	int input_file_accessible(std::string fname);
 
-	int input_file_read(RunControl *run);
 
-	int read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels);	
+	
 
 	BoundBox *search_box;
 	int search_num_pts;
@@ -182,27 +184,19 @@ public:
 	const int max_iter_max = 100;
 	const int max_iter_def = 20;
 
-
 	std::vector<int> ok_num_srch_dof;
-	
 	std::vector<std::string> ok_obj_function;
-	
 	std::vector<std::string> ok_interp_type;
-
 	std::vector<std::string> ok_fine_srch;
-	
-	//double aspect_min;
-	//double aspect_max;
 
+	// transfer enum list strings into a vector of strings
+	std::vector<std::string> line_to_vect(std::string line);
+
+	// number to string conversions for documentation
 	std::string limits_to_string(int min, int max);
 	std::string limits_to_string(double min, double max);
 	std::string limits_to_string(std::vector<std::string> val);
 	std::string limits_to_string(std::vector<int> val);
-	
-	std::vector<std::string> line_to_vect(std::string line);
-
-	void clear_stream_str(std::ostringstream &the_stream, std::string &the_str);
-
 	std::string set_stream_str(double min, double max, double def, std::string notation, int ndp);
 	std::string set_stream_str(double min, double max, std::string notation, int ndp);
 	std::string set_stream_str(int min, int max, int def);
@@ -211,15 +205,7 @@ public:
 	std::string set_num_str(int num);
 	std::string set_num_str(int num, std::string comment);
 
-	// get and parse line functions
-	int check_eol(std::ifstream &file, char &eol, std::string &term);
-	int get_line_with_keyword(std::string keyword, std::string &keyline, bool req);
-
-	char inp_eol;		// input file eol and line termination
-	std::string inp_term;
-
 	// read and check keyword parameters
-
 	int parse_line_old_file(key_word_help kwh, std::string &arg1, unsigned long &bytes, bool req);
 	int parse_line_new_file(key_word_help kwh, std::string &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int &arg1, bool req);
@@ -231,8 +217,14 @@ public:
 	int parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim, std::vector<double> &vect_val, bool req);
 	int parse_line_dvect(key_word_help kwh, double min, double max, std::vector<double> &vect_val, bool req);
 
-	// output functions
+	// get and parse line functions
+	int check_eol(std::ifstream &file, char &eol, std::string &term);
+	int get_line_with_keyword(std::string keyword, std::string &keyline, bool req);
 
+	char inp_eol;		// input file eol and line termination
+	std::string inp_term;
+
+	// output functions (old txt version)
 	int print_manual_intro(std::ofstream &file);
 	int print_manual_section(std::ofstream &file, std::string pool);
 	int print_manual_output(std::ofstream &file);
@@ -244,6 +236,7 @@ public:
 	std::string html_link_keywords(const std::string &text, const std::string &self);
 	std::string help_to_html(const std::string &help, const std::string &self);
 	int print_current_version();
+	
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
 	int append_time_date(std::string fname, std::string label, time_t dt);

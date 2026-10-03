@@ -18,245 +18,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Author(s): Brian Bay (OSU)
            Edoardo Pasca (UKRI-STFC)
 */
+
 #include "InputRead.h"
 
 #include <algorithm>
 #include <cctype>
 
 /******************************************************************************/
-int InputRead::find_flag(std::string flag, int &argc, char *argv[]) 
-{
-	// loop through current arg list, if flag found, remove from list and return true
-
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {
-			for (unsigned int j=i; j<argc-1; j++) {
-				argv[j] = argv[j+1];
-			}
-			argc -= 1;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/******************************************************************************/
-int InputRead::find_flag(std::string flag, int &argc, char *argv[], int &val) 
-{
-	// look for command line flag followed by a single integer argument
-
-	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {			// found the flag
-			if (argc > i+1) {						// if there is a next argument try to convert
-				try {								// flag and number found
-					val = std::stoi(argv[i+1]);
-					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-						argv[j] = argv[j+2];
-					}
-					argc -= 2;
-					return 1;						// return true
-				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
-					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-						argv[j] = argv[j+1];
-					}
-					argc -= 1;
-					std::cout << "argument after " << flag << " not valid" << std::endl;
-					return 0;
-				}
-			}	
-			// no next argument on command line, notify and pull flag
-			std::cout << "no argument after " << flag << " flag" << std::endl;
-			argc -= 1;
-		}
-	}
-	return 0;
-}
-
-/******************************************************************************/
-int InputRead::find_flag(std::string flag, int &argc, char *argv[], double &val) 
-{
-	// look for command line flag followed by a single float-double argument
-
-	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {			// found the flag
-			if (argc > i+1) {						// if there is a next argument try to convert
-				try {								// flag and number found
-					val = std::stod(argv[i+1]);
-					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-						argv[j] = argv[j+2];
-					}
-					argc -= 2;
-					return 1;		// return success
-				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
-					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-						argv[j] = argv[j+1];
-					}
-					argc -= 1;
-					std::cout << "argument after " << flag << " not valid" << std::endl;
-					return 0;
-				}
-			}	
-			// no next argument on command line, notify and pull flag
-			std::cout << "no argument after " << flag << " flag" << std::endl;
-			argc -= 1;
-		}
-	}
-	return 0;
-}
-
-/******************************************************************************/
-int InputRead::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
-{
-	// clear extraneous flags
-
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare(pos, len, flag) == 0) {
-			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
-			for (unsigned int j=i; j<argc-1; j++) {
-				argv[j] = argv[j+1];
-			}
-			argc -= 1;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/******************************************************************************/
-std::vector<std::string> InputRead::line_to_vect(std::string line)
-{
-	std::vector<std::string> vect;
-
-	std::istringstream io_line;
-	std::string str;
-
-	io_line.str(line);
-	for (;;) {
-		if (io_line.eof()) break;
-		io_line >> str;
-		vect.push_back(str);
-	}
-
-	return vect;
-}
-
-/******************************************************************************/
-void InputRead::clear_stream_str(std::ostringstream &the_stream, std::string &the_str)
-{
-	the_stream.str("");
-	the_stream.clear();
-	the_str.clear();
-}
-/******************************************************************************/
-std::string InputRead::set_stream_str(double min, double max, double def, std::string notation, int ndp)
-{
-	std::ostringstream a_stream;
-	std::string fixed = "fixed";
-	std::string scientific = "scientific";
-
-	if (notation  == fixed) {
-		a_stream << std::fixed << std::setprecision(ndp) << min
-				<< " ..... "
-				<< std::fixed << std::setprecision(ndp) << max
-				<< ",  default = " << std::fixed << std::setprecision(ndp) << def;	
-	}
-
-	if (notation  == scientific) {
-		a_stream << std::scientific << std::setprecision(ndp) << min
-				<< " ..... "
-				<< std::scientific << std::setprecision(ndp) << max
-				<< ",  default = " << std::scientific << std::setprecision(ndp) << def;	
-	}
-
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
-std::string InputRead::set_stream_str(double min, double max, std::string notation, int ndp)
-{
-	std::ostringstream a_stream;
-	std::string fixed = "fixed";
-	std::string scientific = "scientific";
-
-	if (notation  == fixed) {
-		a_stream << std::fixed << std::setprecision(ndp) << min
-				<< " ..... "
-				<< std::fixed << std::setprecision(ndp) << max;	
-	}
-
-	if (notation  == scientific) {
-		a_stream << std::scientific << std::setprecision(ndp) << min
-				<< " ..... "
-				<< std::scientific << std::setprecision(ndp) << max;	
-	}
-
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
-std::string InputRead::set_num_str(double num, std::string notation, int ndp)
-{
-	std::ostringstream a_stream;
-	std::string fixed = "fixed";
-	std::string scientific = "scientific";
-
-	if (notation  == fixed) {a_stream << std::fixed << std::setprecision(ndp) << num;};
-
-	if (notation  == scientific) {a_stream << std::scientific << std::setprecision(ndp) << num;};
-	
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
-std::string InputRead::set_num_str(int num)
-{
-	std::ostringstream a_stream;
-
-	a_stream << num;
-	
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
-std::string InputRead::set_num_str(int num, std::string comment)
-{
-	std::ostringstream a_stream;
-
-	a_stream << num << "   " << comment;
-	
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
-std::string InputRead::set_stream_str(int min, int max, int def)
-{
-	std::ostringstream a_stream;
-
-	a_stream << min << " ..... " << max << ",  default = " << def;
-
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
-std::string InputRead::set_stream_str(int min, int max)
-{
-	std::ostringstream a_stream;
-
-	a_stream << min << " ..... " << max;
-
-    return std::string(a_stream.str());
-}
-/******************************************************************************/
 InputRead::InputRead()
 {
+	// InputRead constructor is largely documentation
+	// some utility variables at the top
+
 	Point min_pt(0,0,0);
 	Point max_pt(0,0,0);
 	search_box = new BoundBox(min_pt, max_pt);
 
 	std::string fixed = "fixed";
 	std::string scientific = "scientific";
-
-	std::string valid_input; // used to echo valid parameter options from Utility.h for various keywords
 
 	// these variables are linked with enum constructs in Utility.h
 	// they are transformed to std::vector<std::string> for use in setting .good and input line parsing
@@ -273,14 +52,10 @@ InputRead::InputRead()
 	// keyword interp_type
 	ok_interp_type = line_to_vect(ok_interp_mthd_line);
 	
-
-
-
-	
-
-
-
-
+	// this section is documentation
+	// range default values, enum contents, etc are translated from Utility.h and InputRead.h to str::string values
+	// these are introduced along with directly written material into the kwh structure
+	// this in turn is parsed, originally in the simple txt file manual (not written currently), now into the html manual
 
 	// fio_name
 
@@ -596,10 +371,8 @@ InputRead::InputRead()
 	kwh_step_max.reqd = "yes";
 	kwh_step_max.pool = "opt_mthd";
 	kwh_step_max.hint = "### maximum parameter step allowed during optimization, see also step_tol";
-
 	kwh_step_max.good = set_stream_str(step_max_min, step_max_max);
 	kwh_step_max.dflt = set_num_str(step_max_def);
-
 	kwh_step_max.help.assign("Defines the maximum step allowed during optimization from the initial starting estimate.\n");
 	kwh_step_max.help.append("This is a very important parameter used for search process control and execution speed management.\n");
 	kwh_step_max.help.append("Cloud points process very quickly if the search is limited to a small region beyond a starting estimate.\n");
@@ -639,7 +412,6 @@ InputRead::InputRead()
 	kwh_step_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
 	manual.push_back(kwh_step_tol);
 	
-
 	kwh_max_iter.word = "max_iter";
 	kwh_max_iter.exam = set_num_str(max_iter_def);
 	kwh_max_iter.reqd = "no";
@@ -653,8 +425,7 @@ InputRead::InputRead()
 	kwh_max_iter.help.append("In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help.\n");
 	manual.push_back(kwh_max_iter);
 
-
-	// threshold inputs deactivated, option not implemented in code
+	// threshold inputs deactivated, option not currently implemented in code
 
 	// keyword subvol_thresh
 	/*
@@ -713,8 +484,6 @@ InputRead::InputRead()
 	kwh_min_vol_fract.help.append("\n");
 	manual.push_back(kwh_min_vol_fract);
 	*/
-
-
 }
 /******************************************************************************/
 InputRead::~InputRead()
@@ -723,53 +492,10 @@ InputRead::~InputRead()
 
 	input_file.close();
 }
-/******************************************************************************//******************************************************************************/
-int InputRead::input_file_accessible(std::string fname)
-{
-
-	input_file.open(fname.c_str());
-	if (!input_file.good())
-	{
-		std::cout << "\nCannot find input file '" << fname << "'\n\n" ;
-		return 0;
-	}
-
-	return 1;
-}
-/******************************************************************************/
-int InputRead::check_eol(std::ifstream &file, char &eol, std::string &term)
-{
-	std::string inp_line;
-	int count_n = 0;
-	int count_r = 0;
-
-	file.clear();
-	file.seekg(0, std::ios::beg);
-	while (getline(file,inp_line,'\n')) count_n += 1;
-
-	file.clear();
-	file.seekg(0, std::ios::beg);
-	while (getline(file,inp_line,'\r')) count_r += 1;
-
-	if (count_n >= count_r)
-	{
-		eol = '\n';
-		term = "\n";	// trial and error fix to read problem
-	}
-
-	if (count_r > count_n)
-	{
-		eol = '\r';
-		term = "\n";
-	}
-
-	return 1;
-}
 /******************************************************************************/
 int InputRead::input_file_read(RunControl *run)
-// load the RunControl struct in Utility
-// parameter limit values set and checked
-// default values for optional parameters also set in this routine
+// parse input file and load the RunControl struct in Utility
+// parameter limit values transferred from InputRead.h, keyword lines checked against
 {
 	check_eol(input_file, inp_eol, inp_term);
 
@@ -777,7 +503,11 @@ int InputRead::input_file_read(RunControl *run)
 	// const int keywd_missing = -1;
 	// const int param_invalid = -2;
 
-	// the parse function returns:
+	// using the parse functions: (this is awkward but seems to work)
+	// true for required keywords, pair with != input_line_ok
+	// false for optional keywords, pair with == param_invalid
+
+	// the parse functions return:
 	//  1 = keyword found and parameters good (successful)
 	// -1 = keyword not found
 	// -2 = parameters bad
@@ -800,8 +530,7 @@ int InputRead::input_file_read(RunControl *run)
 
 	run->vol_bit_depth = vol_bit_depth_def;
 	if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
-	if(run->vol_bit_depth != 8)
-	{
+	if(run->vol_bit_depth == ok_bit_depth[1]) {		// check this is 16 in .h
 		if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
 	}
 
@@ -813,11 +542,11 @@ int InputRead::input_file_read(RunControl *run)
 	// sub_vols
 
 	if(parse_line_vec_val(kwh_subvol_geom, ok_subvol_geom, run->subvol_geom, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_subvol_geom.size(); i++)
+	for (int i=0; i<ok_subvol_geom.size(); i++) {
 		if (run->subvol_geom == ok_subvol_geom[i]) run->sub_geo = (Subvol_Type)i;
+	}
 
 	if(parse_line_min_max(kwh_subvol_size, subvol_size_min, subvol_size_max, run->subvol_size, true) != input_line_ok ) return 0;
-
 	if(parse_line_min_max(kwh_subvol_npts, subvol_npts_min, subvol_npts_max, run->subvol_npts, true) != input_line_ok ) return 0;
 
 	run->subvol_aspect.resize(3, subvol_aspect_def);
@@ -847,6 +576,7 @@ int InputRead::input_file_read(RunControl *run)
 		}
 	}
 	
+	// start_position and start_estimate need to follow read of vol_wide,high,tall
 	std::vector<double> vol_limits(3);
 	vol_limits[0] = (double)run->vol_wide;
 	vol_limits[1] = (double)run->vol_high;
@@ -910,7 +640,8 @@ int InputRead::input_file_read(RunControl *run)
 	*/
 
 	return 1;
-}/******************************************************************************/
+}
+/******************************************************************************/
 int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels)
 {
 	// add check for point outside of voxel volume
@@ -993,6 +724,259 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	Point max_pt(max_x, max_y, max_z);
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
+
+	return 1;
+}
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[]) 
+{
+	// loop through current arg list, if flag found, remove from list and return true
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[], int &val) 
+{
+	// look for command line flag followed by a single integer argument
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stoi(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;						// return true
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[], double &val) 
+{
+	// look for command line flag followed by a single float-double argument
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stod(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;		// return success
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int InputRead::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
+{
+	// clear extraneous flags
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(pos, len, flag) == 0) {
+			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+std::vector<std::string> InputRead::line_to_vect(std::string line)
+{
+	std::vector<std::string> vect;
+
+	std::istringstream io_line;
+	std::string str;
+
+	io_line.str(line);
+	for (;;) {
+		if (io_line.eof()) break;
+		io_line >> str;
+		vect.push_back(str);
+	}
+
+	return vect;
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(double min, double max, double def, std::string notation, int ndp)
+{
+	std::ostringstream a_stream;
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
+
+	if (notation  == fixed) {
+		a_stream << std::fixed << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::fixed << std::setprecision(ndp) << max
+				<< ",  default = " << std::fixed << std::setprecision(ndp) << def;	
+	}
+
+	if (notation  == scientific) {
+		a_stream << std::scientific << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::scientific << std::setprecision(ndp) << max
+				<< ",  default = " << std::scientific << std::setprecision(ndp) << def;	
+	}
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(double min, double max, std::string notation, int ndp)
+{
+	std::ostringstream a_stream;
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
+
+	if (notation  == fixed) {
+		a_stream << std::fixed << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::fixed << std::setprecision(ndp) << max;	
+	}
+
+	if (notation  == scientific) {
+		a_stream << std::scientific << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::scientific << std::setprecision(ndp) << max;	
+	}
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_num_str(double num, std::string notation, int ndp)
+{
+	std::ostringstream a_stream;
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
+
+	if (notation  == fixed) {a_stream << std::fixed << std::setprecision(ndp) << num;};
+
+	if (notation  == scientific) {a_stream << std::scientific << std::setprecision(ndp) << num;};
+	
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_num_str(int num)
+{
+	std::ostringstream a_stream;
+
+	a_stream << num;
+	
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_num_str(int num, std::string comment)
+{
+	std::ostringstream a_stream;
+
+	a_stream << num << "   " << comment;
+	
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(int min, int max, int def)
+{
+	std::ostringstream a_stream;
+
+	a_stream << min << " ..... " << max << ",  default = " << def;
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(int min, int max)
+{
+	std::ostringstream a_stream;
+
+	a_stream << min << " ..... " << max;
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+int InputRead::input_file_accessible(std::string fname)
+{
+
+	input_file.open(fname.c_str());
+	if (!input_file.good())
+	{
+		std::cout << "\nCannot find input file '" << fname << "'\n\n" ;
+		return 0;
+	}
+
+	return 1;
+}
+/******************************************************************************/
+int InputRead::check_eol(std::ifstream &file, char &eol, std::string &term)
+{
+	std::string inp_line;
+	int count_n = 0;
+	int count_r = 0;
+
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	while (getline(file,inp_line,'\n')) count_n += 1;
+
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	while (getline(file,inp_line,'\r')) count_r += 1;
+
+	if (count_n >= count_r)
+	{
+		eol = '\n';
+		term = "\n";	// trial and error fix to read problem
+	}
+
+	if (count_r > count_n)
+	{
+		eol = '\r';
+		term = "\n";
+	}
 
 	return 1;
 }
@@ -1775,13 +1759,13 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << kwh_cor_fname.word << "\t" << run->cor_fname << "\n";
 	sta_file << kwh_pts_fname.word << "\t" << run->pts_fname << "\n";
 	sta_file << kwh_out_fname.word << "\t" << run->out_fname << "\n";
+	sta_file << kwh_num_points_to_process.word << "\t" << run->num_points_to_process << "\n";
 	sta_file << "\n";
 
 	// vox_data
 
 	sta_file << kwh_vol_bit_depth.word << "\t" << run->vol_bit_depth << "\n";
-	if (run->vol_bit_depth != 8)
-	{
+	if (run->vol_bit_depth != 8) {
 		sta_file << kwh_vol_endian.word << "\t" << run->vol_endian << "\n";
 	}
 	sta_file << kwh_vol_hdr_lngth.word << "\t" << run->vol_hdr_lngth << "\n";
@@ -1795,7 +1779,39 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << kwh_subvol_geom.word << "\t" << run->subvol_geom << "\n";
 	sta_file << kwh_subvol_size.word << "\t" << run->subvol_size << "\n";
 	sta_file << kwh_subvol_npts.word << "\t" << run->subvol_npts << "\n";
+		sta_file << kwh_subvol_aspect.word << "\t" << run->subvol_aspect[0] << "\t" << run->subvol_aspect[1] << "\t" << run->subvol_aspect[2] << "\n";
 	sta_file << "\n";
+
+	// opt_mthd
+
+	sta_file << kwh_num_srch_dof.word << "\t"<< run->num_srch_dof << "\n";
+	sta_file << kwh_obj_function.word << "\t"<< run->obj_function << "\n";
+	sta_file << kwh_interp_type.word << "\t"<< run->interp_type << "\n";
+	sta_file << kwh_start_position.word << "\t" << run->start_position[0] << "\t" << run->start_position[1] << "\t" << run->start_position[2] << "\n";
+	sta_file << kwh_start_estimate.word << "\t" << run->start_estimate[0] << "\t" << run->start_estimate[1] << "\t" << run->start_estimate[2] << "\n";
+	sta_file << kwh_step_max.word << "\t"<< run->step_max << "\n";
+
+	sta_file << "\n";
+
+	// opt_tune
+
+	sta_file << kwh_cost_tol.word << "\t"<< run->cost_tol << "\n";
+	sta_file << kwh_step_tol.word << "\t"<< run->step_tol << "\n";
+	sta_file << kwh_max_iter.word << "\t"<< run->max_iter << "\n";
+
+	sta_file << "\n ### end of input file echo \n";
+
+	// point cloud and version information
+
+	sta_file << "\n" << "Point Cloud contains " << search_num_pts << " points\n\n";
+	sta_file << "\t" << "bounding box min = [";
+	sta_file << search_box->min().x() << " " << search_box->min().y() << " " << search_box->min().z() << "]\n";
+	sta_file << "\t" << "bounding box max = [";
+	sta_file << search_box->max().x() << " " << search_box->max().y() << " " << search_box->max().z() << "]\n";
+
+	sta_file << "\n" << "running under dvc code version: " << VERSION << "\n\n";
+
+	return 1;
 
 	/*
 	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
@@ -1807,36 +1823,6 @@ int InputRead::echo_input(RunControl *run)
 	}
 	sta_file << "\n";
 	*/
-
-	// opt_mthd
-
-	sta_file << kwh_step_max.word << "\t"<< run->step_max << "\n";
-	sta_file << kwh_num_srch_dof.word << "\t"<< run->num_srch_dof << "\n";
-	sta_file << kwh_obj_function.word << "\t"<< run->obj_function << "\n";
-	sta_file << kwh_interp_type.word << "\t"<< run->interp_type << "\n";
-	sta_file << "\n";
-
-	// opt_tune
-
-	sta_file << kwh_start_estimate.word << "\t" << run->start_estimate[0] << "\t" << run->start_estimate[1] << "\t" << run->start_estimate[2] << "\n";
-//	sta_file << kwh_basin_radius.word << "\t" << run->basin_radius << "\n";
-	sta_file << kwh_subvol_aspect.word << "\t" << run->subvol_aspect[0] << "\t" << run->subvol_aspect[1] << "\t" << run->subvol_aspect[2] << "\n";
-
-	// point cloud and version information
-
-	sta_file << "\n";
-	sta_file << "### end of input file echo";
-	sta_file << "\n";
-
-	sta_file << "\n" << "Point Cloud contains " << search_num_pts << " points\n\n";
-	sta_file << "\t" << "bounding box min = [";
-	sta_file << search_box->min().x() << " " << search_box->min().y() << " " << search_box->min().z() << "]\n";
-	sta_file << "\t" << "bounding box max = [";
-	sta_file << search_box->max().x() << " " << search_box->max().y() << " " << search_box->max().z() << "]\n";
-
-	sta_file << "\n" << "running under dvc code version: " << VERSION << "\n\n";
-
-	return 1;
 }
 /******************************************************************************/
 int InputRead::append_time_date(std::string fname, std::string label, char* dt)
