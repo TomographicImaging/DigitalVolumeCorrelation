@@ -419,7 +419,12 @@ public:
 
     // list of neighbor_subsets to process
     std::vector<NeighborSubset> neighbor_subsets;
-	
+
+    // added columns and labels if detected during point cloud parsing (read_point_cloud_tsc)
+
+    std::vector<std::vector<double> > added_columns;      // [search_num_pts][n_added]
+	std::vector<std::string>          added_column_names; // [n_added]
+
     // this is set-up for potentially multiple targets (correlate volumes) with updating in mind
     // ntrg is 1 for standard single correlate volume searches
 	// vector of result records for a point

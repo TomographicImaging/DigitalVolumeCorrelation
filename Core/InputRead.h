@@ -31,6 +31,12 @@ Author(s): Brian Bay (OSU)
 #include <limits>
 #include <cstdlib>
 
+// for new point cloud read code
+#include <cerrno>
+#include <climits>
+#include <algorithm>
+#include <utility>
+
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
@@ -57,6 +63,24 @@ public:
 	std::string hint; // a brief description of the keyword
 	std::string help; // a detailed description of the keyword
 
+	// --- used only by print_input_form_html() (the HTML input file builder) ---
+	// set these next to the other fields, from the same constants the parser uses,
+	// so the form checks values exactly as input_file_read() will
+	std::string form_type = "text";			// int, real, choice, file_old, file_new, text
+	int form_nval = 1;						// number of values on the keyword line
+	std::vector<std::string> form_opts;		// drop-down list for form_type "choice"
+	bool form_has_min = false, form_has_max = false;
+	double form_min = 0.0, form_max = 0.0;	// inclusive range applied to each value
+	std::vector<std::string> form_lim_kw;	// |value[i]| <= value of keyword form_lim_kw[i]
+	std::string form_cond_kw;				// conditional keywords: required only when
+	std::vector<std::string> form_cond_vals;	//   keyword form_cond_kw has one of these values
+
+	void set_form_int(int min, int max) { form_type = "int"; form_has_min = form_has_max = true; form_min = min; form_max = max; }
+	void set_form_real(double min, double max, int nval = 1) { form_type = "real"; form_nval = nval; form_has_min = form_has_max = true; form_min = min; form_max = max; }
+	void set_form_choice(const std::vector<std::string> &opts) { form_type = "choice"; form_opts = opts; }
+	void set_form_choice(const std::vector<int> &opts) { form_type = "choice"; form_opts.clear(); for (int v : opts) form_opts.push_back(std::to_string(v)); }
+	void set_form_cond(const std::string &kw, const std::vector<std::string> &vals) { form_cond_kw = kw; form_cond_vals = vals; }
+
 private:
 };
 /******************************************************************************/
@@ -71,6 +95,11 @@ public:
 
 	int input_file_read(RunControl *run);
 	int read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels);	
+
+	// tab/space/comma version, with capacity for added column and a column header row, and # comment lines
+	int read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels,
+												std::vector<std::vector<double>> &added_columns,
+													std::vector<std::string> &added_column_names);
 
 	int find_flag(std::string flag, int &argc, char *argv[]);
 	int find_flag(std::string flag, int &argc, char *argv[], int &val);
@@ -143,7 +172,7 @@ public:
 	const int vol_hdr_min = 0;
 	const int vol_hdr_max = 4096;
 
-	const int vol_dim_min = 0;
+	const int vol_dim_min = 100;
 	const int vol_dim_max = 8000;
 
 	const int subvol_size_min = 10;
@@ -154,8 +183,8 @@ public:
 	const int subvol_npts_max = 50000;
 	const int subvol_npts_def = 5000;
 
-	const double subvol_aspect_min = 0.1;
-	const double subvol_aspect_max = 10.0;
+	const double subvol_aspect_min = 0.5;
+	const double subvol_aspect_max = 2.0;
 	const double subvol_aspect_def = 1.0;
 
 	const std::vector<int> ok_srch_dof = {3, 6, 12};
@@ -232,11 +261,14 @@ public:
 
 	// HTML manual (single self-contained file; print to PDF from a browser)
 	int print_manual_html(std::ofstream &file);
+
+	// HTML input file builder (single self-contained file; writes a dvc_input text file)
+	int print_input_form_html(std::ofstream &file);
 	static std::string html_escape(const std::string &s);
 	std::string html_link_keywords(const std::string &text, const std::string &self);
 	std::string help_to_html(const std::string &help, const std::string &self);
 	int print_current_version();
-	
+
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
 	int append_time_date(std::string fname, std::string label, time_t dt);

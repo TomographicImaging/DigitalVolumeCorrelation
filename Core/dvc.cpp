@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 	std::string help("help");
 	std::string example("example");
 	std::string manual("manual");
+	std::string form("form");
 	std::string pversion("version");
 
 	bool first_point = true;
@@ -68,10 +69,11 @@ int main(int argc, char *argv[])
 	{
 		std::cout << endl;
 		std::cout << "Options:" << endl;
+		std::cout << "dvc \t\t\t// write this list to the terminal window" << endl;
 		std::cout << "dvc dvc_in\t\t// execute dvc code with dvc_in controlling the run" << endl;
 		std::cout << "dvc help\t\t// provide additional detail about running the dvc code" << endl;
-		std::cout << "dvc example\t\t// print dvc_in_example with brief keyword descriptions" << endl;
-		std::cout << "dvc manual\t\t// print dvc_manual with more detailed information" << endl;
+		std::cout << "dvc example\t\t// write dvc_in_example.txt, with brief keyword descriptions, in the working directory" << endl;
+		std::cout << "dvc manual\t\t// write DVC_manual.html, with more detailed information, in the working directory" << endl;
 		std::cout << endl;
 		return 0;
 	}
@@ -81,12 +83,12 @@ int main(int argc, char *argv[])
 	{
 		std::cout << endl;
 		std::cout << "Program execution is controlled by a key_word based input file." << endl;
-		std::cout << "Please refer to an example input file for content and format." << endl;
+		std::cout << "Please refer to an example input file (enter 'dvc example') for content and format." << endl;
 		std::cout << "To run the code type dvc followed by the name of the input file." << endl;
 		std::cout << "The input file is evaluated and, if all is good, the run starts." << endl;
 		std::cout << "Common problems are incorrect file paths, missing keywords, and invalid parameters." << endl;
 		std::cout << "A message is sent to the console window if an input file problem is encountered." << endl;
-		std::cout << "Progrm execution can be lengthy, on the order of hours for large point clouds." << endl;
+		std::cout << "Program execution can be lengthy for large point clouds." << endl;
 		std::cout << "Results are written to output_filename.disp during execution." << endl;
 		std::cout << "Information about the run is written to output_filename.stat during execution." << endl;
 		std::cout << "Both files are simple text, and can be opened and viewed at any time." << endl;
@@ -97,8 +99,8 @@ int main(int argc, char *argv[])
 	// trap example on the command line
 	if (argv[1] == example)
 	{
-		std::cout << "\ndvc_in_example printed in the current working directory" << endl << endl;
-		std::ofstream dvc_inp("dvc_in_example");
+		std::cout << "\ndvc_in_example.txt printed in the current working directory" << endl << endl;
+		std::ofstream dvc_inp("dvc_in_example.txt");
 		in.print_input_example(dvc_inp, "fio_name");
 		in.print_input_example(dvc_inp, "vox_data");
 		in.print_input_example(dvc_inp, "sub_vols");
@@ -135,6 +137,15 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	// trap form on the command line
+	if (argv[1] == form) {
+		std::cout << "\nDVC_input_builder.html written to the current working directory" << endl << endl;
+		std::ofstream f("DVC_input_builder.html", std::ios::binary);
+		in.print_input_form_html(f);
+		return 0;
+	}
+
+	// check this ...
 	if (argv[1] == pversion){
 		return in.print_current_version();
 	}
@@ -160,11 +171,10 @@ int main(int argc, char *argv[])
 
 	// instantiate a DataCloud
 	DataCloud data;
-	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
+//	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;		// original point read function, updated in _tsc
+	if(!in.read_point_cloud_tsc(&run, data.points, data.labels, data.added_columns, data.added_column_names)) return 0;
+	std::cout << std::endl << "cloud contains " << data.points.size() << " points" << std::endl;
 	data.organize_cloud(&run);		// sort overall by distance from global starting_point and establish heighbors
-
-	/**/
-	//std::cout << std::endl << "data.results.size() = " << data.results.size() << std::endl;
 
 	// *** begin run
 
