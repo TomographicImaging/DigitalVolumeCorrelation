@@ -116,7 +116,7 @@ Search::Search(RunControl *run)
 	}
 
 	// diagnostic
-	///*
+	/*
 	std::cout << std::endl << "interp (persistent, Search constructor) ..." << std::endl;
 	int wide, high, tall;
 	interp_tar->act_box_dims(wide, high, tall);
@@ -130,7 +130,7 @@ Search::Search(RunControl *run)
 	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
 
 	std::cout << "... done" << std::endl;
-	//*/
+	*/
 	//
 
 }
