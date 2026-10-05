@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
 		std::cout << "dvc help\t\t// provide additional detail about running the dvc code" << endl;
 		std::cout << "dvc example\t\t// write dvc_in_example.txt, with brief keyword descriptions, in the working directory" << endl;
 		std::cout << "dvc manual\t\t// write DVC_manual.html, with more detailed information, in the working directory" << endl;
+		std::cout << "dvc form\t\t// write an HTML form (DVC_input_builder.html) for creting a dvc_input file, in the working directory" << endl;
 		std::cout << endl;
 		return 0;
 	}

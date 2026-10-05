@@ -1850,7 +1850,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "<tr><td><code>dvc help</code></td><td>Send a brief help message to the terminal window</td></tr>\n"
 	        "<tr><td><code>dvc example</code></td><td>Print an example dvc_input file</td></tr>\n"
 	        "<tr><td><code>dvc manual</code></td><td>Print this manual</td></tr>\n"
-	        "<tr><td><code>dvc form</code></td><td>Print an HTML form (dvc_input_builder.html) for building a dvc_input file</td></tr>\n"
+	        "<tr><td><code>dvc form</code></td><td>Print an HTML form (DVC_input_builder.html) for building a dvc_input file</td></tr>\n"
 	        "<tr><td><code>dvc dvc_input</code></td><td>Normal code execution</td></tr>\n"
 	        "</table>\n";
 
