@@ -354,20 +354,34 @@ struct DualSort
 	double value;
 };
 /******************************************************************************/
+// data for a single iteration
+struct Iter_Stats
+{
+    int nits;
+
+    ConvergenceReason convg_status;  
+
+    double obj_beg;
+    double obj_end;
+};
+/******************************************************************************/
+// Information from a completed search, used for cloud point neighborhoods
+// Part of the opt starting point determination process
 struct ResultRecord
-// Information from a completed search
 {
 	int status;		// as defined in Utility.h
-	
-//	Objfcn_Type obj_typ;	// for interpretation of obj_min
-	
 	double obj_min;			// value at minumum
-	
 	std::vector<double> par_min;	// parameters at min [ndof]
-
+    Iter_Stats iter_stats;     // iteration tracking data
 };
-
 /******************************************************************************/
+struct NeighborSubset
+{
+    std::vector<int> run_list;      // list of cloud points to process
+    //BoundBox                      // box enclosing all the points in run_list
+};
+/******************************************************************************/
+// instantiated in dvc.cpp, initialized and organized in DataCloud::organize_cloud, passed as a pointer into Search::process_point
 class CCPI_EXPORT DataCloud
 {
 public:
@@ -377,10 +391,14 @@ public:
 
 	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
 	// needs points and labels already available, generates order and neigh
-	void sort_order_neighbors(Point starting_point);
+	void sort_order_neighbors(Point start_position);
 
 	// new version base don kd tree, much, much faster
-	void sort_neighbors_kdtree(Point starting_point);
+	void sort_neighbors_kdtree(Point start_position);
+
+    // support for neighbor_subset processing
+    // runs after initial sorting, uses the result stored in order
+    void sort_neighbor_subsets();
 	
 	int nbr_num_save() const {return nbr_num_save_default;}
 
@@ -398,10 +416,23 @@ public:
 	
 	// indices of neighbors of a search point
 	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
-	
+
+    // list of neighbor_subsets to process
+    std::vector<NeighborSubset> neighbor_subsets;
+
+    // added columns and labels if detected during point cloud parsing (read_point_cloud_tsc)
+
+    std::vector<std::vector<double> > added_columns;      // [search_num_pts][n_added]
+	std::vector<std::string>          added_column_names; // [n_added]
+
+    // this is set-up for potentially multiple targets (correlate volumes) with updating in mind
+    // ntrg is 1 for standard single correlate volume searches
 	// vector of result records for a point
-	std::vector< std::vector<ResultRecord> > results;	// [nres][npts]
-	
+	std::vector< std::vector<ResultRecord> > results;	// [ntrg][npts]
+
+    // storage for iteration summary data 
+	//std::vector<std::vector<Iteration_Specs>> iter_track;
+
 	//
 	// results from the STRAIN calculation executable
 	//

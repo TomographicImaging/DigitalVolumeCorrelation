@@ -66,7 +66,8 @@ void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>>
 	sorted_pc_file.close();
 }
 /******************************************************************************/
-void DataCloud::sort_order_neighbors(Point starting_point)
+void DataCloud::sort_order_neighbors(Point start_position)
+// this is the brute-force version
 {
 	int neigh_num_save = nbr_num_save() < points.size() ? nbr_num_save() : points.size();
 
@@ -85,7 +86,7 @@ void DataCloud::sort_order_neighbors(Point starting_point)
 	std::vector<DualSort> indx_dist(points.size());
 	for (int i=0; i<points.size(); i++) {
 		indx_dist[i].index = i;
-		indx_dist[i].value = starting_point.pt_dist(points[i]);
+		indx_dist[i].value = start_position.pt_dist(points[i]);
 	}
 	std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
 	
@@ -143,7 +144,7 @@ void DataCloud::sort_order_neighbors(Point starting_point)
    
 }
 /******************************************************************************/
-void DataCloud::sort_neighbors_kdtree(Point starting_point)
+void DataCloud::sort_neighbors_kdtree(Point start_position)
 {
 	std::cout << std::endl << "kdtree sorting ..." << std::endl;
 
@@ -157,7 +158,7 @@ void DataCloud::sort_neighbors_kdtree(Point starting_point)
 	std::vector<DualSort> indx_dist(points.size());
 	for (int i=0; i<points.size(); i++) {
 		indx_dist[i].index = i;
-		indx_dist[i].value = starting_point.pt_dist(points[i]);
+		indx_dist[i].value = start_position.pt_dist(points[i]);
 	}
 	std::sort(indx_dist.begin(), indx_dist.end(), sortByValue);
 	
@@ -198,22 +199,111 @@ void DataCloud::sort_neighbors_kdtree(Point starting_point)
 	std::cout << "... finished" << std::endl;
 }
 /******************************************************************************/
+void DataCloud::sort_neighbor_subsets()
+	// setting up a process for cloud subset searches based on neighbors: neighbor_subset
+	// the goal is more efficiency, with fewer and larger interpolators covering more points at a time 
+	// (current Search needs some adjustment, move instantiation of interpolators into dvc.cpp and pointers into RunControl)
+	// the concept is to break up the cloud into subsets based on the point neighbors
+	// the logic:
+	//	1. starting with point 1 in the run order, process n members of the local neighborhood (adjustable n for memory allocation capacity)
+	//	2. instead of independant processing, create interpolators capable of processing the full subset
+	//	3. as usual, all of these points are marked with a search result, removing the initial not_search designation
+	//	4. move through the global list for the next point with not_search status (automatically adjacent to a group of points already run)
+	//	5. within neighbors of this new point, process all unprocessed points within it's local neighborhood
+	//	6. repeat
+	//
+	//	pre-sorting:
+	//	1. this can be organized ahead of time by another cloud organization process following organize_cloud step
+	//	2. create a neighbor_subset struct that contains:
+	//		a. variable length vector of point indices to process
+	//		b. a bbox that encompasses the point full point subset (used subsequently for interpolator instantiation)
+	//	3. loop through the neighbor_subset list, loop through indices list, done
+	//	4. the normal process of establishing starting point estimates from neighborhood informaiton is undisturbed
+	//	5. the neighbor subsets and lists within can be established ahead of time through another sort neighbors type process
+	//		a. go through the point list as described in logic creating a list of "already touched" points
+	//		b. check this list , and do not include "already touched" points as new neighbor subsets are established
+
+	// doesn't look like a good option ... in a random test with a 10000 pt rand cloud ...
+	// number of unprocessed neighbors drops quickly to very low numbers
+	// ended up with ~ 5000 neighbor subsets, many with 1 or two point, for trials of 75 and 27 and 8 neighbors considered
+	// 
+	//data.sort_neighbor_subsets();
+{
+// load std::vector<NeighborSubset> neighbor_subset using order
+
+	// neighbor_subsets //
+
+	//NeighborSubset a_nbr_sub;
+
+	std::vector<int> touched;	// list of pseudo-processed point indices
+	int point_index;
+	bool untouched;
+
+	int num_nbrs = 27;		// experimenting with less than the max
+
+	for (int i=0; i<(int)neigh.size(); i++) {	// loop through points in procces order
+//	for (int i=0; i<2; i++) {	// loop through points in procces order
+
+		NeighborSubset a_nbr_sub;	// fresh copy of the struct
+
+//		for (int j=0; j<(int)neigh[i].size(); j++) {	// loop through neighbors of points
+		for (int j=0; j<num_nbrs; j++) {	// loop through neighbors of points
+
+			point_index = neigh[order[i]][j];
+
+			// check if point was a part of an earlier neighbor_subset, if not add to touched list
+
+			untouched = true;
+			for (int k=0; k<(int)touched.size(); k++) {
+				if (point_index == touched[k]) {
+					untouched = false;
+					break;
+				}
+			}
+			if (untouched == true) { 
+				touched.push_back(point_index);
+				a_nbr_sub.run_list.push_back(point_index);
+			}
+		}
+
+		if (a_nbr_sub.run_list.size() != 0) {
+			neighbor_subsets.push_back(a_nbr_sub);
+		}
+
+	}
+
+	std::cout << std::endl << "neighbor_subsets.size() = " << neighbor_subsets.size() << std::endl;
+//	for (int i=0; i<neighbor_subsets.size(); i++) {
+//		std::cout << "list_size " << i << "= " << neighbor_subsets[i].run_list.size() << std::endl;
+//	}
+
+//	std::cout << "list_size 0 = " << neighbor_subsets[0].run_list.size() << std::endl;
+//	std::cout << "list_size 1 = " << neighbor_subsets[1].run_list.size() << std::endl;
+
+	// touched list now contains all of the points in the cloud
+
+	//std::cout << std::endl << "neigh size " << (int)neigh.size() << " " << "number touched = " << (int)touched.size() << std::endl << std::endl;
+//	std::cout << std::endl << "neighbor_subsets.size() = " << neighbor_subsets.size() << std::endl;
+//	std::cout << "min_size = " << min_size << " " << "max_size = " << max_size << std::endl<< std::endl;
+
+}
+/******************************************************************************/
 
 void DataCloud::organize_cloud(RunControl *run)
 {
 	// logic to determine if a starting point is given or I should use the default
-	Point starting_point = this->points[0];
-	std::vector<double> nan_starting_point = { std::nan(""), std::nan(""), std::nan("")  };
-	if (nan_starting_point != run->starting_point) {
-		starting_point = Point(run->starting_point[0], run->starting_point[1], run->starting_point[2]);
+	Point start_position = this->points[0];
+	std::vector<double> nan_start_position = { std::nan(""), std::nan(""), std::nan("")  };
+	if (nan_start_position != run->start_position) {
+		start_position = Point(run->start_position[0], run->start_position[1], run->start_position[2]);
 	}
 	// establish point processing order and neighborhoods using brute force search (original method)
-	//sort_order_neighbors(starting_point);
+	//sort_order_neighbors(start_position);
 	// write sort file
 	//write_sort_file(run->pts_fname, neigh);
 
 	// establish point processing order and neighborhoods using kdtree approach (much faster)
-	sort_neighbors_kdtree(starting_point);
+	sort_neighbors_kdtree(start_position);
 	// write sort file
 	write_sort_file(run->pts_fname, neigh);
 
@@ -230,6 +320,9 @@ void DataCloud::organize_cloud(RunControl *run)
 			results[i][j].par_min.resize(run->num_srch_dof, 0.0);
 		}
 	}
+
+	/**/
+	//std::cout << std::endl << "results.size() = " << results.size() << std::endl;
 
 }
 /******************************************************************************//******************************************************************************/

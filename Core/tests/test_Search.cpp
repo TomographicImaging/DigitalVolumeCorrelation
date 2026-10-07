@@ -28,13 +28,13 @@ RunControl make_test_run_control(
     rc.subvol_size = 6.0;
     rc.subvol_npts = 50;
     rc.subvol_aspect = {1.0, 1.0, 1.0};
-    rc.disp_max = 2.0;
+    rc.step_max = 2.0;
     rc.num_srch_dof = ndof;
     rc.obj_fcn = obj_type;
     rc.bspline = bspline;
     rc.bspline_order = bspline_order;
     rc.basin_radius = 0.0;
-    rc.rigid_trans = {0.0, 0.0, 0.0};
+    rc.start_estimate = {0.0, 0.0, 0.0};
     rc.int_typ = bspline ? (bspline_order == 3 ? tri_bspline_3 :
                            (bspline_order == 5 ? tri_bspline_5 : tri_bspline_7))
                          : tricubic;
@@ -58,7 +58,9 @@ void test_search_construction() {
         RunControl rc = make_test_run_control(ref_file, cor_file, 15, 15, 15, ZNSSD, true, order);
         ASSERT_NO_THROW({
             Search s(&rc);
-            ASSERT_EQ(s.interp->bspline_order(), order);
+            ASSERT_EQ(s.interp_ref->bspline_order(), order);
+            ASSERT_EQ(s.interp_tar->bspline_order(), order);
+
         });
     }
 
@@ -67,7 +69,8 @@ void test_search_construction() {
         RunControl rc = make_test_run_control(ref_file, cor_file, 15, 15, 15, ZNSSD, false, 0);
         ASSERT_NO_THROW({
             Search s(&rc);
-            ASSERT_EQ(s.interp->bspline_order(), 0);
+            ASSERT_EQ(s.interp_ref->bspline_order(), 0);
+            ASSERT_EQ(s.interp_tar->bspline_order(), 0);
         });
     }
 
@@ -89,7 +92,7 @@ void test_search_jacobian_and_obj_fcns() {
         return 20.0 + 2.0 * (x + 0.1) + 3.0 * y + 1.5 * z;
     });
 
-    std::vector<Objfcn_Type> obj_types = {ZNSSD, ZSSD, NSSD, SSD, SAD};
+    std::vector<Objfcn_Type> obj_types = {ZNSSD, ZSSD, NSSD, SSD};
 
     for (auto obj_type : obj_types) {
         RunControl rc = make_test_run_control(ref_file, cor_file, nx, ny, nz, obj_type, true, 3, 6);
@@ -157,7 +160,7 @@ void test_search_trgrid_and_map_objective() {
     });
 
     RunControl rc = make_test_run_control(ref_file, cor_file, nx, ny, nz, ZNSSD, true, 3, 3);
-    rc.disp_max = 5.0;
+    rc.step_max = 5.0;
     Search s(&rc);
 
     Point pt(12.0, 12.0, 12.0);
@@ -203,7 +206,7 @@ void test_search_process_point_bspline() {
     });
 
     RunControl rc = make_test_run_control(ref_file, cor_file, nx, ny, nz, ZNSSD, true, 3, 3);
-    rc.disp_max = 5.0;
+    rc.step_max = 5.0;
     Search s(&rc);
 
     DataCloud dc;
@@ -230,8 +233,8 @@ void test_search_stream_operator() {
     write_synthetic_raw_volume(ref_file, 15, 15, 15, 0, 1, [](int x, int y, int z) { return 40.0; });
     write_synthetic_raw_volume(cor_file, 15, 15, 15, 0, 1, [](int x, int y, int z) { return 40.0; });
 
-    std::vector<Objfcn_Type> objs = {SAD, SSD, ZSSD, NSSD, ZNSSD};
-    std::vector<Interp_Type> interps = {nearest, trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7};
+    std::vector<Objfcn_Type> objs = {SSD, ZSSD, NSSD, ZNSSD};
+    std::vector<Interp_Type> interps = {trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7};
     std::vector<Subvol_Type> geos = {cube, sphere};
 
     for (auto obj : objs) {
@@ -265,13 +268,13 @@ void test_search_pt_setup_interp_types() {
     write_synthetic_raw_volume(ref_file, 20, 20, 20, 0, 1, [](int x, int y, int z) { return 30.0 + x; });
     write_synthetic_raw_volume(cor_file, 20, 20, 20, 0, 1, [](int x, int y, int z) { return 30.0 + x; });
 
-    std::vector<Interp_Type> types = {nearest, trilinear, tricubic, tri_bspline_3};
+    std::vector<Interp_Type> types = {trilinear, tricubic, tri_bspline_3};
     for (auto ityp : types) {
         bool is_bsp = (ityp == tri_bspline_3);
         int ord = is_bsp ? 3 : 0;
         RunControl rc = make_test_run_control(ref_file, cor_file, 20, 20, 20, ZNSSD, is_bsp, ord);
         rc.int_typ = ityp;
-        rc.disp_max = 3.0;
+        rc.step_max = 3.0;
         Search s(&rc);
         Point pt(10.0, 10.0, 10.0);
         s.fcld = new FloatingCloud(pt, s.subv_rad, s.subv_num, 1.0, 1.0, 1.0, 1);

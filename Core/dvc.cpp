@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 	std::string help("help");
 	std::string example("example");
 	std::string manual("manual");
+	std::string form("form");
 	std::string pversion("version");
 
 	bool first_point = true;
@@ -68,10 +69,12 @@ int main(int argc, char *argv[])
 	{
 		std::cout << endl;
 		std::cout << "Options:" << endl;
+		std::cout << "dvc \t\t\t// write this list to the terminal window" << endl;
 		std::cout << "dvc dvc_in\t\t// execute dvc code with dvc_in controlling the run" << endl;
 		std::cout << "dvc help\t\t// provide additional detail about running the dvc code" << endl;
-		std::cout << "dvc example\t\t// print dvc_in_example with brief keyword descriptions" << endl;
-		std::cout << "dvc manual\t\t// print dvc_manual with more detailed information" << endl;
+		std::cout << "dvc example\t\t// write dvc_in_example.txt, with brief keyword descriptions, in the working directory" << endl;
+		std::cout << "dvc manual\t\t// write DVC_manual.html, with more detailed information, in the working directory" << endl;
+		std::cout << "dvc form\t\t// write an HTML form (DVC_input_builder.html) for creting a dvc_input file, in the working directory" << endl;
 		std::cout << endl;
 		return 0;
 	}
@@ -81,12 +84,12 @@ int main(int argc, char *argv[])
 	{
 		std::cout << endl;
 		std::cout << "Program execution is controlled by a key_word based input file." << endl;
-		std::cout << "Please refer to an example input file for content and format." << endl;
+		std::cout << "Please refer to an example input file (enter 'dvc example') for content and format." << endl;
 		std::cout << "To run the code type dvc followed by the name of the input file." << endl;
 		std::cout << "The input file is evaluated and, if all is good, the run starts." << endl;
 		std::cout << "Common problems are incorrect file paths, missing keywords, and invalid parameters." << endl;
 		std::cout << "A message is sent to the console window if an input file problem is encountered." << endl;
-		std::cout << "Progrm execution can be lengthy, on the order of hours for large point clouds." << endl;
+		std::cout << "Program execution can be lengthy for large point clouds." << endl;
 		std::cout << "Results are written to output_filename.disp during execution." << endl;
 		std::cout << "Information about the run is written to output_filename.stat during execution." << endl;
 		std::cout << "Both files are simple text, and can be opened and viewed at any time." << endl;
@@ -97,8 +100,8 @@ int main(int argc, char *argv[])
 	// trap example on the command line
 	if (argv[1] == example)
 	{
-		std::cout << "\ndvc_in_example printed in the current working directory" << endl << endl;
-		std::ofstream dvc_inp("dvc_in_example");
+		std::cout << "\ndvc_in_example.txt printed in the current working directory" << endl << endl;
+		std::ofstream dvc_inp("dvc_in_example.txt");
 		in.print_input_example(dvc_inp, "fio_name");
 		in.print_input_example(dvc_inp, "vox_data");
 		in.print_input_example(dvc_inp, "sub_vols");
@@ -112,6 +115,8 @@ int main(int argc, char *argv[])
 	// trap manual on the command line
 	if (argv[1] == manual)
 	{
+		// this is the old text manual, not currently used
+		/*
 		std::cout << "\ndvc_manual printed in the current working directory" << endl << endl;
 		std::ofstream dvc_man("dvc_manual");
 		in.print_manual_intro(dvc_man);
@@ -123,9 +128,25 @@ int main(int argc, char *argv[])
 		in.print_manual_output(dvc_man);
 		dvc_man.seekp(0, dvc_man.beg);
 		dvc_man.close();
+		*/
+
+		// this is the new and improved html manual
+		std::cout << "\nDVC_manual.html written to the current working directory" << endl << endl;
+    	std::ofstream html("DVC_manual.html");
+    	in.print_manual_html(html);
+
 		return 0;
 	}
 
+	// trap form on the command line
+	if (argv[1] == form) {
+		std::cout << "\nDVC_input_builder.html written to the current working directory" << endl << endl;
+		std::ofstream f("DVC_input_builder.html", std::ios::binary);
+		in.print_input_form_html(f);
+		return 0;
+	}
+
+	// check this ...
 	if (argv[1] == pversion){
 		return in.print_current_version();
 	}
@@ -151,8 +172,10 @@ int main(int argc, char *argv[])
 
 	// instantiate a DataCloud
 	DataCloud data;
-	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;
-	data.organize_cloud(&run);
+//	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;		// original point read function, updated in _tsc
+	if(!in.read_point_cloud_tsc(&run, data.points, data.labels, data.added_columns, data.added_column_names)) return 0;
+	std::cout << std::endl << "cloud contains " << data.points.size() << " points" << std::endl;
+	data.organize_cloud(&run);		// sort overall by distance from global starting_point and establish heighbors
 
 	// *** begin run
 
@@ -169,10 +192,6 @@ int main(int argc, char *argv[])
 	// *** print configuration to screen
 	//std::cout << optimize << std::endl;
 	std::string objfun;
-	if (run.obj_fcn == SAD) {
-		//obj_fcn = &obj_SAD;
-		objfun = std::string("objective function SAD");
-	}
 	if (run.obj_fcn == SSD) {
 		//obj_fcn = &obj_SSD;
 		objfun = std::string("objective function SSD");
@@ -202,7 +221,7 @@ int main(int argc, char *argv[])
 		run.subvol_aspect[1] << " " <<
 		run.subvol_aspect[2] << std::endl <<
 		"numr_search_dof " << run.num_srch_dof << std::endl <<
-		"disp max " << run.disp_max << std::endl <<
+		"disp max " << run.step_max << std::endl <<
 		")";
 		*/
 #if defined(_WIN32) || defined(__WIN32__)
@@ -218,13 +237,14 @@ int main(int argc, char *argv[])
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
 
-
 	int count = 0;
 	int count_good = 0;
 	int count_range = 0;
 	int count_convg = 0;
-	int trg = 0;
 
+	int ntrg = 1;			// number of correlation file targets, with auto updating of reference in mind, not implemented yet
+	int trg = ntrg - 1;		// trg is an index and becomes 0 for standard single corelation runs
+							
 	std::vector<double> blank_par_min = optimize.par_min;
 	for (int i=0; i<blank_par_min.size(); i++) blank_par_min[i] = 0;
 
@@ -254,9 +274,14 @@ int main(int argc, char *argv[])
 		catch (Point_Good)
 		{
 			count_good += 1;
+			std::string status_txt;
+			if (optimize.iter_stats.convg_status == CostChange) {status_txt = "obj in ";}
+			if (optimize.iter_stats.convg_status == ParameterChange) {status_txt = "par in ";}
+			if (optimize.iter_stats.convg_status == GradientNorm) {status_txt = "grd in ";}
+
 			// this outputs in search order, may want to reshuffle at the end
 			in.append_result(run.res_fname, data.labels[n], data.points[n], point_good, optimize.obj_min, optimize.par_min);
-			std::cout << "Point_Good" << "\t";
+			std::cout << "Point_Good (" << status_txt << optimize.iter_stats.nits << ")" << "\t";
 			std::cout << std::setprecision(6);
 			std::cout << "obj= " << optimize.obj_min;
 			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
@@ -266,8 +291,11 @@ int main(int argc, char *argv[])
 			// put results into record for this point
 			data.results[trg][n].status = point_good;
 			data.results[trg][n].obj_min = optimize.obj_min;
-			for (int j=0; j<run.num_srch_dof; j++)
+			for (int j=0; j<run.num_srch_dof; j++) {
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
+			}
+			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
+			data.results[trg][n].iter_stats.nits = optimize.iter_stats.convg_status;
 		}
 		catch (Range_Fail)
 		{
@@ -301,8 +329,6 @@ int main(int argc, char *argv[])
 
 			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec" << std::endl;
 		}
-
-
 
 	}
 

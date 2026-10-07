@@ -21,31 +21,8 @@ Author(s): Brian Bay (OSU)
 #include "ObjectiveFunctions.h"
 
 /******************************************************************************/
-double obj_SAD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
-{
-	double obj = 0.0;
-	for (unsigned int i=0; i<ref_subvol.size(); i++) {
-		double diff = tar_subvol[i] - ref_subvol[i];
-		obj += fabs(diff);
-	}
-
-	return obj;
-}
-/******************************************************************************/
-double obj_SAD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
-{
-	double obj = 0.0;
-	for (unsigned int i=0; i<ref_subvol.size(); i++) {
-		double diff = tar_subvol[i] - ref_subvol[i];
-		residual[i] = diff;
-		obj += fabs(diff);
-	}
-
-	return obj;
-}
-/******************************************************************************/
 double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
+// SSD (Sum of Squared Differences)
 {
 	double obj = 0.0;
 	for (unsigned int i=0; i<ref_subvol.size(); i++) {
@@ -57,7 +34,7 @@ double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> 
 }
 /******************************************************************************/
 double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
+// SSD (Sum of Squared Differences)
 {
 	double obj = 0.0;
 	for (unsigned int i=0; i<ref_subvol.size(); i++) {
@@ -70,7 +47,9 @@ double obj_SSD(const std::vector<double> &ref_subvol, const std::vector<double> 
 }
 /******************************************************************************/
 double obj_ZSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
+// ZSSD (Zero-mean Sum of Squared Differences) with brightness normalization
+// average value of subregion subtracted from each voxel to normalize brightness differences between ref and cor
+// doe not have a normalized scaling of the objective funciton value, it changes with overall voxel magnitudes
 {
 	double obj = 0.0;
 	double diff = 0.0;
@@ -96,7 +75,9 @@ double obj_ZSSD(const std::vector<double> &ref_subvol, const std::vector<double>
 }
 /******************************************************************************/
 double obj_ZSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
+// ZSSD (Zero-mean Sum of Squared Differences) with brightness normalization
+// average value of subregion subtracted from each voxel to normalize brightness differences between ref and cor
+// doe not have a normalized scaling of the objective function value, it changes with overall voxel magnitudes
 {
 	double obj = 0.0;
 	double diff = 0.0;
@@ -123,8 +104,9 @@ double obj_ZSSD(const std::vector<double> &ref_subvol, const std::vector<double>
 }
 /******************************************************************************/
 double obj_NSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
-// subvolume values scaled by sqrt_of_sum_of_squared values
+// NSSD (Normalized Sum of Squared Differences) with contrast normalization
+// divided by the vector norm (energy/variance) of the voxel intensities
+// objective function values are normalized for overall brigntness changes and are comparable
 {
 	double obj = 0.0;
 	double diff = 0.0;
@@ -146,15 +128,16 @@ double obj_NSSD(const std::vector<double> &ref_subvol, const std::vector<double>
 		obj += diff*diff;
 	}
 
-	obj /= 2.0;	// this scales results between 0.0 (perfect match) and 1.0 (dark vs bright subvolumes)
-			// two random full-range subvolumes produce an objective value of 0.5
+	obj /= 2.0;	// two random full-range subvolumes produce an objective value of 2.0
+			
 
 	return obj;
 }
 /******************************************************************************/
 double obj_NSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
-// subvolume values scaled by sqrt_of_sum_of_squared values
+// NSSD (Normalized Sum of Squared Differences) with contrast normalization
+// divided by the vector norm (energy/variance) of the voxel intensities
+// objective function values are normalized for overall brigntness changes and are comparable
 {
 	double obj = 0.0;
 	double diff = 0.0;
@@ -177,15 +160,13 @@ double obj_NSSD(const std::vector<double> &ref_subvol, const std::vector<double>
 		obj += diff*diff;
 	}
 
-	obj /= 2.0;	// this scales results between 0.0 (perfect match) and 1.0 (dark vs bright subvolumes)
-			// two random full-range subvolumes produce an objective value of 0.5
+	obj /= 2.0;	// two random full-range subvolumes produce an objective value of 2.0
 
 	return obj;
 }
 /******************************************************************************/
 double obj_ZNSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
-// subvolume mean_offset_values scaled by sqrt_of_sum_of_mean_offset_squared values
+// ZNSSD (Normalized Zero-mean Sum of Squared Differences) with brightness and contrast normalization
 {
 	double obj = 0.0;
 	double diff = 0.0;
@@ -217,14 +198,13 @@ double obj_ZNSSD(const std::vector<double> &ref_subvol, const std::vector<double
 		obj += diff*diff;
 	}
 
-	obj /= 4.0;	// this scales results between 0.0 (perfect match) and 1.0 (dark vs bright subvolumes)
-			// two random full-range subvolumes produce an objective value of 2.0
+	obj /= 2.0;	// two random full-range subvolumes produce an objective value of 2.0
+				
 	return obj;
 }
 /******************************************************************************/
 double obj_ZNSSD(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol, std::vector<double> &residual)
-// Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010
-// subvolume mean_offset_values scaled by sqrt_of_sum_of_mean_offset_squared values
+// ZNSSD (Normalized Zero-mean Sum of Squared Differences) with brightness and contrast normalization
 {
 	double obj = 0.0;
 	double diff = 0.0;
@@ -257,8 +237,8 @@ double obj_ZNSSD(const std::vector<double> &ref_subvol, const std::vector<double
 		obj += diff*diff;
 	}
 
-	obj /= 4.0;	// this scales results between 0.0 (perfect match) and 1.0 (dark vs bright subvolumes)
-			// two random full-range subvolumes produce an objective value of 2.0
+	obj /= 2.0;	// two random full-range subvolumes produce an objective value of 2.0
+				
 	return obj;
 }
 /******************************************************************************/

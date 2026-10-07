@@ -54,25 +54,34 @@ Interpolate::Interpolate(const BoundBox *region, int bspline_order)
 /******************************************************************************/
 void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 {
+	// 
 	//	For consistency with software such as ImageJ:
 
 	//	A slice is wide x high, the horizontal by vertical dimensions.
-	//	I am using tall as the number of slices in a stack.
+	//	Tall as the number of slices in a stack.
 	//	Terminology is consistent between voxel volumes and interp regions.
 	//
 	//	The functioning coordinate system is (x,y,z) <-> (c,r,s).
 	//	The y dimension is not inverted (top = 0).
 	//	The first slice is the top of the stack.
 	//
-	//	Set-up est_box and kern large and deep enough for the moving cloud. It will
-	//	be used for both stable and moving clouds.
 
-		// establish the kernel structure ... check allocation!
-
-	est_box = new BoundBox(region->min(), region->max());
 	act_box = new BoundBox(region->min(), region->max());
+	est_box = new BoundBox(region->min(), region->max());
+	est_box->grow_by(frame);
 
-	act_box->grow_by(-frame);
+	// diagnostic
+	/*
+	std::cout << "Interpolate::init ..." << std::endl;
+	int wide, high, tall;
+	std::cout << std::endl;
+	est_box_dims(wide, high, tall);
+	std::cout << "est_box = " << wide << " " << high << " " << tall << std::endl;
+	act_box_dims(wide, high, tall);
+	std::cout << "act_box = " << wide << " " << high << " " << tall << std::endl;
+	std::cout << "... done" << std::endl;
+	*/
+	//
 
 	// single block allocated for the kernels
 	kern_4d = new Matrix_4d(est_box->iwide(), est_box->ihigh(), est_box->itall());
@@ -175,6 +184,16 @@ void Interpolate::init(const BoundBox *region, double frame, int bspline_order)
 //   Applying this to DVC of microCT volumes specifically follows B. Pan et
 //   al., "Accurate B-spline-based 3-D interpolation scheme for digital
 //   volume correlation", Rev. Sci. Instrum. 87, 125114 (2016).
+//
+// Mirror-whole-sample was deliberately kept over a simpler zero-exterior
+// boundary condition (the alternative briefly evaluated for this codebase):
+// direct comparison against a ground-truth window far from any boundary
+// showed mirror is ~6-20x more accurate at act_box's own edge for both
+// typical (non-zero-mean, locally smooth) and near-zero-at-the-edge image
+// content, at no extra memory/compute cost -- mirror effectively assumes a
+// smooth, zero-slope continuation past the edge, while zero-exterior assumes
+// a hard drop to 0, a much larger discontinuity for real image data. See the
+// design notes on bspline_init_causal/bspline_init_anticausal below.
 //
 // The pole/gain constants below were independently re-derived here (not
 // transcribed from a table) by finding the roots, inside the unit circle, of
@@ -362,7 +381,10 @@ void Interpolate::kernels_bspline()
 // available here. Because the filter poles all have magnitude well under
 // 0.6, the resulting bias decays geometrically and is negligible a few
 // voxels in from the border -- i.e. within act_box, which is already offset
-// from est_box by the halo reserved at construction.
+// from est_box by the halo reserved at construction. (Mirror was chosen
+// over a simpler zero-exterior alternative specifically because it decays
+// from a much smaller starting bias -- see the design notes above the pole
+// table, and on bspline_init_causal/bspline_init_anticausal.)
 {
 	if (bsp_order == 0)
 		throw Intrp_Fail();	// this object wasn't constructed with B-spline support
@@ -598,6 +620,8 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 	return Interpolate::kernels(voxfname, vox_box, bytes_per, endian, 0);
 }
 /******************************************************************************/
+// e.g. interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
+
 void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian, unsigned int offset)
 
 // Load values from a voxel file. Derivatives are calculated at each voxel, but
@@ -863,31 +887,6 @@ void Interpolate::kernels_Lekien_one(int ic, int ir, int is)
 
 }
 /******************************************************************************/
-void Interpolate::nearest(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
-{
-	try
-	{
-		act_box->contains(bbox);
-	}
-	catch (Bound_Fail)
-	{
-		throw Intrp_Fail();
-	}
-
-	int rel_x = 0;
-	int rel_y = 0;
-	int rel_z = 0;
-
-	for (unsigned int i = 0; i < pts.size(); i++)
-	{
-		rel_x = pts[i].ix() - est_box->min().ix();
-		rel_y = pts[i].iy() - est_box->min().iy();
-		rel_z = pts[i].iz() - est_box->min().iz();
-
-		ivals[i] = kern_4d->get(rel_x, rel_y, rel_z, 0);
-	}
-}
-/******************************************************************************/
 void Interpolate::tri_lin(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals)
 {
 	try
@@ -1033,5 +1032,21 @@ void Interpolate::center_on(const Point pt)
 {
 	est_box->BoundBox::center_on(pt);
 	act_box->BoundBox::center_on(pt);
+}
+/******************************************************************************/
+void Interpolate::est_box_dims(int &wide, int &high, int &tall) const
+// Diagnostic accessor -- see header comment.
+{
+	wide = est_box->iwide();
+	high = est_box->ihigh();
+	tall = est_box->itall();
+}
+/******************************************************************************/
+void Interpolate::act_box_dims(int &wide, int &high, int &tall) const
+// Diagnostic accessor -- see header comment.
+{
+	wide = act_box->iwide();
+	high = act_box->ihigh();
+	tall = act_box->itall();
 }
 /******************************************************************************/

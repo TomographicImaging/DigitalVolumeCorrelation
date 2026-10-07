@@ -23,109 +23,134 @@ Author(s): Brian Bay (OSU)
 /******************************************************************************/
 Search::Search(RunControl *run)
 {
-	rc = run;
+	rc = run;	// gives all member functions of Search direct access to RunControl without passing
 
-	bytes_per = run->vol_bit_depth/8;
-	subv_rad = (run->subvol_size)/2.0;	// easier to use than subvol_size
-	if (run->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)run->subvol_npts,1.0/3.0)),3.0);
-	if (run->sub_geo == Subvol_Type::sphere) subv_num = run->subvol_npts;
+	bytes_per = rc->vol_bit_depth/8;
+	subv_rad = (rc->subvol_size)/2.0;	// easier to use than subvol_size
+	if (rc->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)rc->subvol_npts,1.0/3.0)),3.0);
+	if (rc->sub_geo == Subvol_Type::sphere) subv_num = rc->subvol_npts;
 
 	// establish pointer to function set in input file
-	if (run->obj_fcn == SAD) {
-		obj_fcn = &obj_SAD;
-		obj_fcn_res = &obj_SAD;
+	switch (run->obj_fcn) {
+		case SSD:
+			obj_fcn = &obj_SSD;
+			obj_fcn_res = &obj_SSD;
+			break;
+		case ZSSD:
+			obj_fcn = &obj_ZSSD;
+			obj_fcn_res = &obj_ZSSD;
+			break;
+		case NSSD:
+			obj_fcn = &obj_NSSD;
+			obj_fcn_res = &obj_NSSD;
+			break;
+		case ZNSSD:
+			obj_fcn = &obj_ZNSSD;
+			obj_fcn_res = &obj_ZNSSD;
+			break;
 	}
-	if (run->obj_fcn == SSD) {
-		obj_fcn = &obj_SSD;
-		obj_fcn_res = &obj_SSD;
-	}
-	if (run->obj_fcn == ZSSD) {
-		obj_fcn = &obj_ZSSD;
-		obj_fcn_res = &obj_ZSSD;
-	}
-	if (run->obj_fcn == NSSD) {
-		obj_fcn = &obj_NSSD;
-		obj_fcn_res = &obj_NSSD;
-	}
-	if (run->obj_fcn == ZNSSD) {
-		obj_fcn = &obj_ZNSSD;
-		obj_fcn_res = &obj_ZNSSD;
-	}
-
-	// create a box with the full dimensions of the image voxel volumes
-	Point vox_box_min(0.0, 0.0, 0.0);
-	Point vox_box_max(run->vol_wide, run->vol_high, run->vol_tall);
-	vox_box = new BoundBox(vox_box_min, vox_box_max);
 
 	// create reference and correlate (target) subvolume vectors of interpolated voxel data, init to 0.0
 	ref_subvol = std::vector<double>(subv_num,0.0);
 	tar_subvol = std::vector<double>(subv_num,0.0);
 
 	// optimization result storage 
-	par_min = std::vector<double>(rc->num_srch_dof,0.0);	// note size, rc->num_srch_dof
+	par_min = std::vector<double>(rc->num_srch_dof,0.0);
 
-	// set-up a single fcld + disp_max sized interp region
-
-	// create a subvolume size box, then expand by the disp_max parameter (change to opt_translate_max?)
-	// position is initially at the corner of the vox_box
-	// note that subv_rad applies to both spheres and cubes, and is a half-width
-	Point est_box_nom_min = Point(0.0, 0.0, 0.0);
-	Point est_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
-	est_box_nom = new BoundBox(est_box_nom_min, est_box_nom_max);
-	est_box_nom->grow_by(rc->disp_max);
-
-	// create interpolator of suitable capacity.
+	// Notes on boxes:
+	//	1. They do not contain content, they simply define the boundaries of rectangular prisms in the 3D voxel space. 
+	//	2. Used within the code to define processing regions, validate input parameters, and control processing.
+	//	3. Boxes are nested to support interpolator construction and manage the movement of subvolume sampling points during optimization. 
+	//	4. Boxes are inherently float, but some uses of boxes (i.e. interpolators) are inherently int and need padding - see grow_by(1.0) below.
 	//
-	// The two paths below both end up with the same net safety margin (1
-	// voxel) beyond disp_max on act_box, but they get there differently:
-	//
-	//  - legacy path (nearest/trilinear/Lekien tricubic): the single-argument
-	//    Interpolate constructor always reserves a fixed frame of 1.0, so the
-	//    "+2.0" grown here becomes a net +1.0 margin once Interpolate shrinks
-	//    act_box by that fixed frame.
-	//
-	//  - B-spline path: the two-argument constructor reserves whatever halo
-	//    the chosen order actually needs (2 voxels for cubic, 3 for quintic,
-	//    4 for septic) automatically -- so growing by a flat "+2.0" here (as
-	//    the legacy path does) would leave a cubic B-spline object with ZERO
-	//    net margin beyond disp_max (2.0 grown here - 2.0 reserved internally),
-	//    which is exactly the halo/margin shortfall you were chasing earlier.
-	//    Instead we grow by just the desired net safety margin (1.0) and let
-	//    Interpolate's own constructor reserve the halo on top of that.
+	// *** box descriptions (small to large):
+	//	1. act_box = (active) accessible region for interpolation returns within an est_box, inset by the frame (halo) required for coefficient calculation
+	//	2. est_box = (estimation) total voxel prism of an interpolator, including the the frame region reguired for coefficient calculation
+	//	3. vox_box = (voxel) limits of the full image volume space, e.g. a raw file of 1500x2000x2500 has corners at (0,0,0) and (1500,2000,2500)
 
-	if (run->bspline == true)
-	{
-		const int bspline_order_cfg = run->bspline_order;
-		est_box_nom->grow_by(1.0);	// net safety margin beyond disp_max, same convention as the legacy path below
-		// this is the two argument bspline constructor
-		interp = new Interpolate(est_box_nom, bspline_order_cfg);	
+	// create a box with the full dimensions of the image voxel volumes for use in range checking
+	Point vox_box_min(0.0, 0.0, 0.0);
+	Point vox_box_max(rc->vol_wide, rc->vol_high, rc->vol_tall);
+	vox_box = new BoundBox(vox_box_min, vox_box_max);
+
+	// form boxes of suitable size for both ref and tar Interpolators
+	// Instantiate depending on bspline or linear/cubic settings
+	// the interpolators are instantiated ahead of point loop in dvc.cpp and persist for all points in a cloud
+	// (note ... if modifing for subregion instead of single point process this will need reconsideration, interp_tar will need to size adjust)
+
+	// Interpolate constructor calls an init function that manages the frame (halo) region needed for the boxes
+	// no kernels are set here, that requires position information for the reference cloud point and search start positions
+	// see process_point -> search_pt_setup for kernel calulation calls for ref and tar and one-time interpolation taps for ref
+	// see min_Lev_Mar -> LM_prep_at -> bspline_jacobian_at/obj_val_at for interpolation taps needed to load tar_subvol at each iteration
+
+	// there is a subtle aspect to establishing the box sizes
+	// Interpolate construction is inherently voxel-based, with kernel information associated with integer voxel cneters
+	// however, subvolume sampling mini-clouds are floating non-integer values
+	// integer portion of the point locations is used for setting up space for kernel storage
+	// remainder portion is used for positioning interpolation taps within kernel cells
+	// this leaves the bounding subvolume sampling points in an overflow position, requiring the grow_by(1.0) just before instantiation
+
+	// create a box the size of the active region for interp_ref (just the subvolume size)
+	Point act_box_nom_min = Point(0.0, 0.0, 0.0);
+	Point act_box_nom_max = Point(2*subv_rad*rc->subvol_aspect[0], 2*subv_rad*rc->subvol_aspect[1], 2*subv_rad*rc->subvol_aspect[2]);
+	BoundBox act_box_ref_nom = BoundBox(act_box_nom_min, act_box_nom_max);	// box without the additional space for search, no grow_by
+
+	// create another box of subvolume size, then enlarge to accomodate the search region
+	BoundBox act_box_tar_nom = BoundBox(act_box_nom_min, act_box_nom_max);
+	act_box_tar_nom.grow_by(rc->step_max);		// this increases act_box by step_max to accomdate subvolume movement during iteration
+
+	if (rc->bspline == true) {
+		const int bspline_order_cfg = rc->bspline_order;
+		act_box_tar_nom.grow_by(1.0);	// account for int truncation of point cloud dimensions used for voxel ranges
+		act_box_ref_nom.grow_by(1.0);
+		interp_ref = new Interpolate(&act_box_ref_nom, bspline_order_cfg);
+		interp_tar = new Interpolate(&act_box_tar_nom, bspline_order_cfg);	
 	}
-	else
-	{
+	else {
 		// compensate for derivatives in interpolator (fixed frame=1.0 internally, so this nets +1.0 margin)
-		est_box_nom->grow_by(2.0);
+		act_box_tar_nom.grow_by(1.0);
+		act_box_ref_nom.grow_by(1.0);
 		// this is the tricubic constructor
-		interp = new Interpolate(est_box_nom);
+		interp_ref = new Interpolate(&act_box_ref_nom);
+		interp_tar = new Interpolate(&act_box_tar_nom);
 	}
+
+	// diagnostic
+	/*
+	std::cout << std::endl << "interp (persistent, Search constructor) ..." << std::endl;
+	int wide, high, tall;
+	interp_tar->act_box_dims(wide, high, tall);
+	std::cout << "interp_tar act_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_tar->est_box_dims(wide, high, tall);
+	std::cout << "interp_tar est_box = " << wide << " " << high << " " << tall << std::endl;
+
+	interp_ref->act_box_dims(wide, high, tall);
+	std::cout << "interp_ref act_box = " << wide << " " << high << " " << tall << std::endl;
+	interp_ref->est_box_dims(wide, high, tall);
+	std::cout << "interp_ref est_box = " << wide << " " << high << " " << tall << std::endl;
+
+	std::cout << "... done" << std::endl;
+	*/
+	//
+
 }
 /******************************************************************************/
-
 Search::~Search()
 {
-	delete interp;
-	// fcld new/delete from within process_point
-
+	// dispose of persistent class instantiations 
+	delete interp_tar;
+	delete interp_ref;
 	delete vox_box;
-	delete est_box_nom;
-
+	//delete est_box_nom;
+	delete fcld;
 }
 /******************************************************************************/
-//void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data, int test)
 void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data)
 {
 	// n is the index of the current search point
 	Point srch_pt = srch_data->points[n];
 
+	// subvolume sampling mini-clouds are created here for each clouf point to support randomized sampling positions
 	if (rc->sub_geo == sphere) {
 		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
 	}
@@ -141,10 +166,14 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 
 	// vector of ResultRecord for the neighborhood of this search point
 	std::vector<ResultRecord> neigh_res;
-	for (int i=0; i<srch_data->neigh[n].size(); i++)
+	for (int i=0; i<srch_data->neigh[n].size(); i++) {
 		neigh_res.push_back(srch_data->results[t][srch_data->neigh[n][i]]);
+	}
 
 	// this sets par_min to the starting point estimate through starting_param call
+	// fills ref_subvolume vector for the search point byt interpolating within the ref volume
+	// prepares kernels for subsequent interpolation filling of tar_subvolume during iteration
+
 	search_pt_setup(srch_pt, neigh_res);
 
 	// *** special cases
@@ -152,209 +181,245 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	// trap point for objective function mapping
 	if (map_flag && (srch_data->labels[n] == map_id)) {
 		std::cout << std::endl << "** mapping point with label " << map_id << std::endl;
-		// mapping range is taken from the disp_max value in the dvc input file
-		double half_range = rc->disp_max;
+		// mapping range is taken from the step_max value in the dvc input file
+		double half_range = rc->step_max;
 		int num_each_dim = 100;		// hardcode this for now, could be a command line input in future
 		map_objective_function(map_id, half_range, num_each_dim);
 	}
 
 	// coarse search step, this is probably going to phase out, except perhaps for optimization start refinement in special cases
+	// removed from input file, code blocks remain but not called
 	// basin_radius = 0.0 in the input file signals no coarse search step
-	if (rc->basin_radius > 0.0) {trgrid_global(rc->disp_max, rc->basin_radius, n, false);}
+	// if (rc->basin_radius > 0.0) {trgrid_global(rc->step_max, rc->basin_radius, n, false);}
 	// random search is also reserved for optimization start refinement in special cases, not triggered in current code configuration
-	//	random_global(rc->disp_max, rc->basin_radius);
+	//	random_global(rc->step_max, rc->basin_radius);
 
 /*******************/
 
 	// L-M optimization, currently using pure QN steps (no lambda tuning)
-	// not yet reporting on convg or range failures
+
+	// par_min initial estimate in place here, with par_min reset within min_Lev_Mar, copy into start (passed as const)
 	int ndof = par_min.size();
-	std::vector<double> jump(ndof, 0.0);
-	jump = min_Lev_Mar(par_min, 0.000001, 0.01);
+	std::vector<double> start(ndof, 0.0);
 	for (int i=0; i<ndof; i++) {
-		par_min[i] = jump[i];
+		start[i] = par_min[i];
 	}
-	//
-	//
-/********************/
 
+	// par_min and obj_min set within min_Lev_Mar, returns a ConvergenceReason that includes Converged and Maxit codes
 
-/************************
-	// basic N-M process
-	//
-	//
-	try
-	{
-		// look_with(amoeba, 3, 0.00001); // does disp only search first for all searches
-		// sequence the 6 and 12 dof searches
-		//if (rc->num_srch_dof > 3) look_with(amoeba, 6, 0.0000001);
-		//if (rc->num_srch_dof > 6) look_with(amoeba,12, 0.0000001);
+	ConvergenceReason opt_status = min_Lev_Mar(start, srch_data);
 
+	//std::cout << "convg_result = " << CR_str_vec[opt_status] << std::endl;
 
-		// do all standalone
-		if (rc->num_srch_dof == 3) look_with(amoeba, 3, 0.00001);
-		if (rc->num_srch_dof == 6) look_with(amoeba, 6, 0.0000001);
-		if (rc->num_srch_dof == 12) look_with(amoeba,12, 0.0000001);
-
+	if (opt_status == Converged || opt_status == CostChange || opt_status == ParameterChange || opt_status == GradientNorm) {
+		throw Point_Good();
 	}
-	catch (Convg_Fail)
-	{
-		delete fcld;
+	if (opt_status == Maxit || opt_status == NotConverged) {
 		throw Convg_Fail();
 	}
-	catch (Range_Fail)
-	{
-		delete fcld;
-		throw Range_Fail();
-	}
-	//
-	//
-	//
-*************************/
 
-
-	// update status of Search members
-
-
-	try {obj_min = obj_val_at(par_min);}
-	catch (Range_Fail) {throw Range_Fail();}
-
-	delete fcld;
-	throw Point_Good();
-}
-/******************************************************************************/
-std::vector<double> Search::min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol)
-// obj_tol compares with change in the objective function at each iteration
-// mag_tol compares with displacement magnitude change at each iteration
-{
-	int npts = subv_num;
-	int ndof = start.size();
-	std::vector<double> jump(ndof, 0.0);
-
-	Eigen::VectorXd e = Eigen::VectorXd(npts);
-	Eigen::MatrixXd J = Eigen::MatrixXd(npts,ndof);
-	Eigen::MatrixXd JTJ = Eigen::MatrixXd(ndof,ndof);
-	Eigen::VectorXd JTe = Eigen::VectorXd(ndof);
-	Eigen::VectorXd update = Eigen::VectorXd(ndof);
-
-	for (int i=0; i<ndof; i++) {
-			jump[i] = start[i];
-	}
-
-//	std::cout << "\n" << std::setprecision(12);
-//	std::cout << "p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
-
-	double obj_old = 0.0;
-	int maxit = 20;
-	int nits = 0;
-
-	for (int i=0; i<maxit; i++) {
-		double obj = LM_prep_at(jump, e, J);
-
-		if (i>0) {
-			double del_obj = fabs(obj - obj_old);
-			double del_mag = sqrt(update(0)*update(0) + update(1)*update(1) + update(2)*update(2));
-
-
-//			std::cout << "n: " << i << "\t obj_del = " << del_obj << "\t del_dis = " << del_mag << "\t p: " << jump[0] << "\t" << jump[1] << "\t" << jump[2] << "\n";
-
-
-
-			if ((del_obj < obj_tol) || (del_mag < mag_tol)) {
-				nits = i;
-				break;
-			}
-		}
-
-		JTJ = J.transpose()*J;
-		JTe = J.transpose()*e;
-		update = JTJ.colPivHouseholderQr().solve(-JTe);
-
-		for (int i=0; i<ndof; i++) {
-				jump[i] += update(i);
-		}
-
-		obj_old = obj;
-	}
-
-//	std::cout << std::setprecision(6);
-
-	return jump;
+	// Range_Fail is coming through now for very small search region settings. 
 }
 /******************************************************************************/
 void Search::search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 {
-	// Interpolation kernels are established during this stage. 
-	//
-	// A kernel is first developed/used for one interpolation of reference volume data
-	// to establish the ref_subvol vector of interpolated sampling point values. 
-	//
-	// A kernel is then developed and used for the multiple interpolations of correlate volume data
-	// to establish tar_subvolume sampling point values as needed for optimization. 
-	//
-	// Nearest, tri_lin, tri_cub_Lek, and tri_bspline utilize the same basic foundation 
-	// of voxel values and derivatives at the voxel centers, stored in a matrix for fast mult/sum.
-	//
-	// For nearest/tri_lin/tri_cub_leK: interp->kernels (which then calls interp->kernels_derivs).
-	//		This loads voxel data directly, then calculates derivatives at the voxel locations. 
-	//		nearest and tri_lin require no further kernel development.
-	//		tri_cub_leK calls further "on demand" kernel development as needed for individual sampling points.
-	//
-	// For tri_bspline: interp->kernels followed by interp->kernels_bspline
-	//		This reads voxel data, finds voxel derivatives, then calculates the bspline-specific coefficientc. 
-	//		This assumes interp = new Interpolate(est_box_nom, bspline_order_cfg) has been invoked with order set. 
+	// target volume interpolation preparation
+	// reading of image data and kernel calculations for the (subvolume) reference box
+	// interpoaltion taps are done here for each search point to fill the ref_subvol vector
 
-	// set kernels/kernels_derivs and interpolate the reference volume
-	interp->center_on(srch_pt);
-	interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
+	interp_ref->center_on(srch_pt);
+	interp_ref->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
-	if (rc->int_typ == nearest) {
-		interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-	}
 	if (rc->int_typ == trilinear) {
-		interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+		interp_ref->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
 	if (rc->int_typ == tricubic) {
-		interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+		interp_ref->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
 	if (rc->bspline == true) {
-		interp->kernels_bspline();
-		interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
+		interp_ref->kernels_bspline();
+		interp_ref->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
 	}
 
-/*
-	switch (rc->int_typ){
-		case nearest:
-			interp->nearest(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-		case trilinear:
-			interp->tri_lin(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-		case tricubic:
-			interp->tri_cub_Lek(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-		case tri_bspline:
-			interp->kernels_bspline();
-			interp->tri_bspline(fcld->stable->ptvect, fcld->stable->bbox(), ref_subvol);
-			break;
-	}
-*/
+	// target volume interpolation preparation
+	// reading of image data and kernel calculations for the (subvolume + step_max) target box
+	// no interpolation taps at this stage
+	// requires adjustment of subvolume sampling locations for the current optimization parameter vector values
 
-	// re-set kernels for the moving cloud to prepare for subsequent interp calls
 	starting_param(srch_pt, neigh_res);
+
 	Point offset_pt = srch_pt;
 	offset_pt.move_by(par_min[0], par_min[1], par_min[2]);
-	interp->center_on(offset_pt);
+	interp_tar->center_on(offset_pt);
 
-	// this covers nearest/tri_lin/tri_cub_leK and partially grenerates tri_bspline
-	interp->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
+	// this covers tri_lin/tri_cub_leK and partially grenerates tri_bspline
+	interp_tar->kernels(rc->cor_fname, vox_box, bytes_per, rc->vol_endian, (unsigned int)rc->vol_hdr_lngth);
 
-	// this completes tri_bspline
-	//if (rc->int_typ == tri_bspline) {
+	// this completes kernel development when tri_bspline options are active
 	if (rc->bspline == true) {
-		interp->kernels_bspline();
+		interp_tar->kernels_bspline();
+	}
+}
+/******************************************************************************/
+// legacy version, simple checks on relative objective function and parameter vector changes
+ConvergenceReason Search::check_convergence(
+    const Eigen::VectorXd& X_prev,
+    const Eigen::VectorXd& X_curr,
+    double F_prev,
+    double F_curr)	// access is tol.cost_tol, tol.step_tol, tol.grad_tol,
+{
+	// Notes on convergence.
+	// 1. These simple checks behave in a very similar way to C_C with similar settings
+	// 2. Gets to CostChange even at 1e-10 with just a couple more iterations. 
+	// 3. But this looks artificial for settings of this scale, as compared with C_C which does not converge. 
+
+	double tol_cost = 1e-6;			// hardcoded locally here for now, (legacy = 1e-6, reset to 1e-6)
+	double tol_step = 1e-4;			// hardcoded locally here for now, (legacy = 1e-2, reset to 1e-4)
+
+	// 1. Change in the objective function:
+	double cost_norm = fabs(F_curr - F_prev);
+	if (cost_norm < tol_cost) {
+		return ConvergenceReason::CostChange;
 	}
 
+	// 2. Change in the parameter vector:
+	double step_norm = (X_curr - X_prev).norm();
+	if (step_norm < tol_step) {
+		return ConvergenceReason::ParameterChange;
+	}
+
+	return NotConverged;	// if none of the checks are satisfied this is returned
+}
+/******************************************************************************/
+ConvergenceReason Search::Check_Convergence(
+    const Eigen::VectorXd& r,
+    const Eigen::MatrixXd& J,
+    const Eigen::VectorXd& X_prev,
+    const Eigen::VectorXd& X_curr,
+    double F_prev,
+    double F_curr)
+{
+	// tolerances set in header
+
+    // 1. Change in the objective function:
+    //    |S(X_prev) - S(x_{k+1})| / S(X_prev) < eps1
+    double cost_denom = std::max(F_prev, std::numeric_limits<double>::epsilon());
+    double cost_change = std::abs(F_prev - F_curr) / cost_denom;
+    if (cost_change < rc->cost_tol) {
+        return ConvergenceReason::CostChange;
+    }
+
+//	std::cout << std::setprecision(3) << std::scientific;
+//	std::cout << "rc->cost_tol " << rc->cost_tol << std::endl;
+
+    // 2. Change in the parameter vector:
+    //    ||x_{k+1} - X_prev|| < eps2 * (||X_prev|| + eps2)
+    double step_norm  = (X_curr - X_prev).norm();
+    double param_norm = X_prev.norm();
+    if (step_norm < rc->step_tol * (param_norm + rc->step_tol)) {
+        return ConvergenceReason::ParameterChange;
+    }
+
+    // 3. Gradient norm (first-order optimality):
+    //    ||J^T r||_inf < eps3
+ //   Eigen::VectorXd grad = J.transpose() * r;   // = gradient of S(x) = 0.5||r||^2
+ //   double grad_inf_norm = grad.lpNorm<Eigen::Infinity>();
+ //   if (grad_inf_norm < grad_tol) {
+ //       return ConvergenceReason::GradientNorm;
+ //   }
+
+    return ConvergenceReason::NotConverged;
+}
+/******************************************************************************/
+ConvergenceReason Search::min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data)
+// obj_tol compares with change in the objective function at each iteration
+// pos_tol compares with position change at each iteration
+{
+	int npts = subv_num;
+	int ndof = start.size();
+
+	ConvergenceReason convg_status;
+	Iter_Stats point_stats;
+
+	std::vector<double> X_prev(ndof, 0.0);		// parameter vector of previous  iteration
+	std::vector<double> X_curr(ndof, 0.0);		// parameter vector of current iteration
+
+	double F_prev{};		// objective function value of previous iteration, itialized to zero
+	double F_curr{};		// objective function value of current iteration, itialized to zero
+
+	// patch for now to support Check_Convergence which uses Eigen .norm, lpNorm, etc.
+	// switch to all Eigen types in future
+	Eigen::VectorXd X_prev_eig = Eigen::VectorXd(ndof);		// parameter vector of previous  iteration
+	Eigen::VectorXd X_curr_eig = Eigen::VectorXd(ndof);		// parameter vector of current iteration
+
+	// update variables
+	Eigen::VectorXd r = Eigen::VectorXd(npts);			// residual vector
+	Eigen::MatrixXd J = Eigen::MatrixXd(npts,ndof);		// Jacobian
+	Eigen::MatrixXd JTJ = Eigen::MatrixXd(ndof,ndof);	// lhs
+	Eigen::VectorXd JTr = Eigen::VectorXd(ndof);		// rhs
+	Eigen::VectorXd update = Eigen::VectorXd(ndof);		// parameter change
+
+	// X contains the updated parameter vector as optimization proceeds, initialized here
+	for (int i=0; i<ndof; i++) {
+			X_curr[i] = start[i];
+	}
+
+	// track number of iterations, start with 1 for nits updated within the convergence check conditional
+	int nits = 1;
+
+	// update iteration loop
+	for (int i=0; i<rc->max_iter; i++) {
+
+		F_curr = LM_prep_at(X_curr, r, J);	// X is a constant input, r and J passed as pointers and modified
+
+		if (i==0) { iter_stats.obj_beg = F_curr; }
+
+		// convergence check
+		if (i>0) {
+			nits += 1;
+
+			for (int j=0; j<ndof; j++) {
+				X_prev_eig(j) = X_prev[j];
+				X_curr_eig(j) = X_curr[j];
+			}
+
+			convg_status = Check_Convergence(r, J, X_prev_eig, X_curr_eig, F_prev, F_curr);
+
+			if (convg_status != NotConverged) {
+				for (int j=0; j<ndof; j++) {
+					par_min[j] = X_curr[j];
+				}
+				obj_min = F_curr;
+				break;
+			}
+		}
+
+		// *** No Convergence at maxit
+		if (i == rc->max_iter - 1){
+			for (int j=0; j<ndof; j++) {
+					par_min[j] = 0.0;
+			}
+			obj_min = 0.0;
+			convg_status = ConvergenceReason::Maxit;
+			break;
+		}
+
+		// determine and apply a parameter update, move current data back to previous
+		JTJ = J.transpose()*J;
+		JTr = J.transpose()*r;
+		update = JTJ.colPivHouseholderQr().solve(-JTr);
+		
+		for (int j=0; j<ndof; j++) {
+			X_prev[j] = X_curr[j];
+			X_curr[j] += update(j);
+		}
+		F_prev = F_curr;
+	}
+
+	iter_stats.nits = nits;
+	iter_stats.convg_status = convg_status; 
+
+	return convg_status;
 }
 /******************************************************************************/
 void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
@@ -424,7 +489,7 @@ void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 	// std::cout << "good = " << good << "\t" << "est = " << past_srch_x << "\t" << past_srch_y << "\t" << past_srch_z << "\n";
 
 	// *** use starting information to form initial parameter vector
-	// note: with no past points found and no rigid_trans set initial becomes zero
+	// note: with no past points found and no start_estimate set initial becomes zero
 
 	if (good != 0)
 	{
@@ -433,9 +498,9 @@ void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 		par_min[2] =  past_srch_z;
 	} else
 	{
-		par_min[0] =  rc->rigid_trans[0];
-		par_min[1] =  rc->rigid_trans[1];
-		par_min[2] =  rc->rigid_trans[2];
+		par_min[0] =  rc->start_estimate[0];
+		par_min[1] =  rc->start_estimate[1];
+		par_min[2] =  rc->start_estimate[2];
 	}
 
 	// *** set higher-order initial values to zero for now
@@ -459,100 +524,25 @@ void Search::starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res)
 
 }
 /******************************************************************************/
-void Search::look_with(Search_Type method, int ndof, double ftol)
-{
-	// initial set
-//	double del_tra = 0.1;		// for translational dof's
-//	double del_rot = 0.001;		// for rotational dof's
-//	double del_str = 0.001;		// for strain dof's
-
-	// ran twice as fast in "old" test case
-//	double del_tra = 0.1;		// for translational dof's
-//	double del_rot = 0.01;		// for rotational dof's
-//	double del_str = 0.001;		// for strain dof's
-
-	// calculate rot and str delta's balanced with the translation delta
-	// 0.75 is distance from center of subvolume to a representative point
-	// del_tra of 0.2 comes from an initial test problem convergence study
-
-	double del_tra = 0.2;
-	double del_rot = del_tra;
-	// double del_rot = del_tra/(0.75*subv_rad); // very consertative w/ rot
-	double del_str = del_rot;
-
-	std::vector<double> pmin(ndof, 0.0);; //
-	std::vector<double> dels(ndof, 0.0);; //
-
-	for (int i=0; i<ndof; i++)
-	{
-		pmin[i] = par_min[i];
-
-		if (i< 3)
-		{
-			dels[i] = del_tra;
-		}
-		else if (i< 6)
-		{
-			dels[i] = del_rot;
-		}
-		else if (i<12)
-		{
-			dels[i] = del_str;
-		}
-	}
-
-	// custom Nelder-Mead using the functor, not working
-/*	if (method == amoeba) {
-		Min_Ftor_new simplex_ftor(int_typ,obj_typ,ndof,fcld,interp,ref_subvol);	// this is OK
-
-		Simplex simplex;// this is OK
-
-		// this line throws an "undefined"
-//		pmin_new = simplex.minimize(pmin_new, dels_new, simplex_ftor, ftol);
-
-	}
-*/
-
-	// custom Nelder-Mead using Search internal objective function evaluation
-	if (method == amoeba)
-	{
-		try {pmin = min_Nelder_Mead(pmin, dels, ftol);}
-		catch (Range_Fail) {throw Range_Fail();}
-		catch (Convg_Fail) {throw Convg_Fail();}
-	}
-
-	for (int i=0; i<ndof; i++)
-	{
-		par_min[i] = pmin[i];
-	}
-
-}
-/******************************************************************************/
 double Search::obj_val_at(const std::vector<double> x)	// this version uses nominals set at Search construct
 {
 	fcld->affine_to(x, x.size());
 
-	if (rc->int_typ == nearest) {
-		try {interp->nearest(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}}
-
 	if (rc->int_typ == trilinear) {
-		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == tricubic) {
-		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
-
-	//if (rc->int_typ == tri_bspline) {
 	if (rc->bspline == true) {
 		// kernels_bspline() is NOT called here -- it's primed once in
 		// search_pt_setup() right after the moving-cloud kernels() load, and
 		// stays valid (bsp_valid) across every obj_val_at() call in this
 		// search point's optimization loop, since fcld->affine_to() only
 		// moves query points, it never reloads voxel data.
-		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	double obj_val = obj_fcn(ref_subvol, tar_subvol);
@@ -564,24 +554,18 @@ double Search::obj_val_at(const std::vector<double> x, std::vector<double> &resi
 {
 	fcld->affine_to(x, x.size());
 
-	if (rc->int_typ == nearest) {
-		try {interp->nearest(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}}
-
 	if (rc->int_typ == trilinear) {
-		try {interp->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_lin(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	if (rc->int_typ == tricubic) {
-		try {interp->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_cub_Lek(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
-		
-	//if (rc->int_typ == tri_bspline) {
 	if (rc->bspline == true) {
 		// see obj_val_at(x) above -- kernels_bspline() is primed once in
 		// search_pt_setup(), not on every call here.
-		try {interp->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
+		try {interp_tar->tri_bspline(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol);}
 		catch (Intrp_Fail) {throw Range_Fail();}}
 
 	double obj_val = obj_fcn_res(ref_subvol, tar_subvol, residual);
@@ -596,8 +580,6 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 
 	std::vector<double> base_res(npts, 0.0);
 
-	
-	//if (rc->int_typ == tri_bspline)
 	if (rc->bspline == true)
 	{
 		// same analytic Jacobian as Jacobian_at() -- see bspline_jacobian_at()
@@ -617,7 +599,7 @@ double Search::LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J
 		return obj;
 	}
 
-	// --- legacy finite-difference path (nearest/trilinear/Lekien tricubic) ---
+	// --- legacy finite-difference path (trilinear/Lekien tricubic) ---
 
 	std::vector<double> step_res(npts, 0.0);
 	std::vector<double> step_x(ndof, 0.0);
@@ -654,7 +636,7 @@ double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
 	std::vector<double> &base_res, std::vector< std::vector<double> > &J)
 // Analytic residual Jacobian using tri_bspline_grad -- ONE interpolation call
 // total (vs. ndof+1 full volume interpolations in the legacy finite-difference
-// path used by nearest/trilinear/Lekien tricubic). Shared by Jacobian_at() and
+// path used by trilinear/Lekien tricubic). Shared by Jacobian_at() and
 // LM_prep_at() so the two never drift apart.
 //
 // This is the standard DIC/DVC "steepest descent image" construction:
@@ -682,7 +664,7 @@ double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
 	std::vector<double> dfdx(npts), dfdy(npts), dfdz(npts);
 
 	fcld->affine_to(a, ndof);
-	try {interp->tri_bspline_grad(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol, dfdx, dfdy, dfdz);}
+	try {interp_tar->tri_bspline_grad(fcld->moving->ptvect, fcld->moving->bbox(), tar_subvol, dfdx, dfdy, dfdz);}
 	catch (Intrp_Fail) {throw Range_Fail();}
 
 	double obj = obj_fcn_res(ref_subvol, tar_subvol, base_res);	// fills base_res
@@ -722,7 +704,7 @@ double Search::bspline_jacobian_at(const std::vector<double> &a, int ndof,
 	// restore fcld->moving to reflect 'a' (we perturbed away from it above)
 	fcld->affine_to(a, ndof);
 
-	if (rc->obj_fcn == SAD || rc->obj_fcn == SSD)
+	if (rc->obj_fcn == SSD)
 	{
 		// residual_j = tar_j - ref_j  =>  d(residual_j)/d(a_i) = G[j][i]
 		for (int j=0; j<npts; j++)
@@ -804,15 +786,13 @@ void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<
 
 	std::vector<double> base_res(npts, 0.0);
 
-	
-	//if (rc->int_typ == tri_bspline)
 	if (rc->bspline == true)
 	{
 		bspline_jacobian_at(a, ndof, base_res, J);
 		return;
 	}
 
-	// --- legacy finite-difference path (nearest/trilinear/Lekien tricubic) ---
+	// --- legacy finite-difference path (trilinear/Lekien tricubic) ---
 
 	std::vector<double> step_res(npts, 0.0);
 	std::vector<double> step_x(ndof, 0.0);
@@ -833,382 +813,6 @@ void Search::Jacobian_at (const std::vector<double> a, std::vector< std::vector<
 std::cout << "\n" << std::setprecision(20);
 std::cout << J[0][0] << "\t" << J[npts-1][ndof-1] << "\t" << "\n";
 std::cout << "\n" << std::setprecision(6);
-
-}
-/******************************************************************************/
-std::vector<double> Search::obj_grad_at(const std::vector<double> x)
-{
-	int ndof = x.size();
-	std::vector<double> x_step = x;
-	std::vector<double> gradient(ndof, 0.0);
-
-	double h = 1E-8;		// checked e-4 to e-12, all similar to several places
-	double add = 0.0;
-	double sub = 0.0;
-
-	// output obj values to test derivatives
-	std::cout << "\n\n" << std::setprecision(20);
-	double obj = 0.0;
-	x_step = x;
-
-	x_step[0] -= 2.0*h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	x_step[0] += h;
-	obj = obj_val_at(x_step);
-	std::cout << "\n" << obj << "\t" << x_step[0] << "\t" << x_step[1] << "\t" << x_step[2] << "\n";
-
-	std::cout << "\n" << std::setprecision(6);
-	x_step = x;
-	//
-
-	// this is the actual gradient calc
-	for (int i=0; i<ndof; i++) {
-		x_step[i] += h;
-		add = obj_val_at(x_step);
-		x_step[i] -= 2.0*h;
-		sub = obj_val_at(x_step);
-		gradient[i] = (add - sub)/(2.0*h);
-		x_step[i] = x[i];
-	}
-
-	std::cout << "\n" << std::setprecision(20);
-	std::cout << gradient[0] << "\t" << gradient[1] << "\t" << gradient[2] << "\n";
-	std::cout << "\n" << std::setprecision(6);
-
-	return gradient;
-}
-/******************************************************************************/
-std::vector< std::vector<double> > Search::obj_Hess_at(const std::vector<double> x)
-{
-	// old-school Hessian by forward differences
-
-	int ndof = x.size();
-	std::vector<double> x_step = x;
-	double h = 1E-8;
-	double f1 = 0.0;
-	double f2 = 0.0;
-	double f3 = 0.0;
-	double f4 = 0.0;
-
-	std::vector< std::vector<double> > hessian;
-	hessian.resize(ndof);
-	for (int i=0; i<ndof; i++) {
-		hessian[i].resize(ndof, 0.0);
-	}
-
-	std::vector< std::vector<double> > hessian_T = hessian;
-
-	f4 = obj_val_at(x_step);
-	// for (int i=0; i<ndof; i++) {
-	for (int i=0; i<=0; i++) {
-		x_step = x;
-		x_step[i] += h;
-		f2 = obj_val_at(x_step);
-		//for (int j=0; j<ndof; j++) {
-		for (int j=0; j<=0; j++) {
-			x_step = x;
-			x_step[j] += h;
-			f3 = obj_val_at(x_step);
-			x_step = x;
-			x_step[i] += h;
-			x_step[j] += h;
-			f1 = obj_val_at(x_step);
-
-			hessian[i][j] = (f1 - f2 - f3 + f4)/(h*h);
-			hessian_T[j][i] = hessian[i][j];
-		}
-	}
-
-	std::cout << "\n" << std::setprecision(20);
-	std::cout << f1 << "\t" << f2 << "\t"<< f3 << "\t"<< f4 << "\n";
-
-	std::cout << "\n" << std::setprecision(20);
-	std::cout << hessian[0][0] << "\t" << hessian[0][1] << "\t" << hessian[0][2] << "\n";
-	std::cout << "\n" << std::setprecision(6);
-
-
-	// replace H with 0.5*(H + HT) to force symmetry
-	/*
-	std::cout << "\n";
-	for (int i=0; i<ndof; i++) {
-		for (int j=0; j<ndof; j++) {
-			hessian[i][j] = 0.5*(hessian[i][j] + hessian_T[i][j]);
-
-			std::cout << hessian[i][j] << "\t";
-
-		}
-		std::cout << "\n";
-	}
-*/
-
-	return hessian;
-}
-/******************************************************************************/
-std::vector<double> Search::min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol)
-{
-	const int MAX_FUNC = 2000;		// max allowed objective function evaluations
-	const double NOT_ZERO = 1.0e-10;	// prevent divide by zero
-
-	int ndof = start.size();	// dimensionality of the parameter space
-	int nvrt = ndof + 1;		// number of vertices in the simplex
-	int num_func = 0;		// count num of function evals, for convergence checking
-
-	double ALPHA =  1.0;	// >0, typically 1.0;		reflection scaling
-	double GAMMA =  2.0;	// >alpha, typically 2.0;	expansion scaling
-	double DELTA = -0.5;	// mag >0, <=0.5, typ 0.5;	contract worst toward centroid
-	double OMEGA =  0.5;	// >0, <=0.5, typ = delta;	contract all toward best
-//	double NUDGE =  0.1;	// bet 0 & 1, typ = 0.1;	nudge centroid toward best, an idea ...
-
-	std::vector< std::vector<double> > simplex;	// store simplex as a vector of vectors [nvrt][ndof]
-	std::vector<double> vrt_val (nvrt, 0.0);	// objective function values at vertices
-
-	std::vector<double> centroid (ndof, 0.0);	// position of the opposite face centroid
-	std::vector<double> del_vect (ndof, 0.0);	// vector from wrst to centroid
-
-	std::vector<double> xref (ndof, 0.0);	// reflection
-	std::vector<double> xexp (ndof, 0.0);	// expansion
-	std::vector<double> xcon (ndof, 0.0);	// contraction
-
-	double yref, yexp, ycon;
-
-	simplex.resize(nvrt);
-	for (int i=0; i<nvrt; i++)
-	{
-		simplex[i].resize(ndof);
-	}
-
-	for (int i=0; i<nvrt; i++)
-	{
-		for (int j=0; j<ndof; j++)
-		{
-			simplex[i][j] = start[j];
-		}
-
-		if (i != 0)
-		{
-			simplex[i][i-1] += dels[i-1];
-		}
-	}
-
-//	std::cout << "\n";				// output initial simplex vertices
-//	for (int i=0; i<nvrt; i++) {
-//		for (int j=0; j<ndof; j++)
-//			std::cout << simplex[i][j] << "\t";
-//		std::cout << "\n";
-//	}
-
-	for (int i=0; i<nvrt; i++)
-	{			// get vertex objective function values
-		try
-		{
-			vrt_val[i] = obj_val_at(simplex[i]);
-		}
-		catch (Range_Fail)
-		{
-			throw Range_Fail();
-		}
-	}
-
-	num_func += nvrt;
-
-// Note: standard formulation uses centroid as a reference point for new locations
-// Note: there are two cases where the reflected point is kept: 1.a. and 2.b.
-//
-// 1. xref = reflect wrst beyond centroid by a factor of alpha (typically = 1; >0)
-// 	a. if xref is between best and poor (second wrst), substitute xref for wrst and iterate
-//
-// 2. xexp = expand wrst beyond centroid by a factor of gamma (typically = 2; >alpha)
-// 	a. if xexp is better than xref, substitute xexp for wrst and iterate
-//	b. if xepx is not better than xref (but better than wrst), substitute xref for wrst and iterate
-//
-// 3. xcon = contract wrst within centroid by a factor of delta (typically 0.5; >0, <=0.5)
-//	a. if xcon is better than wrst, substitute xcon for wrst and iterate
-// 	b. if xcon not better than wrst, contract all but best toward best by a factor of omega (typically 0.5; >0, <=0.5)
-//
-	for (;;) {
-		int wrst = 0;		// wrst, poor, best: poor = "second worst"
-		int best = 0;
-		for (int i=1; i<nvrt; i++)
-		{
-			if (vrt_val[i] > vrt_val[wrst])
-			{
-				wrst = i;
-			}
-			if (vrt_val[i] < vrt_val[best])
-			{
-				best = i;
-			}
-		}
-
-		int poor = best;
-
-		for (int i=0; i<nvrt; i++)
-		{
-			if ((i != wrst) && (i != best))
-			{
-				if (vrt_val[i] > vrt_val[poor])
-				{
-					poor = i;
-				}
-			}
-		}
-		// Note: the individual vertex values are updated during simplex evaluation below
-
-		double rel_diff = 2.0*fabs(vrt_val[wrst]-vrt_val[best])/(fabs(vrt_val[wrst])+fabs(vrt_val[best])+NOT_ZERO);
-
-		if (rel_diff < conv_tol)
-		{
-			return simplex[best];	// successful convergence, normal return from minimize
-		}
-
-		if (num_func > MAX_FUNC)
-		{
-			throw Convg_Fail();	// wandering around aimlessly
-		}
-
-		// prepare for simplex modification
-
-		for (int j=0; j<ndof; j++)
-		{
-			centroid[j] = 0.0;
-			for (int i=0; i<nvrt; i++)
-			{
-				if (i != wrst)
-				{
-					centroid[j] += simplex[i][j];
-				}
-			}
-			centroid[j] /= ndof;
-			del_vect[j] = centroid[j] - simplex[wrst][j];
-//			del_vect[j] = centroid[j] - simplex[wrst][j] + NUDGE*(simplex[best][j] - centroid[j]);
-		}
-
-		bool eval = true;
-		while (eval) {		// evaluate and adjust the simplex
-
-			for (int i=0; i<ndof; i++)
-			{
-				xref[i] = centroid[i] + ALPHA*del_vect[i];
-			}
-			try
-			{
-				yref = obj_val_at(xref);
-			}
-			catch (Range_Fail)
-			{
-				throw Range_Fail();
-			}
-
-			num_func += 1;
-
-			if ((yref <= vrt_val[poor]) && (yref >= vrt_val[best]))
-			{
-				simplex[wrst] = xref;
-				vrt_val[wrst] = yref;
-				break;
-			}
-
-			if (yref < vrt_val[best])
-			{
-				for (int i=0; i<ndof; i++)
-				{
-					xexp[i] = centroid[i] + GAMMA*del_vect[i];
-				}
-				try
-				{
-					yexp = obj_val_at(xexp);
-				}
-				catch (Range_Fail)
-				{
-					throw Range_Fail();
-				}
-
-				num_func += 1;
-
-				if (yexp < vrt_val[best])
-				{
-					simplex[wrst] = xexp;
-					vrt_val[wrst] = yexp;
-					break;
-				}
-				else
-				{
-					simplex[wrst] = xref;
-					vrt_val[wrst] = yref;
-					break;
-				}
-			}
-
-			for (int i=0; i<ndof; i++)
-			{
-				xcon[i] = centroid[i] + DELTA*del_vect[i];
-			}
-
-			try
-			{
-				ycon = obj_val_at(xcon);
-			}
-			catch (Range_Fail)
-			{
-				throw Range_Fail();
-			}
-
-			num_func += 1;
-
-			if (ycon < vrt_val[best])
-			{
-				simplex[wrst] = xcon;
-				vrt_val[wrst] = ycon;
-				break;
-			}
-			else
-			{
-				for (int i=0; i<nvrt; i++)
-				{
-					if (i != best)
-					{
-						for (int j=0; j<ndof; j++)
-						{
-							simplex[i][j] = simplex[best][j] + OMEGA*(simplex[i][j] - simplex[best][j]);
-						}
-						try
-						{
-							vrt_val[i] = obj_val_at(simplex[i]);
-						}
-						catch (Range_Fail)
-						{
-							throw Range_Fail();
-						}
-
-						num_func += 1;
-					}
-				}
-				break;
-			}
-
-			eval = false;	// code should never get here, but break loop in case
-					// simplex has not changed, for will run until MAX_FUNC reached
-
-		} // while end
-
-
-	} // for end
-
-
 
 }
 /******************************************************************************/
@@ -1473,55 +1077,8 @@ void Search::random_global(double displ_max, double basin_radius)
 
 	return;
 
-}/******************************************************************************/
-/*Search::Min_Ftor_new::Min_Ftor_new(const Interp_Type int_typ, const Objfcn_Type obj_typ, const int ndof, FloatingCloud *fcld, Interpolate *interp, const std::vector<double> &ref_subvol)
-// not currently used, but leave in place for now
-{
-
-	lndof = ndof;
-	lfcld = fcld;
-	linterp = interp;
-
-	lpar_cur = std::vector<double>(12,0.0);
-	lref_subvol = std::vector<double>(ref_subvol.size(),0.0);
-	ltar_subvol = std::vector<double>(ref_subvol.size(),0.0);
-
-	lref_subvol = ref_subvol;
-
-	lobj_typ = obj_typ;
-	lint_typ = int_typ;
 }
 
-double Search::Min_Ftor_new::operator() (const std::vector<double> x)
-{
-	for (int i=0; i<x.size(); i++)
-		lpar_cur[i] = x[i];
-
-
-	lfcld->affine_to(lpar_cur, lndof);
-
-	if (lint_typ == trilinear)
-	{
-		try {linterp->tri_lin(lfcld->moving->ptvect, lfcld->moving->bbox(), ltar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}
-	}
-
-	if (lint_typ == tricubic)
-	{
-		try {linterp->tri_cub_Lek(lfcld->moving->ptvect, lfcld->moving->bbox(), ltar_subvol);}
-		catch (Intrp_Fail) {throw Range_Fail();}
-	}
-
-	double obj;
-
-	if (lobj_typ == SAD) obj = obj_SAD(lref_subvol, ltar_subvol);
-	if (lobj_typ == SSD) obj = obj_SSD(lref_subvol, ltar_subvol);
-	if (lobj_typ == ZSSD) obj = obj_ZSSD(lref_subvol, ltar_subvol);
-	if (lobj_typ == NSSD) obj = obj_NSSD(lref_subvol, ltar_subvol);
-	if (lobj_typ == ZNSSD) obj = obj_ZNSSD(lref_subvol, ltar_subvol);
-
-	return obj;
-}*/
 /******************************************************************************/
 
 #if defined(_WIN32) || defined(__WIN32__)
@@ -1530,56 +1087,49 @@ double Search::Min_Ftor_new::operator() (const std::vector<double> x)
 std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
 
-	// SAD, SSD, ZSSD, NSSD, ZNSSD
+	// SSD, ZSSD, NSSD, ZNSSD
 	std::string objfun;
 	switch (run->obj_fcn) {
-		case SAD:
-			objfun = std::string("SAD");
-			break;
 		case SSD:
-			objfun = std::string("SSD");
+			objfun = "SSD";
 			break;
 		case ZSSD:
-			objfun = std::string("ZSSD");
+			objfun = "ZSSD";
 			break;
 		case NSSD:
-			objfun = std::string("NSSD");
+			objfun = "NSSD";
 			break;
 		case ZNSSD:
-			objfun = std::string("ZNSSD");
+			objfun = "ZNSSD";
 			break;
 	}
 
-	//nearest trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7
 	std::string inttyp;
 	switch (run->int_typ) {
-		case nearest:
-			inttyp = std::string("nearest");
-			break;
 		case trilinear:
-			inttyp = std::string("trilinear");
+			inttyp = "trilinear";
 			break;
 		case tricubic:
-			inttyp = std::string("tricubic");
+			inttyp = "tricubic";
 			break;
 		case tri_bspline_3:
-			inttyp = std::string("tri_bspline_3");
+			inttyp = "tri_bspline_3";
 			break;
 		case tri_bspline_5:
-			inttyp = std::string("tri_bspline_5");
+			inttyp = "tri_bspline_5";
 			break;
 		case tri_bspline_7:
-			inttyp = std::string("tri_bspline_7");
+			inttyp = "tri_bspline_7";
 			break;
 	}
 
 	std::string geotyp;
 	switch (run->sub_geo) {
 		case cube:
-			geotyp = std::string("cube");
+			geotyp = "cube";
 			break;
 		case sphere:
-			geotyp = std::string("sphere");
+			geotyp = "sphere";
 			break;
 	}
 
@@ -1592,7 +1142,10 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 		"interp_type " << inttyp << std::endl <<
 		"obj_fun " << objfun << std::endl <<
 		"num_srch_dof " << run->num_srch_dof << std::endl <<
-		"disp_max " << run->disp_max << std::endl <<
+		"step_max " << run->step_max << std::endl <<
+		"cost_tol (obj) " << std::scientific << std::setprecision(1) << a.rc->cost_tol << std::endl <<
+		"step_tol (par) " << std::scientific << std::setprecision(1) << a.rc->step_tol << std::endl <<
+		"max_iter " << std::fixed << std::setprecision(0) << a.rc->max_iter << std::endl <<
 		")";
 }
 #endif

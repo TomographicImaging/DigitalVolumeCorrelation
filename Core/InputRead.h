@@ -30,13 +30,17 @@ Author(s): Brian Bay (OSU)
 #include <sstream>
 #include <limits>
 #include <cstdlib>
-#include <ctime>
+
+// for new point cloud read code
+#include <cerrno>
+#include <climits>
+#include <algorithm>
+#include <utility>
 
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
-
 //
 
 #include "CCPiDefines.h"
@@ -54,9 +58,28 @@ public:
 	std::string exam; // an example (default?) values for the parameter
 	std::string reqd; // yes, or the conditions where it is required
 	std::string good; // a description of good values for this keyword
+	std::string dflt; // default setting, if one exists, or "none"
 	std::string pool; // fio_name, vox_data, sub_vols, opt_mthd, opt_tune
 	std::string hint; // a brief description of the keyword
 	std::string help; // a detailed description of the keyword
+
+	// --- used only by print_input_form_html() (the HTML input file builder) ---
+	// set these next to the other fields, from the same constants the parser uses,
+	// so the form checks values exactly as input_file_read() will
+	std::string form_type = "text";			// int, real, choice, file_old, file_new, text
+	int form_nval = 1;						// number of values on the keyword line
+	std::vector<std::string> form_opts;		// drop-down list for form_type "choice"
+	bool form_has_min = false, form_has_max = false;
+	double form_min = 0.0, form_max = 0.0;	// inclusive range applied to each value
+	std::vector<std::string> form_lim_kw;	// |value[i]| <= value of keyword form_lim_kw[i]
+	std::string form_cond_kw;				// conditional keywords: required only when
+	std::vector<std::string> form_cond_vals;	//   keyword form_cond_kw has one of these values
+
+	void set_form_int(int min, int max) { form_type = "int"; form_has_min = form_has_max = true; form_min = min; form_max = max; }
+	void set_form_real(double min, double max, int nval = 1) { form_type = "real"; form_nval = nval; form_has_min = form_has_max = true; form_min = min; form_max = max; }
+	void set_form_choice(const std::vector<std::string> &opts) { form_type = "choice"; form_opts = opts; }
+	void set_form_choice(const std::vector<int> &opts) { form_type = "choice"; form_opts.clear(); for (int v : opts) form_opts.push_back(std::to_string(v)); }
+	void set_form_cond(const std::string &kw, const std::vector<std::string> &vals) { form_cond_kw = kw; form_cond_vals = vals; }
 
 private:
 };
@@ -70,6 +93,14 @@ public:
 
 	std::ifstream input_file;
 
+	int input_file_read(RunControl *run);
+	int read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels);	
+
+	// tab/space/comma version, with capacity for added column and a column header row, and # comment lines
+	int read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels,
+												std::vector<std::vector<double>> &added_columns,
+													std::vector<std::string> &added_column_names);
+
 	int find_flag(std::string flag, int &argc, char *argv[]);
 	int find_flag(std::string flag, int &argc, char *argv[], int &val);
 	int find_flag(std::string flag, int &argc, char *argv[], double &val);
@@ -77,9 +108,8 @@ public:
 
 	int input_file_accessible(std::string fname);
 
-	int input_file_read(RunControl *run);
 
-	int read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels);	
+	
 
 	BoundBox *search_box;
 	int search_num_pts;
@@ -89,6 +119,7 @@ public:
 	key_word_help kwh_cor_fname;
 	key_word_help kwh_pts_fname;
 	key_word_help kwh_out_fname;
+	key_word_help kwh_num_points_to_process;	// optional, default (0) is run all points
 
 	// keywords in pool vox_data
 	key_word_help kwh_vol_bit_depth;
@@ -102,75 +133,108 @@ public:
 	key_word_help kwh_subvol_geom;
 	key_word_help kwh_subvol_size;
 	key_word_help kwh_subvol_npts;
-
-	key_word_help kwh_subvol_thresh;
-	key_word_help kwh_gray_thresh_min;
-	key_word_help kwh_gray_thresh_max;
-	key_word_help kwh_min_vol_fract;
+	key_word_help kwh_subvol_aspect;	// optional
 
 	// keywords in pool opt_mthd
-	key_word_help kwh_disp_max;
 	key_word_help kwh_num_srch_dof;
 	key_word_help kwh_obj_function;
 	key_word_help kwh_interp_type;
+	key_word_help kwh_start_position;
+	key_word_help kwh_start_estimate;
+	key_word_help kwh_step_max;
 
 	// keywords in pool opt_tune
-	key_word_help kwh_rigid_trans;
-	key_word_help kwh_basin_radius;
-	key_word_help kwh_subvol_aspect;
-	key_word_help kwh_num_points_to_process;
-	key_word_help kwh_starting_point;
-
-
-	key_word_help kwh_fine_srch;		// not implemented
+	key_word_help kwh_cost_tol;		// optional
+	key_word_help kwh_step_tol;		// optional
+	// key_word_help kwh_grad_tol;	// optional
+	key_word_help kwh_max_iter;		// optional
 
 	// organized for creation of a manual
-
 	std::vector<key_word_help> manual;
 
 	// data used for value checking
 
-	std::vector<int> ok_vol_bit_depth;
+//	std::vector<int> ok_vol_bit_depth;
 	std::vector<std::string> ok_vol_endian;
-	int vol_dim_min, vol_dim_max;
-	int vol_hdr_min, vol_hdr_max;
+//	int vol_dim_min, vol_dim_max;
+//	int vol_hdr_min, vol_hdr_max;
 	unsigned long ref_file_length;
 	unsigned long cor_file_length;
 	unsigned long pts_file_length;
 
 	std::vector<std::string> ok_subvol_geom;
-	int subvol_size_min, subvol_size_max;
-	int subvol_npts_min, subvol_npts_max;
-	std::vector<std::string> ok_subvol_thresh;
-	double min_vol_fract_min, min_vol_fract_max;
+
+	const int num_points_to_process_def = 0;	// process all points
+
+	const std::vector<int> ok_bit_depth = {8,16};
+	const int vol_bit_depth_def = 8;
+
+	const int vol_hdr_min = 0;
+	const int vol_hdr_max = 4096;
+
+	const int vol_dim_min = 100;
+	const int vol_dim_max = 8000;
+
+	const int subvol_size_min = 10;
+	const int subvol_size_max = 100;
+	const int subvol_size_def = 25;
+
+	const int subvol_npts_min = 100;
+	const int subvol_npts_max = 50000;
+	const int subvol_npts_def = 5000;
+
+	const double subvol_aspect_min = 0.5;
+	const double subvol_aspect_max = 2.0;
+	const double subvol_aspect_def = 1.0;
+
+	const std::vector<int> ok_srch_dof = {3, 6, 12};
+	const int srch_dof_def = 12;
+
+	const int obj_function_def = 3;		// array/enum value of znssd
+	const int interp_type_def = 2;		// array/enum value of tri_bspline_3
+
+	const int step_max_min = 1;
+	const int step_max_max = 15;
+	const int step_max_def = 5;
+
+	const double cost_tol_min = 1e-10;
+	const double cost_tol_max = 1e-2;
+	const double cost_tol_def = 1e-6;
+
+	const double step_tol_min = 1e-10;
+	const double step_tol_max = 1e-2;
+	const double step_tol_def = 1e-4;
+
+	const double grad_tol_min = 1e-10;
+	const double grad_tol_max = 1e-2;
+	const double grad_tol_def = 1e-8;
+
+	const int max_iter_min = 1;
+	const int max_iter_max = 100;
+	const int max_iter_def = 20;
 
 	std::vector<int> ok_num_srch_dof;
-	
 	std::vector<std::string> ok_obj_function;
-	
 	std::vector<std::string> ok_interp_type;
-
 	std::vector<std::string> ok_fine_srch;
-	
-	double aspect_min;
-	double aspect_max;
 
+	// transfer enum list strings into a vector of strings
+	std::vector<std::string> line_to_vect(std::string line);
+
+	// number to string conversions for documentation
 	std::string limits_to_string(int min, int max);
 	std::string limits_to_string(double min, double max);
 	std::string limits_to_string(std::vector<std::string> val);
 	std::string limits_to_string(std::vector<int> val);
-	
-	std::vector<std::string> line_to_vect(std::string line);
-
-	// get and parse line functions
-	int check_eol(std::ifstream &file, char &eol, std::string &term);
-	int get_line_with_keyword(std::string keyword, std::string &keyline, bool req);
-
-	char inp_eol;		// input file eol and line termination
-	std::string inp_term;
+	std::string set_stream_str(double min, double max, double def, std::string notation, int ndp);
+	std::string set_stream_str(double min, double max, std::string notation, int ndp);
+	std::string set_stream_str(int min, int max, int def);
+	std::string set_stream_str(int min, int max);
+	std::string set_num_str(double num, std::string notation, int ndp);
+	std::string set_num_str(int num);
+	std::string set_num_str(int num, std::string comment);
 
 	// read and check keyword parameters
-
 	int parse_line_old_file(key_word_help kwh, std::string &arg1, unsigned long &bytes, bool req);
 	int parse_line_new_file(key_word_help kwh, std::string &arg1, bool req);
 	int parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int &arg1, bool req);
@@ -182,19 +246,45 @@ public:
 	int parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim, std::vector<double> &vect_val, bool req);
 	int parse_line_dvect(key_word_help kwh, double min, double max, std::vector<double> &vect_val, bool req);
 
-	// output functions
+	// get and parse line functions
+	int check_eol(std::ifstream &file, char &eol, std::string &term);
+	int get_line_with_keyword(std::string keyword, std::string &keyline, bool req);
 
+	char inp_eol;		// input file eol and line termination
+	std::string inp_term;
+
+	// output functions (old txt version)
 	int print_manual_intro(std::ofstream &file);
 	int print_manual_section(std::ofstream &file, std::string pool);
 	int print_manual_output(std::ofstream &file);
 	int print_input_example(std::ofstream &file, std::string pool);
+
+	// HTML manual (single self-contained file; print to PDF from a browser)
+	int print_manual_html(std::ofstream &file);
+
+	// HTML input file builder (single self-contained file; writes a dvc_input text file)
+	int print_input_form_html(std::ofstream &file);
+	static std::string html_escape(const std::string &s);
+	std::string html_link_keywords(const std::string &text, const std::string &self);
+	std::string help_to_html(const std::string &help, const std::string &self);
 	int print_current_version();
+
 	int echo_input(RunControl *run);
 	int append_time_date(std::string fname, std::string label, char* dt);
 	int append_time_date(std::string fname, std::string label, time_t dt);
 
 	int result_header(std::string fname, int num_params);
 	int append_result(std::string fname, int n, Point pt, const int status, double obj_min, std::vector<double> result);
+
+	// threshold inputs deactivated, option not implemented in code
+	/*
+	double min_vol_fract_min, min_vol_fract_max;
+	key_word_help kwh_subvol_thresh;
+	key_word_help kwh_gray_thresh_min;
+	key_word_help kwh_gray_thresh_max;
+	key_word_help kwh_min_vol_fract;
+	std::vector<std::string> ok_subvol_thresh;
+	*/
 
 private:
 

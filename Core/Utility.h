@@ -57,19 +57,14 @@ enum Subvol_Type {
 	cube, sphere
 };
 /******************************************************************************/
-const std::string ok_srch_mthd_line = "global amoeba congrad qnwtdfp powells";
-enum Search_Type {
-	global, amoeba, congrad, qnwtdfp, powells
-};
-/******************************************************************************/
-const std::string ok_obj_fcn_line = "sad ssd zssd nssd znssd";
+const std::string ok_obj_fcn_line = "ssd zssd nssd znssd";
 enum Objfcn_Type {
-	SAD, SSD, ZSSD, NSSD, ZNSSD
+	SSD, ZSSD, NSSD, ZNSSD
 };
 /******************************************************************************/
-const std::string ok_interp_mthd_line = "nearest trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7";
+const std::string ok_interp_mthd_line = "trilinear tricubic tri_bspline_3 tri_bspline_5 tri_bspline_7";
 enum Interp_Type {
-	nearest, trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7
+	trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7
 };
 /******************************************************************************/
 
@@ -82,8 +77,20 @@ class Convg_Fail {};	// max it exceeded in an optimization routine
 class Bound_Fail {};	// BoundBox not within another, as expected
 class Intrp_Fail {};	// Points asked for outside of an interp volume
 
-// used in input operations and fiel checking
+// used in input operations and file checking
 class Input_Fail {};	// Reguired input file missing or unreadable
+
+/******************************************************************************/
+
+const std::vector<std::string> CR_str_vec = {"Converged", "Maxit", "NotConverged", "CostChange", "ParameterChange", "GradientNorm"};
+enum ConvergenceReason {
+	Converged,
+	Maxit,
+    NotConverged,
+    CostChange,
+    ParameterChange,
+    GradientNorm
+};
 
 /******************************************************************************/
 
@@ -108,12 +115,14 @@ struct RunControl
 	int subvol_size;
 	int subvol_npts;
 	
+	/*
 	std::string subvol_thresh;
 	double gray_thresh_min;
 	double gray_thresh_max;
 	double min_vol_fract;
+	*/
 
-	int disp_max;
+	int step_max;
 	int num_srch_dof;
 
 	unsigned int num_points_to_process;
@@ -128,10 +137,13 @@ struct RunControl
 	bool bspline;
 	int bspline_order;
 
-	std::vector<double> rigid_trans;
+	double cost_tol, step_tol, grad_tol;
+	int max_iter;
+
+	std::vector<double> start_estimate;
 	double basin_radius;
 	std::vector<double> subvol_aspect;
-	std::vector<double> starting_point;
+	std::vector<double> start_position;
 
 	std::string fine_srch;
 };

@@ -48,7 +48,7 @@ using namespace std;
 class CCPI_EXPORT Interpolate
 {
 public:
-
+	// original constructor, now just for tricubic
 	Interpolate(const BoundBox *region);
 
 	// Reserves enough margin (est_box vs act_box) to support B-spline
@@ -94,7 +94,7 @@ public:
 	// B-spline interpolation with analytic first derivatives (index/voxel
 	// space, isotropic unit spacing -- consistent with the rest of this
 	// class). Caller must size ivals/dfdx/dfdy/dfdz to pts.size(), same
-	// convention as nearest/tri_lin/tri_cub_Lek/tri_bspline. Same staleness
+	// convention as tri_lin/tri_cub_Lek/tri_bspline. Same staleness
 	// check as tri_bspline.
 	void tri_bspline_grad(const std::vector<Point> &pts, const BoundBox *bbox,
 		std::vector<double> &ivals,
@@ -108,7 +108,6 @@ public:
 	void set_bspline_order(int order);
 	int bspline_order() const { return bsp_order; }
 
-	void nearest(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals);
 	void tri_lin(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals);
 	void tri_cub_Lek(const std::vector<Point> &pts, const BoundBox *bbox, std::vector<double> &ivals);
 
@@ -116,13 +115,22 @@ public:
 
 	bool bspline_ready() const { return bsp_valid; }
 
+	// Read-only voxel-grid dimensions of est_box / act_box (the box that was
+	// passed to the constructor, and the safe region carved out of it by
+	// shrinking inward by the halo/frame). Diagnostic only -- lets a caller
+	// confirm the box-sizing relationships it intended (e.g. est_box =
+	// act_box + 2*halo, act_box = ref_box + 2*search_range) actually landed
+	// where expected, without exposing est_box/act_box themselves.
+	void est_box_dims(int &wide, int &high, int &tall) const;
+	void act_box_dims(int &wide, int &high, int &tall) const;
+
 private:
 //
 // Element [0][0][0] is located at the min corner of the interp_region.
 // Subtract est_box.min() from actual (x,y,z) to get relative position.
 //
-	BoundBox *est_box;	// the overall interp bbox
-	BoundBox *act_box;	// the active region, minus a frame for fdd's
+	BoundBox *est_box;	// the overall interp box in the correlate volume, subvolume size + search range + coefficient border
+	BoundBox *act_box;	// the active region, minus a frame for coefficient access
 
 	Matrix_4d *kern_4d;
 
