@@ -44,7 +44,7 @@ public:
 	points would be read from a file for this constructor */
 	FloatingCloud(double ref_x, double ref_y, double ref_z);
 	
-	/* Create num random points in a sphere of radius rad at center. */
+	/* Create num random points in a sphere or oblate spheroid of radius rad at center. */
 	FloatingCloud(Point cen, double rad, int num, double aspect_x, double aspect_y, double aspect_z, unsigned int seed = std::chrono::system_clock::now().time_since_epoch().count());
 
 	/* Create with (nx,ny,nz) points spanning box_min..box_max. */

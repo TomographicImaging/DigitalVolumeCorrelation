@@ -56,9 +56,16 @@ public:
 
 	~Search();
 
-	RunControl *rc;	// give Search direct access to RunControl
+	RunControl *rc;	// gives all member functions of Search direct access to RunControl without passing
 	FloatingCloud *fcld;
-	Interpolate *interp;
+
+	// Interpolators instantiated in dvc_cpp and last for all points in a cloud
+	// ref used to load ref_subvol, tar used throughout iteration to load/reload tar_subvolume
+	Interpolate *interp_ref;	// persistent interpolator for the reference subvolume
+	Interpolate *interp_tar;	// persistent interpolator for the target subvolume
+
+	std::vector<double> ref_subvol;		// vector of subvolume sampling point values ("data" in NLS) extracted from reference subvolume
+	std::vector<double> tar_subvol;		// vector of subvolume sampling point values ("model" in NLS) extracted from correlate suvolume
 
 	// pointers to the objective function set in RunControl, versions w/ and w/o return of residual vector
 	double (*obj_fcn)(const std::vector<double> &ref_subvol, const std::vector<double> &tar_subvol);
@@ -69,21 +76,17 @@ public:
 	int subv_num;		// keep for now, derived
 
 	BoundBox *vox_box;	// image volume dimensions
-	BoundBox *est_box_nom;	// for allocating an interpolator kernel
 
-	std::vector<double> ref_subvol;
-	std::vector<double> tar_subvol;
-
-	std::vector<double> par_min;	// parameter vector at optimum
-	double obj_min;			// objective function value at optimum
-
-	void process_point(int t, int n, DataCloud *srch_data, int test = 0);
+	// these variables are copied into DataCloud on return after process_point
+	double obj_min;					// objective function value at optimum for the current cloud point
+	std::vector<double> par_min;	// parameter vector at optimum for the current cloud point
+	Iter_Stats iter_stats;			// iteration stats for the current cloud point being searched
+	
+	void process_point(int t, int n, bool map_flag, int map_id, DataCloud *srch_data);
 
 	void search_pt_setup(Point srch_pt, std::vector<ResultRecord> &neigh_res);
 
 	void starting_param(Point srch_pt, std::vector<ResultRecord> &neigh_res);
-
-	void look_with(Search_Type method, int ndof, double ftol);
 
 	double obj_val_at(const std::vector<double> x);	// this version uses nominals set at Search construct
 	double obj_val_at(const std::vector<double> x, std::vector<double> &residual); // with residuals returned as well
@@ -91,20 +94,45 @@ public:
 	void Jacobian_at (const std::vector<double> a, std::vector< std::vector<double> > &J); // by forward diferences: [npts][ndof]
 	double LM_prep_at (const std::vector<double> a, VectorXd &e, MatrixXd &J); // key bits needed by LM using eigen library types
 
-	std::vector<double> obj_grad_at(const std::vector<double> x); // simple finite diff if E, overall obj value
-	std::vector< std::vector<double> > obj_Hess_at(const std::vector<double> x);
+	// legacy convergence check
+	ConvergenceReason check_convergence(
+		const Eigen::VectorXd& X_prev,
+		const Eigen::VectorXd& X_curr,
+    	double F_prev,
+    	double F_curr);
+
+	// enhanced convergence check
+	ConvergenceReason Check_Convergence(
+		const Eigen::VectorXd& r,
+		const Eigen::MatrixXd& J,
+		const Eigen::VectorXd& X_prev,
+		const Eigen::VectorXd& X_curr,
+		double F_prev,
+		double F_curr);
 
 	// translation grid style global search
-	void trgrid_global(double displ_max, double basin_rad, int n);
+	void trgrid_global(double displ_max, double basin_rad, int n, bool out_as_raw);
+
+	// map objective function for translations surrounding a parameter vector, up to dispalcement max with adjustable increment
+	void map_objective_function(int map_id, double half_range, int num_each_dim);
 
 	// randomized points style global search
 	void random_global(double displ_max, double basin_rad);
 
-	std::vector<double> min_Nelder_Mead(std::vector<double> &start, std::vector<double> &dels, double conv_tol);
-	std::vector<double> min_Lev_Mar(const std::vector<double> &start, const double obj_tol, const double mag_tol);
+	// the primary optimization method
+	ConvergenceReason min_Lev_Mar(const std::vector<double> &start, DataCloud *srch_data);
 
-//	struct Min_Ftor_new;	// leave declared for now, not working
 private:
+	// Shared analytic residual-Jacobian assembly for tri_bspline, used by both
+	// Jacobian_at() and LM_prep_at() so the two never drift apart. Evaluates
+	// at 'a' (length ndof), fills base_res[npts] (the residual vector, same
+	// convention as obj_fcn_res) and J[npts][ndof], and returns the objective
+	// function value (same convention as obj_val_at). Throws Range_Fail if the
+	// query points fall outside the interpolator's active region. See
+	// Jacobian_at()'s definition in Search.cpp for the full derivation notes.
+	double bspline_jacobian_at(const std::vector<double> &a, int ndof,
+		std::vector<double> &base_res, std::vector< std::vector<double> > &J);
+
 #if defined(_WIN32) || defined(__WIN32__)
 	//friend CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search & ) ;
 #else
@@ -112,27 +140,6 @@ private:
 #endif
 };
 
-/******************************************************************************/
-// not currently used, but leave in place for now
-/*struct Search::Min_Ftor_new
-{
-	int lndof;
-	FloatingCloud *lfcld;
-	Interpolate *linterp;
-
-	std::vector<double> lpar_cur;
-	std::vector<double> lref_subvol;
-	std::vector<double> ltar_subvol;
-
-	Objfcn_Type lobj_typ;
-	Interp_Type lint_typ;
-
-
-	Min_Ftor_new(const Interp_Type int_typ, const Objfcn_Type obj_typ, const int ndof, FloatingCloud *fcld, Interpolate *interp, const std::vector<double> &ref_subvol);
-
-	double operator() (const std::vector<double> x);
-
-};*/
 /******************************************************************************/
 
 #endif

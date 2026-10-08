@@ -18,67 +18,455 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Author(s): Brian Bay (OSU)
            Edoardo Pasca (UKRI-STFC)
 */
+
 #include "InputRead.h"
 
-/******************************************************************************/
-std::vector<std::string> InputRead::line_to_vect(std::string line)
-{
-	std::vector<std::string> vect;
+#include <algorithm>
+#include <cctype>
+#include <cstdio>
 
-	std::istringstream io_line;
-	std::string str;
-
-	io_line.str(line);
-	for (;;) {
-		if (io_line.eof()) break;
-		io_line >> str;
-		vect.push_back(str);
-	}
-
-	return vect;
-}
 /******************************************************************************/
 InputRead::InputRead()
 {
+	// InputRead constructor is largely documentation
+	// some utility variables at the top
+
 	Point min_pt(0,0,0);
 	Point max_pt(0,0,0);
 	search_box = new BoundBox(min_pt, max_pt);
 
-	// parameter limits
-	kwh_ref_fname.good.assign("name of raw image file (in working directory) or a full path");
-	kwh_cor_fname.good.assign("name of raw image file (in working directory) or a full path");
-	kwh_pts_fname.good.assign("name of tab-txt nxyz file (in working directory) or a full path");
-	kwh_out_fname.good.assign("valid file name (for working directory) or a writeable path");
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
 
-	ok_vol_bit_depth.push_back(8);
-	ok_vol_bit_depth.push_back(16);
-	kwh_vol_bit_depth.good = limits_to_string(ok_vol_bit_depth);
+	// these variables are linked with enum constructs in Utility.h
+	// they are transformed to std::vector<std::string> for use in setting .good and input line parsing
 
 	// keyword vol_endian
 	ok_vol_endian = line_to_vect(ok_endian_line);
-	kwh_vol_endian.good = limits_to_string(ok_vol_endian);
-
-	vol_hdr_min = 0;
-	vol_hdr_max = 4096;
-	kwh_vol_hdr_lngth.good = limits_to_string(vol_hdr_min, vol_hdr_max);
-
-	vol_dim_min = 0;
-	vol_dim_max = 8000;
-	kwh_vol_wide.good = limits_to_string(vol_dim_min, vol_dim_max);
-	kwh_vol_high.good = limits_to_string(vol_dim_min, vol_dim_max);
-	kwh_vol_tall.good = limits_to_string(vol_dim_min, vol_dim_max);
 
 	// keyword subvol_geom
 	ok_subvol_geom = line_to_vect(ok_subvol_geom_line);
+	
+	// keyword obj_function
+	ok_obj_function = line_to_vect(ok_obj_fcn_line);
+	
+	// keyword interp_type
+	ok_interp_type = line_to_vect(ok_interp_mthd_line);
+	
+	// this section is documentation
+	// range default values, enum contents, etc are translated from Utility.h and InputRead.h to str::string values
+	// these are introduced along with directly written material into the kwh structure
+	// this in turn is parsed, originally in the simple txt file manual (not written currently), now into the html manual
+
+	// fio_name
+
+	kwh_ref_fname.word = "reference_filename";
+	kwh_ref_fname.exam = "reference_volume.raw";
+	kwh_ref_fname.reqd = "yes";
+	kwh_ref_fname.pool = "fio_name";
+	kwh_ref_fname.hint = "### single raster file (raw) of same dimensions as the correlate_volume";
+	kwh_ref_fname.good = "name of raw image file (in working directory) or a full path";
+	kwh_ref_fname.dflt = "none";
+	kwh_ref_fname.help.assign("   Specify the file containing the reference image volume.\n");
+	kwh_ref_fname.help.append("   Format as a single uncompressed raw data file with fixed-length (or no) header.\n");
+	kwh_ref_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data.\n");
+	kwh_ref_fname.help.append("   Place the file in the current working directory or include path information.\n");
+	kwh_ref_fname.help.append("   Reference and Correlate files must have same dimensionality (header, wide, high, tall parameters).\n");
+	kwh_ref_fname.form_type = "file_old";	// input form
+	manual.push_back(kwh_ref_fname);
+
+	kwh_cor_fname.word = "correlate_filename";
+	kwh_cor_fname.exam = "correlate_volume.raw";
+	kwh_cor_fname.reqd = "yes";
+	kwh_cor_fname.pool = "fio_name";
+	kwh_cor_fname.hint = "### single raster file (raw) of same dimensions as the reference_volume";
+	kwh_cor_fname.good = "name of raw image file (in working directory) or a full path";
+	kwh_cor_fname.dflt = "none";
+	kwh_cor_fname.help.assign("   Specify the file containing the correlation image volume.\n");
+	kwh_cor_fname.help.append("   Format as a single uncompressed raw data file with fixed-length (or no) header.\n");
+	kwh_cor_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data.\n");
+	kwh_cor_fname.help.append("   Place the file in the current working directory or include path information.\n");
+	kwh_cor_fname.help.append("   Reference and Correlate files must have same dimensionality (header, wide, high, tall parameters).\n");
+	kwh_cor_fname.form_type = "file_old";	// input form
+	manual.push_back(kwh_cor_fname);
+
+	kwh_pts_fname.word = "point_cloud_filename";
+	kwh_pts_fname.exam = "ROI_points_nxyz.csv";
+	kwh_pts_fname.reqd = "yes";
+	kwh_pts_fname.pool = "fio_name";
+	kwh_pts_fname.hint = "### tab/space/comma delimited text file with point cloud labels (n) and (xyz) locations";
+	kwh_pts_fname.good = "name of file with point cloud labels and locations (in working directory) or a full path";
+	kwh_pts_fname.dflt = "none";
+	kwh_pts_fname.help.assign("   Specify the file containing locations of all measurement points - the point cloud.\n");
+	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n");
+	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry, microstructure, and measurement objectives yield the best results.\n");
+	kwh_pts_fname.help.append("   Point clouds that are connected, without isolated regions, process with the highest reliability.\n");
+	kwh_pts_fname.help.append("   Finite element meshing or other geometry discretization software is very useful for creating point clouds.\n");
+	kwh_pts_fname.help.append("   Each point is defined as a line in the input file with an integer point label followed by the x,y,z point location.\n");
+	kwh_pts_fname.help.append("      # add any number of comment and blank rows  \n");
+	kwh_pts_fname.help.append("      # tab, space, or comma delimited (csv) files  \n");
+	kwh_pts_fname.help.append("      # optional: label columns  \n");
+	kwh_pts_fname.help.append("      n,x,y,z  \n");
+	kwh_pts_fname.help.append("      1,420.73,397.80,188.32  \n");
+	kwh_pts_fname.help.append("      2,369.90,503.31,419.25  \n");
+	kwh_pts_fname.help.append("      3,322.16,128.97,170.95  \n");
+	kwh_pts_fname.help.append("      etc.  \n");
+	kwh_pts_fname.help.append("   Non-integer voxel locations are admitted, with reference volume interpolation used as needed.\n");
+	kwh_pts_fname.help.append("   Place the file in the current working directory or include path information.\n");
+	kwh_pts_fname.form_type = "file_old";	// input form
+	manual.push_back(kwh_pts_fname);
+
+	kwh_out_fname.word = "output_filename";
+	kwh_out_fname.exam = "myproject_results";
+	kwh_out_fname.reqd = "yes";
+	kwh_out_fname.pool = "fio_name";
+	kwh_out_fname.hint = "### base name for run status (.stat) and displacement data (.disp) output files";
+	kwh_out_fname.good = "valid file name (for working directory) or a writeable path";
+	kwh_out_fname.dflt = "none";
+	kwh_out_fname.help.assign("   Specify a base output file name for results of dvc code execution.\n");
+	kwh_out_fname.help.append("   If a filename alone is given, output files are placed in the current working directory.\n");
+	kwh_out_fname.help.append("   Alternatively, a full Unix-style path can precede the filename.\n");
+	kwh_out_fname.help.append("   The terminal window owner must have write permission for the target directory.\n");
+	kwh_out_fname.form_type = "file_new";	// input form
+	manual.push_back(kwh_out_fname);
+
+	kwh_num_points_to_process.word = "num_points_to_process";
+	kwh_num_points_to_process.exam = "10";
+	kwh_num_points_to_process.reqd = "no";
+	kwh_num_points_to_process.pool = "fio_name";
+	kwh_num_points_to_process.hint = "### Number of points in the point cloud to process";
+	kwh_num_points_to_process.good = "between 1 and the number of points in the point cloud file ";
+	kwh_num_points_to_process.dflt = set_num_str(num_points_to_process_def, "(process full cloud)");
+	kwh_num_points_to_process.help.assign("   Defines the maximum number of points in the point cloud to process. The example processes the first 10 points.\n");
+	kwh_num_points_to_process.help.append("   If unset, or set to 0, it will process all points in the point cloud.\n");
+	kwh_num_points_to_process.help.append("   Useful for trial runs to evaluate and set input file parameters.\n");
+	kwh_num_points_to_process.set_form_int(0, std::numeric_limits<int>::max());	// input form
+	manual.push_back(kwh_num_points_to_process);
+
+	// vox_data
+
+	kwh_vol_bit_depth.word = "vol_bit_depth";
+	kwh_vol_bit_depth.exam = "8";
+	kwh_vol_bit_depth.reqd = "yes";
+	kwh_vol_bit_depth.pool = "vox_data";
+	kwh_vol_bit_depth.hint = "### 8 or 16";
+	kwh_vol_bit_depth.good = limits_to_string(ok_bit_depth);
+	kwh_vol_bit_depth.dflt = set_num_str(vol_bit_depth_def);
+	kwh_vol_bit_depth.help.assign("   Defines the bit depth of both reference and correlate image volumes.\n");
+	kwh_vol_bit_depth.help.append("   Assumes unsigned integer voxel representation.\n");
+	kwh_vol_bit_depth.help.append("\n");
+	kwh_vol_bit_depth.set_form_choice(ok_bit_depth);	// input form
+	manual.push_back(kwh_vol_bit_depth);
+
+	kwh_vol_endian.word = "vol_endian";
+	kwh_vol_endian.exam = "little";
+	kwh_vol_endian.reqd = "If vol_bit_depth is not 8";
+	kwh_vol_endian.pool = "vox_data";
+	kwh_vol_endian.hint = "### little or big, ignored if vol_bit_depth is 8";
+	kwh_vol_endian.good = limits_to_string(ok_vol_endian);
+	kwh_vol_endian.dflt = ok_vol_endian[0];
+	kwh_vol_endian.help.assign("   Defines the byte organization for 16-bit image volumes.\n");
+	kwh_vol_endian.help.append("   Find the appropriate setting using ImageJ (or similar) after cross-platform image transfers.\n");
+	kwh_vol_endian.help.append("   Big generates a byte swap: Little preserves the byte order.\n");
+	kwh_vol_endian.help.append("\n");
+	kwh_vol_endian.set_form_choice(ok_vol_endian);
+	kwh_vol_endian.set_form_cond("vol_bit_depth", {set_num_str(ok_bit_depth[1])});	// input form
+	manual.push_back(kwh_vol_endian);
+
+	kwh_vol_hdr_lngth.word = "vol_hdr_lngth";
+	kwh_vol_hdr_lngth.exam = "0";
+	kwh_vol_hdr_lngth.reqd = "yes";
+	kwh_vol_hdr_lngth.pool = "vox_data";
+	kwh_vol_hdr_lngth.hint = "### fixed-length header size, may be zero";
+	kwh_vol_hdr_lngth.good = set_stream_str(vol_hdr_min, vol_hdr_max);
+	kwh_vol_hdr_lngth.dflt = "none";
+	kwh_vol_hdr_lngth.help.assign("   Defines a fixed header length for both reference and correlate image volumes.\n");
+	kwh_vol_hdr_lngth.help.append("   This value will often be 0, as is the case for standard raw data files.\n");
+	kwh_vol_hdr_lngth.help.append("\n");
+	kwh_vol_hdr_lngth.set_form_int(vol_hdr_min, vol_hdr_max);	// input form
+	manual.push_back(kwh_vol_hdr_lngth);
+
+	kwh_vol_wide.word = "vol_wide";
+	kwh_vol_wide.exam = "4008";
+	kwh_vol_wide.reqd = "yes";
+	kwh_vol_wide.pool = "vox_data";
+	kwh_vol_wide.hint = "### width in pixels of each slice";
+	kwh_vol_wide.good = set_stream_str(vol_dim_min, vol_dim_max);
+	kwh_vol_wide.dflt = "none";
+	kwh_vol_wide.help.assign("   Defines the width of slices in both reference and correlate image volumes.\n");
+	kwh_vol_wide.help.append("   Wide = x for the coordinate system used by the dvc code, origin at the left.\n");
+	kwh_vol_wide.help.append("\n");
+	kwh_vol_wide.set_form_int(vol_dim_min, vol_dim_max);	// input form
+	manual.push_back(kwh_vol_wide);
+
+	kwh_vol_high.word = "vol_high";
+	kwh_vol_high.exam = "2670";
+	kwh_vol_high.reqd = "yes";
+	kwh_vol_high.pool = "vox_data";
+	kwh_vol_high.hint = "### height in pixels of each slice";
+	kwh_vol_high.good = set_stream_str(vol_dim_min, vol_dim_max);
+	kwh_vol_high.dflt = "none";
+	kwh_vol_high.help.assign("   Defines the height of slices in both reference and correlate image volumes.\n");
+	kwh_vol_high.help.append("   High = y for the coordinate system used by the dvc code, origin at the top.\n");
+	kwh_vol_high.help.append("\n");
+	kwh_vol_high.set_form_int(vol_dim_min, vol_dim_max);	// input form
+	manual.push_back(kwh_vol_high);
+
+	kwh_vol_tall.word = "vol_tall";
+	kwh_vol_tall.exam = "4016";
+	kwh_vol_tall.reqd = "yes";
+	kwh_vol_tall.pool = "vox_data";
+	kwh_vol_tall.hint = "### number of slices in the stack";
+	kwh_vol_tall.good = set_stream_str(vol_dim_min, vol_dim_max);
+	kwh_vol_tall.dflt = "none";
+	kwh_vol_tall.help.assign("   Defines the number of slices in both reference and correlate image volumes.\n");
+	kwh_vol_tall.help.append("   Tall = z for the coordinate system used by the dvc code, origin is the first slice.\n");
+	kwh_vol_tall.help.append("\n");
+	kwh_vol_tall.set_form_int(vol_dim_min, vol_dim_max);	// input form
+	manual.push_back(kwh_vol_tall);
+
+	// sub_vols
+
+	kwh_subvol_geom.word = "subvol_geom";
+	kwh_subvol_geom.exam = "cube";
+	kwh_subvol_geom.reqd = "yes";
+	kwh_subvol_geom.pool = "sub_vols";
+	kwh_subvol_geom.hint = "### cube, sphere: geometry of the subvolumes";
 	kwh_subvol_geom.good = limits_to_string(ok_subvol_geom);
+	kwh_subvol_geom.dflt = ok_subvol_geom[0];
+	kwh_subvol_geom.help.assign("Defines geometry of the subvolumes created around each search point.\n");
+	kwh_subvol_geom.help.append("Cubes are the classic, but essentially arbitrary, subvolume geometry.\n");
+	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based cloud point geometries.\n");
+	kwh_subvol_geom.help.append("Fundamentally a subvolume is a set of image intensity values retreived from the reference volume.\n");
+	kwh_subvol_geom.help.append("In this DVC code points within subvolumes are not limited to discrete voxel values.\n");
+	kwh_subvol_geom.help.append("They are treated as sampling points, retrieved from the reference volume through interpolation.\n");
+	kwh_subvol_geom.help.append("Note that spheres, with random sampling point distributions, return slightly different results on repeat runs.\n");
+	kwh_subvol_geom.help.append("This is a useful aspect of spheres.\n");
+	kwh_subvol_geom.help.append("Subvolumes generally overlap and spheres increase sampling density. Cubes do not as the overlap points are identical.\n");
+	kwh_subvol_geom.help.append("But sampling stability can be useful when comparing other run parameter settings. Use cubes in those cases.\n");
+	kwh_subvol_geom.help.append("   cube\t\tsampling points distributed uniformly accross a 3D grid\n");
+	kwh_subvol_geom.help.append("   sphere\t\tsampling points distributed randomly throughout a sphere\n");
+	kwh_subvol_geom.set_form_choice(ok_subvol_geom);	// input form
+	manual.push_back(kwh_subvol_geom);
 
-	kwh_subvol_size.good.assign("1 <= int <= smallest dimension of the image volumes");
+	kwh_subvol_size.word = "subvol_size";
+	kwh_subvol_size.exam = set_num_str(subvol_size_def);
+	kwh_subvol_size.reqd = "yes";
+	kwh_subvol_size.pool = "sub_vols";
+	kwh_subvol_size.hint = "### side length or diameter, in voxels";
+	kwh_subvol_size.good = set_stream_str(subvol_size_min, subvol_size_max);
+	kwh_subvol_size.dflt = set_num_str(subvol_size_def);
+	kwh_subvol_size.help.assign("Defines size (in voxels, side length or diameter) of the subvolumes created around each cloud point.\n");
+	kwh_subvol_size.help.append("This is a fundamental DVC parameter. Selection can be challenging with the variety of textures encountered in volumetric imaging.\n");
+	kwh_subvol_size.help.append("The general guideline is to encompass three distinctly resolved features along each coordinate direction.\n");
+	kwh_subvol_size.help.append("Larger subvolumes reduce displacement variability but also reduce spatial resolution of the results.\n");
+	kwh_subvol_size.help.append("Smaller subvolumes exhibit more displacement variability but at better spatial resolution.\n");
+	kwh_subvol_size.help.append("The companion iDVC code provides tools for evaluating and documenting the selection of subvolume size.\n");
+	kwh_subvol_size.set_form_int(subvol_size_min, subvol_size_max);	// input form
+	manual.push_back(kwh_subvol_size);
 
-	subvol_npts_min = 1;
-	subvol_npts_max = 50000;
-	kwh_subvol_npts.good = limits_to_string(subvol_npts_min, subvol_npts_max);
+	kwh_subvol_npts.word = "subvol_npts";
+	kwh_subvol_npts.exam = set_num_str(subvol_npts_def);
+	kwh_subvol_npts.reqd = "yes";
+	kwh_subvol_npts.pool = "sub_vols";
+	kwh_subvol_npts.hint = "### number of points to distribute within the subvol";
+	kwh_subvol_npts.good = set_stream_str(subvol_npts_min, subvol_npts_max);
+	kwh_subvol_npts.dflt = set_num_str(subvol_npts_def);
+	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume.\n");
+	kwh_subvol_npts.help.append("   In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n");
+	kwh_subvol_npts.help.append("   Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n");
+	kwh_subvol_npts.help.append("   For cubes a uniform grid of approximately subvol_npts is generated.\n");
+	kwh_subvol_npts.help.append("   For spheres subvol_npts are randomly distributed within the subvolume.\n");
+	kwh_subvol_npts.help.append("   This parameter has a strong effect on computation time, so be careful.\n");
+	kwh_subvol_npts.set_form_int(subvol_npts_min, subvol_npts_max);	// input form
+	manual.push_back(kwh_subvol_npts);
+
+	kwh_subvol_aspect.word = "subvol_aspect";
+	kwh_subvol_aspect.exam = "1.0 1.0 1.0";
+	kwh_subvol_aspect.reqd = "no";
+	kwh_subvol_aspect.pool = "sub_vols";
+	kwh_subvol_aspect.hint = "### stretch or contract the subvolume in any coordinate direction between "
+							+ set_num_str(subvol_aspect_min, fixed, 1) + " and " + set_num_str(subvol_aspect_max, fixed, 1);
+	kwh_subvol_aspect.good = set_stream_str(subvol_aspect_min, subvol_aspect_max, fixed, 1);
+	kwh_subvol_aspect.dflt = set_num_str(subvol_aspect_def, fixed, 1);
+	kwh_subvol_aspect.help.assign("   A standard subvolume is isotropic, with equivalent size in each coordinate direction.\n");
+	kwh_subvol_aspect.help.append("   This parameter describes a change in shape of the subvolume to accommodate elongated texture.\n");
+	kwh_subvol_aspect.help.append("   It is only useful if the texture direction is consistent, and aligned with a coordinate direction.\n");
+	kwh_subvol_aspect.help.append("   The aspect change is specified as three doubles, indicating stretch/contract in the coordinate directions.\n");
+	kwh_subvol_aspect.set_form_real(subvol_aspect_min, subvol_aspect_max, 3);	// input form
+	manual.push_back(kwh_subvol_aspect);
+
+	// opt_mthd
+
+	kwh_num_srch_dof.word = "num_srch_dof";
+	kwh_num_srch_dof.exam = "12";
+	kwh_num_srch_dof.reqd = "yes";
+	kwh_num_srch_dof.pool = "opt_mthd";
+	kwh_num_srch_dof.hint = "### 3 (translation), 6 (+rotation), or 12 (+strain)";
+	kwh_num_srch_dof.good = limits_to_string(ok_srch_dof);
+	kwh_num_srch_dof.dflt = set_num_str(srch_dof_def);
+	kwh_num_srch_dof.help.assign("Defines the degree-of-freedom set for the final stage of the search.\n");
+	kwh_num_srch_dof.help.append("The actual search process introduces degrees-of-freedom in stages up to this value.\n");
+	kwh_num_srch_dof.help.append("Translation only suffices for a quick, preliminary investigation.\n");
+	kwh_num_srch_dof.help.append("Adding rotation will significantly improve displacement accuracy in most cases.\n");
+	kwh_num_srch_dof.help.append("Strain degrees-of-freedom account for deformation of the subvolumes and improve match accuracy.\n");
+	kwh_num_srch_dof.help.append("   3\t\ttranslation only\n");
+	kwh_num_srch_dof.help.append("   6\t\ttranslation plus rotation\n");
+	kwh_num_srch_dof.help.append("   12\t\ttranslation, rotation and strain\n");
+	kwh_num_srch_dof.set_form_choice(ok_srch_dof);	// input form
+	manual.push_back(kwh_num_srch_dof);
+
+	kwh_obj_function.word = "obj_function";
+	kwh_obj_function.exam = "znssd";
+	kwh_obj_function.reqd = "yes";
+	kwh_obj_function.pool = "opt_mthd";
+	kwh_obj_function.hint = "### " + ok_obj_fcn_line;
+	kwh_obj_function.good = limits_to_string(ok_obj_function);
+	kwh_obj_function.dflt = ok_obj_function[obj_function_def];
+	kwh_obj_function.help.assign("Optimization is based on standard objective functions of sum-of-squared differences (SSD) form.\n");
+	kwh_obj_function.help.append("Minimizing squared-differences and maximizing cross-correlation are functionally equivalent.\n");
+	kwh_obj_function.help.append("Normalizations reduce the influence of overall brigntness/contrast differences between image volumes.\n");
+	kwh_obj_function.help.append("Functions nssd and znssd are preferred as quality of match can be quantified and compared.\n");
+	kwh_obj_function.help.append("Both are scaled for output into the [0.0 to 1.0] range, with 0.0 a perfect match and 1.0 a match of randomized subvolumes.\n");
+	kwh_obj_function.help.append("The ssd and zssd functions run marginally faster.\n");
+	kwh_obj_function.help.append("   ssd\t\tSum of Squared Differences\n");
+	kwh_obj_function.help.append("   zssd\t\tZero-mean Sum of Squared Differences\n");
+	kwh_obj_function.help.append("   nssd\t\tNormalized Sum of Squared Differences\n");
+	kwh_obj_function.help.append("   znssd\tNormalized Zero-mean Sum of Squared Differences\n");
+	kwh_obj_function.set_form_choice(ok_obj_function);	// input form
+	manual.push_back(kwh_obj_function);
+
+	kwh_interp_type.word = "interp_type";
+	kwh_interp_type.exam = "tri_bspline_3";
+	kwh_interp_type.reqd = "yes";
+	kwh_interp_type.pool = "opt_mthd";
+	kwh_interp_type.hint = "### " + ok_interp_mthd_line;
+	kwh_interp_type.good = limits_to_string(ok_interp_type);
+	kwh_interp_type.dflt = ok_interp_type[interp_type_def];
+	kwh_interp_type.help.assign("Defines the interpolation method used during template matching.\n");
+	kwh_interp_type.help.append("Selection is best evaluated against correlate image volumes with known displacement/strain fields.\n");
+	kwh_interp_type.help.append("The available interpolants are:\n");
+	kwh_interp_type.help.append("Choosing methods of interpolation for DVC is complicated by image texture variability and code run times.\n");
+	kwh_interp_type.help.append("Digital image correlation (DIC) has largely settled on wavenumber optimized bsplines.\n");
+	kwh_interp_type.help.append("But the applied speckle of DIC is more consistent and lends itself to generalization of the optimization process.\n");
+	kwh_interp_type.help.append("And despite large numbers of images in some DIC processes, the overall compuational burden is much less than DVC.\n");
+	kwh_interp_type.help.append("Computational time is particularly relevant now with 3D point clouds reaching into the millions.\n");
+	kwh_interp_type.help.append("The best speed/precision tradeoff also depends on the application. The current recommendation is tricubic or tri_bspline_3.\n");
+	kwh_interp_type.help.append("The trilinear option is intended for testing input parameters and early trial runs.\n");
+	kwh_interp_type.help.append("The higher order bspline options may provide incremental precision improvements. We are currently developing an optimized bspline.\n");
+	kwh_interp_type.help.append("   trilinear\t\tsimple linear polynomial\n");
+	kwh_interp_type.help.append("   tricubic\t\tcubic order polynomial\n");
+	kwh_interp_type.help.append("   tri_bspline_3\tcubic order bspline\n");
+	kwh_interp_type.help.append("   tri_bspline_5\tquintic order bspline\n");
+	kwh_interp_type.help.append("   tri_bspline_7\tseptic order bspline\n");
+	kwh_interp_type.set_form_choice(ok_interp_type);	// input form
+	manual.push_back(kwh_interp_type);
+
+	kwh_start_position.word = "start_position";
+	kwh_start_position.exam = "300.0 100.0 200.0";
+	kwh_start_position.reqd = "yes";
+	kwh_start_position.pool = "opt_mthd";
+	kwh_start_position.hint = "### x,y,z location near a cloud point with a reliable start_estimate ";
+	kwh_start_position.dflt = "none";
+	kwh_start_position.good.assign("limited to the dimensions of the voxel space");
+	kwh_start_position.help.assign("This is a very important parameter, and proper setting requires an understanding of the overall DVC process.\n");
+	kwh_start_position.help.append("Point cloud processing begins at a single defined point then progresses in order by distance from that point.\n");
+	kwh_start_position.help.append("This wavefront approach facilitates the determination of an accurate parameter estimate to initiate each optimizion step.\n");
+	kwh_start_position.help.append("But the first point needs its own parameter estimate. That information is provided under the start_estimate keyword.\n");
+	kwh_start_position.help.append("Choose a start_position at a location within or in contact with the point cloud.\n");
+	kwh_start_position.help.append("Select a position where image data and sample texture are good, and displacement between reference and correlate volumes is small.\n");
+	kwh_start_position.form_type = "real";
+	kwh_start_position.form_nval = 3;
+	kwh_start_position.form_lim_kw = {"vol_wide", "vol_high", "vol_tall"};	// input form
+	manual.push_back(kwh_start_position);
+
+	kwh_start_estimate.word = "start_estimate";
+	kwh_start_estimate.exam = "3.0 1.0 -2.0";
+	kwh_start_estimate.reqd = "yes";
+	kwh_start_estimate.pool = "opt_mthd";
+	kwh_start_estimate.hint = "### x,y,z displacement (u,v,w) in voxels at the start_position";
+	kwh_start_estimate.dflt = "none";
+	kwh_start_estimate.good.assign("each component typically a few voxels, limited to the dimensions of the voxel space");
+	kwh_start_estimate.help.assign("This parameter coordinates closely with the start_position specification.\n");
+	kwh_start_estimate.help.append("All cloud points need a good initial estimate at the beginning of the optimization proccess that determines point displacement.\n");
+	kwh_start_estimate.help.append("This parameter defines the initial estimate for the very first point in the cloud to seed the wavefront process.\n");
+	kwh_start_estimate.help.append("The companion iDVC graphical interface provides automated and manual visualization-guided means of determining the start_estimate.\n");
+	kwh_start_estimate.help.append("But the process can be done manually with clever use of software such as ImageJ.\n");
+	kwh_start_estimate.help.append("The goal is to determine how much to move the start position to align it in the correlate volume.\n");
+	kwh_start_estimate.help.append("The information needed is an estimate, at best within a voxel or two, at worst on the order of the step_max parameter.\n");
+	kwh_start_estimate.help.append("The optimization procss refines further from there.\n");
+	kwh_start_estimate.form_type = "real";
+	kwh_start_estimate.form_nval = 3;
+	kwh_start_estimate.form_lim_kw = {"vol_wide", "vol_high", "vol_tall"};	// input form
+	manual.push_back(kwh_start_estimate);
+
+	kwh_step_max.word = "step_max";
+	kwh_step_max.exam = "5";
+	kwh_step_max.reqd = "yes";
+	kwh_step_max.pool = "opt_mthd";
+	kwh_step_max.hint = "### maximum parameter step allowed during optimization, see also step_tol";
+	kwh_step_max.good = set_stream_str(step_max_min, step_max_max);
+	kwh_step_max.dflt = set_num_str(step_max_def);
+	kwh_step_max.help.assign("Defines the maximum step allowed during optimization from the initial starting estimate.\n");
+	kwh_step_max.help.append("This is a very important parameter used for search process control and execution speed management.\n");
+	kwh_step_max.help.append("Cloud points process very quickly if the search is limited to a small region beyond a starting estimate.\n");
+	kwh_step_max.help.append("Starting estimates are derived from results of successful processing of nearby (neighborhood) points.\n");
+	kwh_step_max.help.append("The step_max parameter sets the size of the search region. \n");
+	kwh_step_max.help.append("A small value speeds processing and limits access to local optima. \n");
+	kwh_step_max.help.append("Range_Fail results for points are an indication of too small a value for step_max.\n");
+	kwh_step_max.help.append("Slow processing and erratic results may appear if the value is too large and the starting estimates are poor.\n");
+	kwh_step_max.set_form_int(step_max_min, step_max_max);	// input form
+	manual.push_back(kwh_step_max);
+
+	// opt_tune
+
+	kwh_cost_tol.word = "cost_tol";
+	kwh_cost_tol.exam = set_num_str(cost_tol_def, scientific, 1);
+	kwh_cost_tol.reqd = "no";
+	kwh_cost_tol.pool = "opt_tune";
+	kwh_cost_tol.hint = "### optional tuning of objective function convergence tolerance";
+	kwh_cost_tol.good = set_stream_str(cost_tol_min, cost_tol_max, scientific, 0);
+	kwh_cost_tol.dflt = set_num_str(cost_tol_def, scientific, 0);
+	kwh_cost_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
+	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol.\n");
+	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
+	kwh_cost_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
+	kwh_cost_tol.set_form_real(cost_tol_min, cost_tol_max);	// input form
+	manual.push_back(kwh_cost_tol);
+
+	kwh_step_tol.word = "step_tol";
+	kwh_step_tol.exam = set_num_str(step_tol_def, scientific, 1);
+	kwh_step_tol.reqd = "no";
+	kwh_step_tol.pool = "opt_tune";
+	kwh_step_tol.hint = "### optional tuning of parameter vector convergence tolerance";
+	kwh_step_tol.good = set_stream_str(step_tol_min, step_tol_max, scientific, 0);
+	kwh_step_tol.dflt = set_num_str(step_tol_def, scientific, 0);
+	kwh_step_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
+	kwh_step_tol.help.append("A cloud point search is considered converged if the final parameter vector (step) change is below step_tol.\n");
+	kwh_step_tol.help.append("A second control on optimization is step_max which defines the largest overall step allowed during iteration.\n");
+	kwh_step_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
+	kwh_step_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
+	kwh_step_tol.set_form_real(step_tol_min, step_tol_max);	// input form
+	manual.push_back(kwh_step_tol);
+	
+	kwh_max_iter.word = "max_iter";
+	kwh_max_iter.exam = set_num_str(max_iter_def);
+	kwh_max_iter.reqd = "no";
+	kwh_max_iter.pool = "opt_tune";
+	kwh_max_iter.hint = "### optional change in the maximum number of optimization iterations";
+	kwh_max_iter.good = set_stream_str(max_iter_min, max_iter_max);
+	kwh_max_iter.dflt = set_num_str(max_iter_def);
+	kwh_max_iter.help.assign("Optimization is limited to a set number of iterations to manage cases of unreasonably slow convergence.\n");
+	kwh_max_iter.help.append("In general a well-posed DVC problem with a good starting point will converge in a few iterations.\n");
+	kwh_max_iter.help.append("There is no performance benefit from reducing max_iter as convergence checks break early from the update loop.\n");
+	kwh_max_iter.help.append("In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help.\n");
+	kwh_max_iter.set_form_int(max_iter_min, max_iter_max);	// input form
+	manual.push_back(kwh_max_iter);
+
+	// threshold inputs deactivated, option not currently implemented in code
 
 	// keyword subvol_thresh
+	/*
 	ok_subvol_thresh = line_to_vect(ok_on_off_line);
 	kwh_subvol_thresh.good = limits_to_string(ok_subvol_thresh);
 
@@ -88,197 +476,9 @@ InputRead::InputRead()
 
 	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
 	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
+	*/
 
-	kwh_disp_max.good.assign("1 <= int <= smallest dimension of the image volumes");
-
-	ok_num_srch_dof.push_back(3);
-	ok_num_srch_dof.push_back(6);
-	ok_num_srch_dof.push_back(12);
-	kwh_num_srch_dof.good = limits_to_string(ok_num_srch_dof);
-
-	// keyword obj_function
-	ok_obj_function = line_to_vect(ok_obj_fcn_line);
-	kwh_obj_function.good = limits_to_string(ok_obj_function);
-
-	// keyword interp_type
-	ok_interp_type = line_to_vect(ok_interp_mthd_line);
-	kwh_interp_type.good = limits_to_string(ok_interp_type);
-
-	kwh_rigid_trans.good.assign("abs(x,y,z) limited to the dimensions of the voxel space");
-	kwh_basin_radius.good.assign("0.0 <= double <= disp_max");
-	kwh_subvol_aspect.good.assign("0.1 <= double <= 10.0 for each component in (x,y,z)");
-	aspect_min = 0.1;
-	aspect_max = 10.0;
-
-/*
-	// convert to line_to_vect form when implemented
-	ok_fine_srch.push_back("powell");
-	ok_fine_srch.push_back("levenberg");
-	ok_fine_srch.push_back("bfgs");
-	ok_fine_srch.push_back("steepest");
-	kwh_fine_srch.good = limits_to_string(ok_fine_srch);
-*/
-	// file name keywords
-
-	kwh_ref_fname.word.assign("reference_filename");
-	kwh_ref_fname.exam.assign("reference_volume.raw");
-	kwh_ref_fname.reqd.assign("yes");
-	kwh_ref_fname.pool.assign("fio_name");
-	kwh_ref_fname.hint.assign("### single raster file (raw) of same dimensions as the correlate_volume");
-	kwh_ref_fname.help.assign("   Specify the file containing the reference image volume.\n");
-	kwh_ref_fname.help.append("   Format as a single uncompressed raw data file with fixed-length (or no) header.\n");
-	kwh_ref_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data ....\n");
-	kwh_ref_fname.help.append("   Place the file in the current working directory or include path information.\n");
-	kwh_ref_fname.help.append("   Reference and Correlate files most have same dimensionality (header, wide, high, tall parameters).\n");
-	kwh_ref_fname.help.append("\n");
-	manual.push_back(kwh_ref_fname);
-
-	kwh_cor_fname.word.assign("correlate_filename");
-	kwh_cor_fname.exam.assign("correlate_volume.raw");
-	kwh_cor_fname.reqd.assign("yes");
-	kwh_cor_fname.pool.assign("fio_name");
-	kwh_cor_fname.hint.assign("### single raster file (raw) of same dimensions as the reference_volume");
-	kwh_cor_fname.help.assign("   Specify the file containing the correlation image volume.\n");
-	kwh_cor_fname.help.append("   Format as a single uncompressed raw data file with fixed-length (or no) header.\n");
-	kwh_cor_fname.help.append("   e.g. ImageJ Stack File -> Save As -> Raw Data ....\n");
-	kwh_cor_fname.help.append("   Place the file in the current working directory or include path information.\n");
-	kwh_cor_fname.help.append("   Reference and Correlate files most have same dimensionality (header, wide, high, tall parameters).\n");
-	kwh_cor_fname.help.append("\n");
-	manual.push_back(kwh_cor_fname);
-
-	kwh_pts_fname.word.assign("point_cloud_filename");
-	kwh_pts_fname.exam.assign("ROI_points_nxyz.txt");
-	kwh_pts_fname.reqd.assign("yes");
-	kwh_pts_fname.pool.assign("fio_name");
-	kwh_pts_fname.hint.assign("### tab delimited text file containing Region of Interest point labels (n) and (xyz) loctions");
-	kwh_pts_fname.help.assign("   Specify the file containing data for all measurement points in the Region of Interest (ROI).\n");
-	kwh_pts_fname.help.append("   The ROI is defined as a cloud of points that fill a geometric region within the reference volume.\n");
-	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n");
-	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry and reflect measurement objectives yield the best results.\n");
-	kwh_pts_fname.help.append("   Finite element meshing or other geometry discretization software is very useful for creating point clouds.\n");
-	kwh_pts_fname.help.append("   Each line in the tab delimited file contains an integer point label followed by the x,y,z point location, e.g.\n");
-	kwh_pts_fname.help.append("      1   300   750.2  208 \n");
-	kwh_pts_fname.help.append("      2   300   750.2  209 \n");
-	kwh_pts_fname.help.append("      etc. \n");
-	kwh_pts_fname.help.append("   Non-integer voxel locations are admitted, with reference volume interpolation used as needed.\n");
-	kwh_pts_fname.help.append("   The first point is significant, as it is used as a global starting point and reference for the rigid_trans variable.\n");
-	kwh_pts_fname.help.append("   Place the file in the current working directory or include path information.\n");
-	kwh_pts_fname.help.append("\n");
-	manual.push_back(kwh_pts_fname);
-
-	kwh_out_fname.word.assign("output_filename");
-	kwh_out_fname.exam.assign("\tmyproject_results");
-	kwh_out_fname.reqd.assign("yes");
-	kwh_out_fname.pool.assign("fio_name");
-	kwh_out_fname.hint.assign("### base name for run status (.stat) and displacement data (.disp) output files");
-	kwh_out_fname.help.assign("   Specify a base output file name for results of dvc code execution.\n");
-	kwh_out_fname.help.append("   If a filename alone is given, output files are placed in the current working directory.\n");
-	kwh_out_fname.help.append("   Alternatively, a full Unix-style path can precede the filename.\n");
-	kwh_out_fname.help.append("   The terminal window owner must have write permission for the target directory.\n");
-	kwh_out_fname.help.append("\n");
-	manual.push_back(kwh_out_fname);
-
-	// image volume raw data parameters
-
-	kwh_vol_bit_depth.word.assign("vol_bit_depth");
-	kwh_vol_bit_depth.exam.assign("8");
-	kwh_vol_bit_depth.reqd.assign("yes");
-	kwh_vol_bit_depth.pool.assign("vox_data");
-	kwh_vol_bit_depth.hint.assign("### 8 or 16");
-	kwh_vol_bit_depth.help.assign("   Defines the bit depth of both reference and correlate image volumes.\n");
-	kwh_vol_bit_depth.help.append("   Assumes unsigned integer voxel representation.\n");
-	kwh_vol_bit_depth.help.append("\n");
-	manual.push_back(kwh_vol_bit_depth);
-
-	kwh_vol_endian.word.assign("vol_endian");
-	kwh_vol_endian.exam.assign("little");
-	kwh_vol_endian.reqd.assign("If vol_bit_depth is not 8");
-	kwh_vol_endian.pool.assign("vox_data");
-	kwh_vol_endian.hint.assign("### little or big, ignored if vol_bit_depth is 8");
-	kwh_vol_endian.help.assign("   Defines the byte organization for 16-bit image volumes.\n");
-	kwh_vol_endian.help.append("   Find the appropriate setting using ImageJ after cross-platform image transfers.\n");
-	kwh_vol_endian.help.append("   Big generates a byte swap: Little preserves the byte order.\n");
-	kwh_vol_endian.help.append("\n");
-	manual.push_back(kwh_vol_endian);
-
-	kwh_vol_hdr_lngth.word.assign("vol_hdr_lngth");
-	kwh_vol_hdr_lngth.exam.assign("0");
-	kwh_vol_hdr_lngth.reqd.assign("yes");
-	kwh_vol_hdr_lngth.pool.assign("vox_data");
-	kwh_vol_hdr_lngth.hint.assign("### fixed-length header size, may be zero");
-	kwh_vol_hdr_lngth.help.assign("   Defines a fixed header length for both reference and correlate image volumes.\n");
-	kwh_vol_hdr_lngth.help.append("   This value will often be 0, as is the case for standard raw data files.\n");
-	kwh_vol_hdr_lngth.help.append("\n");
-	manual.push_back(kwh_vol_hdr_lngth);
-
-	kwh_vol_wide.word.assign("vol_wide");
-	kwh_vol_wide.exam.assign("4008");
-	kwh_vol_wide.reqd.assign("yes");
-	kwh_vol_wide.pool.assign("vox_data");
-	kwh_vol_wide.hint.assign("### width in pixels of each slice");
-	kwh_vol_wide.help.assign("   Defines the width of slices in both reference and correlate image volumes.\n");
-	kwh_vol_wide.help.append("   Wide = x for the coordinate system used by the dvc code, origin at the left.\n");
-	kwh_vol_wide.help.append("\n");
-	manual.push_back(kwh_vol_wide);
-
-	kwh_vol_high.word.assign("vol_high");
-	kwh_vol_high.exam.assign("2670");
-	kwh_vol_high.reqd.assign("yes");
-	kwh_vol_high.pool.assign("vox_data");
-	kwh_vol_high.hint.assign("### height in pixels of each slice");
-	kwh_vol_high.help.assign("   Defines the height of slices in both reference and correlate image volumes.\n");
-	kwh_vol_high.help.append("   High = y for the coordinate system used by the dvc code, origin at the top.\n");
-	kwh_vol_high.help.append("\n");
-	manual.push_back(kwh_vol_high);
-
-	kwh_vol_tall.word.assign("vol_tall");
-	kwh_vol_tall.exam.assign("4016");
-	kwh_vol_tall.reqd.assign("yes");
-	kwh_vol_tall.pool.assign("vox_data");
-	kwh_vol_tall.hint.assign("### number of slices in the stack");
-	kwh_vol_tall.help.assign("   Defines the number of slices in both reference and correlate image volumes.\n");
-	kwh_vol_tall.help.append("   Tall = z for the coordinate system used by the dvc code, origin is the first slice.\n");
-	kwh_vol_tall.help.append("\n");
-	manual.push_back(kwh_vol_tall);
-
-	// subvolume parameters
-
-	kwh_subvol_geom.word.assign("subvol_geom");
-	kwh_subvol_geom.exam.assign("cube");
-	kwh_subvol_geom.reqd.assign("yes");
-	kwh_subvol_geom.pool.assign("sub_vols");
-	kwh_subvol_geom.hint.assign("### cube, sphere: geometry of the subvolumes");
-	kwh_subvol_geom.help.assign("   Defines geometry of the subvolumes created around each search point.\n");
-	kwh_subvol_geom.help.append("   Cubes are the classic, but essentially arbitrary, subvolume geometry.\n");
-	kwh_subvol_geom.help.append("   Try spheres if portions of a point cloud are near a surface or interface.\n");
-	kwh_subvol_geom.help.append("\n");
-	manual.push_back(kwh_subvol_geom);
-
-	kwh_subvol_size.word.assign("subvol_size");
-	kwh_subvol_size.exam.assign("30");
-	kwh_subvol_size.reqd.assign("yes");
-	kwh_subvol_size.pool.assign("sub_vols");
-	kwh_subvol_size.hint.assign("### side length or diameter, in voxels");
-	kwh_subvol_size.help.assign("   Defines size (in voxels) of the subvolumes created around each search point.\n");
-	kwh_subvol_size.help.append("   Values indicate a characteristic dimension (edge length or diameter) of the subvolumes.\n");
-	kwh_subvol_size.help.append("   This parameter is completely independent of subvol_npts.\n");
-	kwh_subvol_size.help.append("\n");
-	manual.push_back(kwh_subvol_size);
-
-	kwh_subvol_npts.word.assign("subvol_npts");
-	kwh_subvol_npts.exam.assign("5000");
-	kwh_subvol_npts.reqd.assign("yes");
-	kwh_subvol_npts.pool.assign("sub_vols");
-	kwh_subvol_npts.hint.assign("### number of points to distribute within the subvol");
-	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume (max is 50000).\n");
-	kwh_subvol_npts.help.append("   In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n");
-	kwh_subvol_npts.help.append("   Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n");
-	kwh_subvol_npts.help.append("   For cubes a uniform grid of approximately subvol_npts is generated.\n");
-	kwh_subvol_npts.help.append("   For spheres subvol_npts are randomly distributed within the subvolume.\n");
-	kwh_subvol_npts.help.append("   This parameter has a strong effect on computation time, so be careful.\n");
-	kwh_subvol_npts.help.append("\n");
-	manual.push_back(kwh_subvol_npts);
-
+	/*
 	kwh_subvol_thresh.word.assign("subvol_thresh");
 	kwh_subvol_thresh.exam.assign("off");
 	kwh_subvol_thresh.reqd.assign("yes");
@@ -321,150 +521,7 @@ InputRead::InputRead()
 	kwh_min_vol_fract.help.append("   A point failing the test is not searched and flagged on output.\n");
 	kwh_min_vol_fract.help.append("\n");
 	manual.push_back(kwh_min_vol_fract);
-
-	// required optimization parameters (basic search process)
-
-	kwh_disp_max.word.assign("disp_max");
-	kwh_disp_max.exam.assign("15");
-	kwh_disp_max.reqd.assign("yes");
-	kwh_disp_max.pool.assign("opt_mthd");
-	kwh_disp_max.hint.assign("### maximum displacement in voxels, for range checking and search limits");
-	kwh_disp_max.help.assign("   Defines the maximum displacement expected within the reference image volume.\n");
-	kwh_disp_max.help.append("   This is a very important paramater used for search process control and memory allocation.\n");
-	kwh_disp_max.help.append("   Set to a reasonable value just greater than the actual sample maximum displacement.\n");
-	kwh_disp_max.help.append("   Be cautious: large displacements make the search process slower and less reliable.\n");
-	kwh_disp_max.help.append("   It is best to reduce large rigid body displacements through image volume manipulation.\n");
-	kwh_disp_max.help.append("   Future code development will introduce methods for better management of large displacements.\n");
-	kwh_disp_max.help.append("\n");
-	manual.push_back(kwh_disp_max);
-
-	kwh_num_srch_dof.word.assign("num_srch_dof");
-	kwh_num_srch_dof.exam.assign("6");
-	kwh_num_srch_dof.reqd.assign("yes");
-	kwh_num_srch_dof.pool.assign("opt_mthd");
-	kwh_num_srch_dof.hint.assign("### 3 (translation), 6 (+rotation), or 12 (+strain)");
-	kwh_num_srch_dof.help.assign("   Defines the degree-of-freedom set for the final stage of the search.\n");
-	kwh_num_srch_dof.help.append("   The actual search process introduces degrees-of-freedom in stages up to this value.\n");
-	kwh_num_srch_dof.help.append("   Translation only suffices for a quick, preliminary investigation.\n");
-	kwh_num_srch_dof.help.append("   Adding rotation will significantly improve displacement accuracy in most cases.\n");
-	kwh_num_srch_dof.help.append("   Reserve strain degrees-of-freedom for cases when the highest precision is required.\n");
-	kwh_num_srch_dof.help.append("   3  = translation only\n");
-	kwh_num_srch_dof.help.append("   6  = translation plus rotation\n");
-	kwh_num_srch_dof.help.append("   12 = translation, rotation and strain\n");
-	kwh_num_srch_dof.help.append("\n");
-	manual.push_back(kwh_num_srch_dof);
-
-	kwh_obj_function.word.assign("obj_function");
-	kwh_obj_function.exam.assign("znssd");
-	kwh_obj_function.reqd.assign("yes");
-	kwh_obj_function.pool.assign("opt_mthd");
-	kwh_obj_function.hint.assign("### sad, ssd, zssd, nssd, znssd");
-	kwh_obj_function.help.assign("   Defines the objective function template matching form.\n");
-	kwh_obj_function.help.append("   See B. Pan, Equivalence of Digital Image Correlation Criteria for Pattern Matching, 2010 \n");
-	kwh_obj_function.help.append("   Functions become increasingly expensive and more robust as you progress from sad to znssd.\n");
-	kwh_obj_function.help.append("   Minimizing squared-difference and maximizing cross-correlation are functionally equivalent.\n");
-	kwh_obj_function.help.append("   sad  = sum of absolute differences\n");
-	kwh_obj_function.help.append("   ssd  = sum of squared differences\n");
-	kwh_obj_function.help.append("   zssd  = intensity offset insensitive sum of squared differences (value not normalized)\n");
-	kwh_obj_function.help.append("   nssd  = intensity range insensitive sum of squared differences (0.0 = perfect match, 1.0 = max value)\n");
-	kwh_obj_function.help.append("   znssd  = intensity offset and range insensitive sum of squared differences (0.0 = perfect match, 1.0 = max value)\n");
-	kwh_obj_function.help.append("   Notes on objective function values:\n");
-	kwh_obj_function.help.append("      1. The normalized quantities nssd and znssd are preferred, as quality of match can be assessed.\n");
-	kwh_obj_function.help.append("      2. The natural range of nssd is [0.0 to 2.0], and of znssd is [0.0 to 4.0].\n");
-	kwh_obj_function.help.append("      3. Both are scaled for output into the [0.0 to 1.0] range for ease of comparison.\n");
-
-	kwh_obj_function.help.append("\n");
-	manual.push_back(kwh_obj_function);
-
-	kwh_interp_type.word.assign("interp_type");
-	kwh_interp_type.exam.assign("tricubic");
-	kwh_interp_type.reqd.assign("yes");
-	kwh_interp_type.pool.assign("opt_mthd");
-	kwh_interp_type.hint.assign("### trilinear (faster), tricubic (recommended)");
-	kwh_interp_type.help.assign("   Defines the interpolation method used during template matching.\n");
-	kwh_interp_type.help.append("   Trilinear is significantly faster, but with known template matching artifacts.\n");
-	kwh_interp_type.help.append("   Trilinear is most useful for tuning other search parameters during preliminary runs.\n");
-	kwh_interp_type.help.append("   Tricubic is computationally expensive, but is the choice if strain is of interst.\n");
-	kwh_interp_type.help.append("\n");
-	manual.push_back(kwh_interp_type);
-
-	// optimization tuning parameters
-
-	kwh_rigid_trans.word.assign("rigid_trans");
-	kwh_rigid_trans.exam.assign("0.0 0.0 0.0");
-	kwh_rigid_trans.reqd.assign("no");
-	kwh_rigid_trans.pool.assign("opt_tune");
-	kwh_rigid_trans.hint.assign("### x,y,z voxel offset of target volume from reference volume at first point in ROI cloud");
-	kwh_rigid_trans.help.assign("   A rigid body offset between reference and target volumes complicates template matching.\n");
-	kwh_rigid_trans.help.append("   If you have done a rigid body registration do not use this option, or set to (0.0,0.0,0.0).\n");
-	kwh_rigid_trans.help.append("   If you have not, but know the offset, then provide the displacement vector here.\n");
-	kwh_rigid_trans.help.append("   Use the FIRST POINT of the ROI cloud for rigid body registration or rigid_trans specification.\n");
-	kwh_rigid_trans.help.append("   Notes: \n");
-	kwh_rigid_trans.help.append("     1. Only do rigid body registration with whole voxel translations, do not use interpolation.\n");
-	kwh_rigid_trans.help.append("     2. The first point of the ROI cloud is used as a global starting point and therefore as a translation reference.\n");
-	kwh_rigid_trans.help.append("\n");
-	manual.push_back(kwh_rigid_trans);
-
-	kwh_basin_radius.word.assign("basin_radius");
-	kwh_basin_radius.exam.assign("0.0");
-	kwh_basin_radius.reqd.assign("no");
-	kwh_basin_radius.pool.assign("opt_tune");
-	kwh_basin_radius.hint.assign("### coarse search resolution (voxels): default = 0.0, max = disp_max");
-
-	kwh_basin_radius.help.assign("   The default process uses cloud points sorted from a global start to establish initial disp values.\n");
-	kwh_basin_radius.help.append("   To conduct a coarse search in addition (gridded translation), set basin_radius to a non-zero value.\n");
-	kwh_basin_radius.help.append("   The basin_radius value sets the coarse-search resolution (grid step size).\n");
-	kwh_basin_radius.help.append("   If basin_radius is not specified, the default value of 0.0 voxels is set and no coarse search is done.\n");
-	kwh_basin_radius.help.append("   A small basin_radius (< 1 voxel) will cause very slow execution if disp_max is large.\n");
-	kwh_basin_radius.help.append("   A large basin_radius (> 5 voxels) will cause unreliable matching if subvol_size is small.\n");
-	kwh_basin_radius.help.append("   Use the ImageJ plugin 'cv_Match_Template' to explore this parameter.\n");
-	kwh_basin_radius.help.append("\n");
-	manual.push_back(kwh_basin_radius);
-
-	kwh_subvol_aspect.word.assign("subvol_aspect");
-	kwh_subvol_aspect.exam.assign("1.0 1.0 1.0");
-	kwh_subvol_aspect.reqd.assign("no");
-	kwh_subvol_aspect.pool.assign("opt_tune");
-	kwh_subvol_aspect.hint.assign("### stretch or contract the subvolume in any coordinate direction between 0.1 and 10.0");
-	kwh_subvol_aspect.help.assign("   A standard subvolume is isotropic, with equivalent size in each coordinate direction.\n");
-	kwh_subvol_aspect.help.append("   This parameter describes a change in shape of the subvolume to accomodate elongated texture.\n");
-	kwh_subvol_aspect.help.append("   It is only useful if the texture direciton is consistent, and alligned with a coordinate direction.\n");
-	kwh_subvol_aspect.help.append("   The aspect change is specified as three doubles, indicating stretch/contract in the coordinate directions.\n");
-	kwh_subvol_aspect.help.append("   A default of 1.0 1.0 1.0 is used if the parameter is not included in the input file.\n");
-	kwh_subvol_aspect.help.append("   (Function slated for automated and localized setting in future versions)\n");
-	kwh_subvol_aspect.help.append("\n");
-	manual.push_back(kwh_subvol_aspect);
-
-	kwh_num_points_to_process.word.assign("num_points_to_process");
-	kwh_num_points_to_process.exam.assign("0");
-	kwh_num_points_to_process.reqd.assign("no");
-	kwh_num_points_to_process.pool.assign("opt_tune");
-	kwh_num_points_to_process.hint.assign("### Number of points in the point cloud to process");
-	kwh_num_points_to_process.help.assign("   Defines the maximum number of points in the point cloud to process.\n");
-	kwh_num_points_to_process.help.append("   If unset, or set to 0, it will process all points in the point cloud.\n");
-	kwh_num_points_to_process.help.append("\n");
-	manual.push_back(kwh_num_points_to_process);
-
-	kwh_starting_point.word.assign("starting_point");
-	kwh_starting_point.exam.assign("0.0 0.0 0.0");
-	kwh_starting_point.reqd.assign("no");
-	kwh_starting_point.pool.assign("opt_tune");
-	kwh_starting_point.hint.assign("### x,y,z location of starting point for DVC analysis\n");
-	kwh_starting_point.help.assign("   If not set, the first point in the point cloud will be used as starting point\n");
-	kwh_starting_point.help.append("\n");
-	manual.push_back(kwh_starting_point);
-/*
-	kwh_fine_srch.word.assign("fine_search");
-	kwh_fine_srch.exam.assign("bfgs");
-	kwh_fine_srch.reqd.assign("yes");
-	kwh_fine_srch.pool.assign("opt_mthd");
-	kwh_fine_srch.hint.assign("### powell, levenberg, bfgs, steepest");
-	kwh_fine_srch.help.assign("\tDefines the method for high-precision (fine) optimization.\n");
-	kwh_fine_srch.help.append("\tIt is the final optimization step, after starting point and base search processes.\n");
-	kwh_fine_srch.help.append("\tvalues: powell, levenberg, bfgs, steepest\n");
-	kwh_fine_srch.help.append("\n");
-	manual.push_back(kwh_fine_srch);
-*/
+	*/
 }
 /******************************************************************************/
 InputRead::~InputRead()
@@ -473,53 +530,10 @@ InputRead::~InputRead()
 
 	input_file.close();
 }
-/******************************************************************************//******************************************************************************/
-int InputRead::input_file_accessible(std::string fname)
-{
-
-	input_file.open(fname.c_str());
-	if (!input_file.good())
-	{
-		std::cout << "\nCannot find input file '" << fname << "'\n\n" ;
-		return 0;
-	}
-
-	return 1;
-}
-/******************************************************************************/
-int InputRead::check_eol(std::ifstream &file, char &eol, std::string &term)
-{
-	std::string inp_line;
-	int count_n = 0;
-	int count_r = 0;
-
-	file.clear();
-	file.seekg(0, std::ios::beg);
-	while (getline(file,inp_line,'\n')) count_n += 1;
-
-	file.clear();
-	file.seekg(0, std::ios::beg);
-	while (getline(file,inp_line,'\r')) count_r += 1;
-
-	if (count_n >= count_r)
-	{
-		eol = '\n';
-		term = "\n";	// trial and error fix to read problem
-	}
-
-	if (count_r > count_n)
-	{
-		eol = '\r';
-		term = "\n";
-	}
-
-	return 1;
-}
 /******************************************************************************/
 int InputRead::input_file_read(RunControl *run)
-// load the RunControl struct in Utility
-// parameter limit values set and checked
-// default values for optional parameters also set in this routine
+// parse input file and load the RunControl struct in Utility
+// parameter limit values transferred from InputRead.h, keyword lines checked against
 {
 	check_eol(input_file, inp_eol, inp_term);
 
@@ -527,11 +541,17 @@ int InputRead::input_file_read(RunControl *run)
 	// const int keywd_missing = -1;
 	// const int param_invalid = -2;
 
-	// the parse function returns:
+	// using the parse functions: (this is awkward but seems to work)
+	// true for required keywords, pair with != input_line_ok
+	// false for optional keywords, pair with == param_invalid
+
+	// the parse functions return:
 	//  1 = keyword found and parameters good (successful)
 	// -1 = keyword not found
 	// -2 = parameters bad
 	// if( ... != 1) traps any error, if == traps a specific error
+
+	// fio_name
 
 	if(parse_line_old_file(kwh_ref_fname, run->ref_fname, ref_file_length, true) != input_line_ok ) return 0;
 	if(parse_line_old_file(kwh_cor_fname, run->cor_fname, cor_file_length, true) != input_line_ok ) return 0;
@@ -541,94 +561,346 @@ int InputRead::input_file_read(RunControl *run)
 	run->res_fname = run->out_fname + ".disp";
 	run->sta_fname = run->out_fname + ".stat";
 
-	if(parse_line_vec_val(kwh_vol_bit_depth, ok_vol_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
-	if(run->vol_bit_depth != 8)
-	{
+	// optional keyword (reqd = "no"): default 0 processes the full cloud
+	run->num_points_to_process = num_points_to_process_def;
+	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, false) == param_invalid) return 0;
+	std::cout << "Number of points to process: " << run->num_points_to_process << std::endl;
+
+	// vox_data
+
+	run->vol_bit_depth = vol_bit_depth_def;
+	if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
+	if(run->vol_bit_depth == ok_bit_depth[1]) {		// check this is 16 in .h
 		if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
 	}
 
-	if(parse_line_min_max(kwh_vol_hdr_lngth, 0, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_vol_wide, 0, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_vol_high, 0, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_vol_tall, 0, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
 
-	subvol_size_max = run->vol_wide;	// used for limiting subvol_size and disp_max
-	if (run->vol_high < subvol_size_max) subvol_size_max = run->vol_high;
-	if (run->vol_tall < subvol_size_max) subvol_size_max = run->vol_tall;
+	// sub_vols
 
 	if(parse_line_vec_val(kwh_subvol_geom, ok_subvol_geom, run->subvol_geom, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_subvol_geom.size(); i++)
+	for (int i=0; i<ok_subvol_geom.size(); i++) {
 		if (run->subvol_geom == ok_subvol_geom[i]) run->sub_geo = (Subvol_Type)i;
-	if(parse_line_min_max(kwh_subvol_size, 0, subvol_size_max, run->subvol_size, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_subvol_npts, 0, subvol_npts_max, run->subvol_npts, true) != input_line_ok ) return 0;
-	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
+	}
 
+	if(parse_line_min_max(kwh_subvol_size, subvol_size_min, subvol_size_max, run->subvol_size, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_subvol_npts, subvol_npts_min, subvol_npts_max, run->subvol_npts, true) != input_line_ok ) return 0;
+
+	run->subvol_aspect.resize(3, subvol_aspect_def);
+	if(parse_line_dvect(kwh_subvol_aspect, subvol_aspect_min, subvol_aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
+
+	// opt_mthd
+
+	if(parse_line_vec_val(kwh_num_srch_dof, ok_srch_dof, run->num_srch_dof, true) != input_line_ok ) return 0;
+
+	if(parse_line_vec_val(kwh_obj_function, ok_obj_function, run->obj_function, true) != input_line_ok ) return 0;
+	for (int i=0; i<ok_obj_function.size(); i++)
+		if (run->obj_function == ok_obj_function[i]) run->obj_fcn = (Objfcn_Type)i;
+	
+	run->bspline = false;
+	run->bspline_order = 0;
+	if(parse_line_vec_val(kwh_interp_type, ok_interp_type, run->interp_type, true) != input_line_ok ) return 0;
+	for (int i=0; i<ok_interp_type.size(); i++) {
+		if (run->interp_type == ok_interp_type[i]) {
+			run->int_typ = (Interp_Type)i;
+			// bspline types are broken into a boolean flag bspline (true) and a numerical bspline_order (3,5,7)
+			std::string bspline = "bspline";
+			if (ok_interp_type[i].find(bspline) != std::string::npos) {
+				char last_char = ok_interp_type[i].back();
+				run->bspline_order = last_char - '0'; // this converts single digit ascii chars to the corresponding int
+				run->bspline = true;
+			}
+		}
+	}
+	
+	// start_position and start_estimate need to follow read of vol_wide,high,tall
+	std::vector<double> vol_limits(3);
+	vol_limits[0] = (double)run->vol_wide;
+	vol_limits[1] = (double)run->vol_high;
+	vol_limits[2] = (double)run->vol_tall;
+
+	run->start_position.resize(3, std::nan(""));
+	if (parse_line_dvect(kwh_start_position, vol_limits, run->start_position, true) != input_line_ok) return 0;
+
+	run->start_estimate.resize(3, 0.0);
+	if(parse_line_dvect(kwh_start_estimate, vol_limits, run->start_estimate, true) != input_line_ok) return 0;
+
+	if(parse_line_min_max(kwh_step_max, step_max_min, step_max_max, run->step_max, true) != input_line_ok ) return 0;
+	
+	// opt_tune
+
+	// new code process, set min/max/def in InputRead.h as const
+	run->cost_tol = cost_tol_def;
+	run->step_tol = step_tol_def;
+	run->grad_tol = grad_tol_def;
+	run->max_iter = max_iter_def;
+
+	if(parse_line_min_max(kwh_cost_tol, cost_tol_min, cost_tol_max, run->cost_tol, false) == param_invalid) return 0;
+	if(parse_line_min_max(kwh_step_tol, step_tol_min, step_tol_max, run->step_tol, false) == param_invalid) return 0;
+//	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
+	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
+
+	// check image volumes
+	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth 
+											+ (unsigned long) run->vol_wide *  
+											  (unsigned long) run->vol_high * 
+											  (unsigned long) run->vol_tall * 
+											  (unsigned long) (run->vol_bit_depth / 8);
+
+	if (ref_file_length != expected_vol_file_size)
+	{
+		std::cout << std::endl;
+		std::cout << "Reference volume file size does not match the volume description." << std::endl;
+		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
+		std::cout << std::endl;
+		return 0;
+	}
+
+	if (cor_file_length != expected_vol_file_size)
+	{
+		std::cout << std::endl;
+		std::cout << "Correlate volume file size does not match the volume description." << std::endl;
+		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
+		std::cout << std::endl;
+		return 0;
+	}
+
+	// threshold inputs deactivated, option not implemented in code
+	/*
+	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
 	if(run->subvol_thresh == "on")
 	{
 		if(parse_line_min_max(kwh_gray_thresh_min, 0, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_min, true) != input_line_ok ) return 0;
 		if(parse_line_min_max(kwh_gray_thresh_max, run->gray_thresh_min, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_max, true) != input_line_ok ) return 0;
 		if(parse_line_min_max(kwh_min_vol_fract, 0.0, min_vol_fract_max, run->min_vol_fract, true) != input_line_ok ) return 0;
 	}
-
-	if(parse_line_min_max(kwh_disp_max, 0, subvol_size_max, run->disp_max, true) != input_line_ok ) return 0;
-	if(parse_line_vec_val(kwh_num_srch_dof, ok_num_srch_dof, run->num_srch_dof, true) != input_line_ok ) return 0;
-	if(parse_line_vec_val(kwh_obj_function, ok_obj_function, run->obj_function, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_obj_function.size(); i++)
-		if (run->obj_function == ok_obj_function[i]) run->obj_fcn = (Objfcn_Type)i;
-	if(parse_line_vec_val(kwh_interp_type, ok_interp_type, run->interp_type, true) != input_line_ok ) return 0;
-	for (int i=0; i<ok_interp_type.size(); i++)
-		if (run->interp_type == ok_interp_type[i]) run->int_typ = (Interp_Type)i;
-
-	// optional parameters
-
-	run->basin_radius = 0.0;
-	if(parse_line_min_max(kwh_basin_radius, 0, run->disp_max, run->basin_radius, false) == param_invalid) return 0;
-
-	run->rigid_trans.resize(3, 0.0);
-	std::vector<double> rigid_trans_limit(3);
-	rigid_trans_limit[0] = (double)run->vol_wide;
-	rigid_trans_limit[1] = (double)run->vol_high;
-	rigid_trans_limit[2] = (double)run->vol_tall;
-	if(parse_line_dvect(kwh_rigid_trans, rigid_trans_limit, run->rigid_trans, false) == param_invalid) return 0;
-
-	run->subvol_aspect.resize(3, 1.0);
-	if(parse_line_dvect(kwh_subvol_aspect, aspect_min, aspect_max, run->subvol_aspect, false) == param_invalid) return 0;
-	
-	run->starting_point.resize(3, std::nan(""));
-	std::vector<double> starting_point_limit(3);
-	starting_point_limit[0] = (double)run->vol_wide;
-	starting_point_limit[1] = (double)run->vol_high;
-	starting_point_limit[2] = (double)run->vol_tall;
-	if (parse_line_dvect(kwh_starting_point, starting_point_limit, run->starting_point, false) == param_invalid) return 0;
-
-	// this is a silly max, but we accommodate every request!
-	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, true) != input_line_ok) return 0;
-
-	std::cout << "Max points to process is " << run->num_points_to_process << std::endl;
-
-	// check image volumes
-	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth + (unsigned long) run->vol_wide *  (unsigned long) run->vol_high * (unsigned long) run->vol_tall * (unsigned long) (run->vol_bit_depth / 8);
-
-	if (ref_file_length != expected_vol_file_size)
-	{
-		std::cout << "\n";
-		std::cout << "Reference volume file size does not match the volume description.\n";
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall.\n";
-		std::cout << "\n";
-		return 0;
-	}
-
-	if (cor_file_length != expected_vol_file_size)
-	{
-		std::cout << "\n";
-		std::cout << "Correlate volume file size does not match the volume description.\n";
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall.\n";
-		std::cout << "\n";
-		return 0;
-	}
+	*/
 
 	return 1;
-}/******************************************************************************/
+}
+/******************************************************************************/
+static const double kNaN = std::numeric_limits<double>::quiet_NaN();
+
+// Removes surrounding whitespace, then one pair of surrounding double quotes
+static void trim_field(std::string& s)
+{
+    size_t b = s.find_first_not_of(" \t\r\n");
+    if (b == std::string::npos) { s.clear(); return; }
+    size_t e = s.find_last_not_of(" \t\r\n");
+    s = s.substr(b, e - b + 1);
+    if (s.size() >= 2 && s[0] == '"' && s[s.size() - 1] == '"')
+        s = s.substr(1, s.size() - 2);
+}
+
+// Lines containing a comma: split on commas (empty fields kept, quoted commas respected).
+// Other lines: split on runs of spaces and tabs.
+// Trailing empty fields are dropped (padding fills them with NaN anyway).
+static void split_fields(const std::string& line, std::vector<std::string>& f)
+{
+    f.clear();
+    std::string cur;
+    if (line.find(',') != std::string::npos) {
+        bool in_quotes = false;
+        for (size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+            if (c == '"') { in_quotes = !in_quotes; cur += c; }
+            else if (c == ',' && !in_quotes) { trim_field(cur); f.push_back(cur); cur.clear(); }
+            else cur += c;
+        }
+        trim_field(cur);
+        f.push_back(cur);
+    } else {
+        for (size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+            if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+                if (!cur.empty()) { trim_field(cur); f.push_back(cur); cur.clear(); }
+            } else cur += c;
+        }
+        if (!cur.empty()) { trim_field(cur); f.push_back(cur); }
+    }
+    while (!f.empty() && f.back().empty()) f.pop_back();
+}
+
+// Whole field must be an integer in int range ("1.5", "1e5", "abc" fail)
+static bool field_to_int(const std::string& s, int& v)
+{
+    if (s.empty()) return false;
+    char* end;
+    errno = 0;
+    long x = std::strtol(s.c_str(), &end, 10);
+    if (*end != '\0' || errno == ERANGE || x < INT_MIN || x > INT_MAX) return false;
+    v = static_cast<int>(x);
+    return true;
+}
+
+// Whole field must be a finite number
+static bool field_to_double(const std::string& s, double& v)
+{
+    if (s.empty()) return false;
+    char* end;
+    double x = std::strtod(s.c_str(), &end);
+    if (*end != '\0' || !std::isfinite(x)) return false;
+    v = x;
+    return true;
+}
+
+// Reads one line, accepting \n, \r\n or \r as the line ending.
+static bool read_line(std::istream& is, std::string& line)
+{
+    line.clear();
+    std::streambuf* sb = is.rdbuf();
+    for (;;) {
+        int c = sb->sbumpc();
+        if (c == std::char_traits<char>::eof()) {
+            if (line.empty()) { is.setstate(std::ios::eofbit); return false; }
+            return true;
+        }
+        if (c == '\n') return true;
+        if (c == '\r') {
+            if (sb->sgetc() == '\n') sb->sbumpc();
+            return true;
+        }
+        line += static_cast<char>(c);
+    }
+}
+/******************************************************************************/
+int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels, 
+	std::vector<std::vector<double>> &added_columns, std::vector<std::string> &added_column_names)
+{
+	std::ifstream ifs(run->pts_fname.c_str(), std::ifstream::in);
+	if (!ifs) { 
+		std::cout << "Point cloud file not found" << std::endl << std::endl;
+		return 0; 
+	}
+	
+	double min_x = std::numeric_limits<double>::max();
+	double max_x = std::numeric_limits<double>::min();
+
+	double min_y = std::numeric_limits<double>::max();
+	double max_y = std::numeric_limits<double>::min();
+
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = std::numeric_limits<double>::min();
+	
+	
+
+	
+	
+	int count = 0;
+	size_t n_added = 0;      // number of added columns (widest row or header)
+	int n_padded = 0;        // rows that were short and got NaN padding
+	int n_bad_values = 0;    // non-numeric added values stored as NaN
+	bool first_line = true;
+	bool data_started = false;
+	std::vector<std::string> fields, header_fields;
+	std::string line;
+
+	added_columns.clear();
+	added_column_names.clear();
+
+	while (read_line(ifs, line))
+	{
+		// Excel CSV exports often start with a UTF-8 byte-order mark
+		if (first_line) {
+			first_line = false;
+			if (line.compare(0, 3, "\xEF\xBB\xBF") == 0) line.erase(0, 3);
+		}
+
+		split_fields(line, fields);
+
+		int label;
+		double x, y, z;
+		bool is_data = fields.size() >= 4 &&
+		               field_to_int(fields[0], label) &&
+		               field_to_double(fields[1], x) &&
+		               field_to_double(fields[2], y) &&
+		               field_to_double(fields[3], z);
+
+		if (!is_data) {
+			// Header = last non-data line with 4+ fields before the first data row
+			if (!data_started && fields.size() >= 4 && fields[0][0] != '#')
+				header_fields = fields;
+			continue;
+		}
+		data_started = true;
+
+		std::vector<double> extras(fields.size() - 4);
+		for (size_t i = 4; i < fields.size(); ++i) {
+			if (!field_to_double(fields[i], extras[i - 4])) {
+				extras[i - 4] = kNaN;
+				if (!fields[i].empty()) ++n_bad_values;
+			}
+		}
+		n_added = std::max(n_added, extras.size());
+
+		search_labels.push_back(label);
+		search_points.push_back(Point(x, y, z));
+		added_columns.push_back(std::move(extras));
+
+		min_x = std::min(min_x, x);  max_x = std::max(max_x, x);
+		min_y = std::min(min_y, y);  max_y = std::max(max_y, y);
+		min_z = std::min(min_z, z);  max_z = std::max(max_z, z);
+
+		++count;
+	}
+
+	// The header can name more columns than any data row has
+	if (header_fields.size() > 4)
+		n_added = std::max(n_added, header_fields.size() - 4);
+
+	// Pad short rows so every row has n_added values
+	for (size_t i = 0; i < added_columns.size(); ++i) {
+		if (added_columns[i].size() < n_added) {
+			added_columns[i].resize(n_added, kNaN);
+			++n_padded;
+		}
+	}
+
+	// Names from the header; "col5", "col6", ... (file column number) where missing
+	added_column_names.resize(n_added);
+	for (size_t i = 0; i < n_added; ++i) {
+		size_t col = i + 4;
+		if (col < header_fields.size() && !header_fields[col].empty())
+			added_column_names[i] = header_fields[col];
+		else
+			added_column_names[i] = "col" + std::to_string(col + 1);
+	}
+
+	if (n_padded > 0 || n_bad_values > 0) {
+		// optional warning: n_padded short rows padded, n_bad_values non-numeric values set to NaN
+	}
+
+
+
+
+
+	if (count == 0)
+	{
+		std::cout << std::endl;
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted." << std::endl;
+		std::cout << "The expected format is plain text, tab (or other 'white space') delimited." << std::endl;
+		std::cout << "Header info is OK as long as it does not match the format of a point description." << std::endl;
+		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:" << std::endl;
+		std::cout << "5\t10.72\t15.87\t23.45" << std::endl;
+		std::cout << std::endl;
+		return 0;
+	}
+
+	Point min_pt(min_x, min_y, min_z);
+	Point max_pt(max_x, max_y, max_z);
+	search_box->move_to(min_pt, max_pt);
+	search_num_pts = search_points.size();
+
+
+
+
+
+    return 1;
+}
+/******************************************************************************/
 int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels)
 {
 	// add check for point outside of voxel volume
@@ -697,13 +969,13 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 
 	if (count == 0)
 	{
-		std::cout << "\n";
-		std::cout << "No points were read, the Point Cloud file may be improperly formatted.\n";
-		std::cout << "The expected format is plain text, tab (or other 'white space') delimited.\n";
-		std::cout << "Header info is OK as long as it does not match the format of a point description.\n";
-		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:\n\n";
-		std::cout << "5\t10.72\t15.87\t23.45\n\n";
-		std::cout << "\n";
+		std::cout << std::endl;
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted." << std::endl;
+		std::cout << "The expected format is plain text, tab (or other 'white space') delimited." << std::endl;
+		std::cout << "Header info is OK as long as it does not match the format of a point description." << std::endl;
+		std::cout << "Each line of the file should contain an integer point label and x,y,z coordinates, e.g.:" << std::endl;
+		std::cout << "5\t10.72\t15.87\t23.45" << std::endl;
+		std::cout << std::endl;
 		return 0;
 	}
 
@@ -711,6 +983,260 @@ int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_poin
 	Point max_pt(max_x, max_y, max_z);
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
+
+	return 1;
+}
+
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[]) 
+{
+	// loop through current arg list, if flag found, remove from list and return true
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[], int &val) 
+{
+	// look for command line flag followed by a single integer argument
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stoi(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;						// return true
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int InputRead::find_flag(std::string flag, int &argc, char *argv[], double &val) 
+{
+	// look for command line flag followed by a single float-double argument
+
+	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+		std::string argstr(argv[i]);
+		if (argstr.compare(flag) == 0) {			// found the flag
+			if (argc > i+1) {						// if there is a next argument try to convert
+				try {								// flag and number found
+					val = std::stod(argv[i+1]);
+					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+						argv[j] = argv[j+2];
+					}
+					argc -= 2;
+					return 1;		// return success
+				}
+				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable					
+					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+						argv[j] = argv[j+1];
+					}
+					argc -= 1;
+					std::cout << "argument after " << flag << " not valid" << std::endl;
+					return 0;
+				}
+			}	
+			// no next argument on command line, notify and pull flag
+			std::cout << "no argument after " << flag << " flag" << std::endl;
+			argc -= 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+int InputRead::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[]) 
+{
+	// clear extraneous flags
+
+	for (unsigned int i=0; i<argc; i++) {
+		std::string argstr(argv[i]);
+		if (argstr.compare(pos, len, flag) == 0) {
+			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+			for (unsigned int j=i; j<argc-1; j++) {
+				argv[j] = argv[j+1];
+			}
+			argc -= 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+/******************************************************************************/
+std::vector<std::string> InputRead::line_to_vect(std::string line)
+{
+	std::vector<std::string> vect;
+
+	std::istringstream io_line;
+	std::string str;
+
+	io_line.str(line);
+	for (;;) {
+		if (io_line.eof()) break;
+		io_line >> str;
+		vect.push_back(str);
+	}
+
+	return vect;
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(double min, double max, double def, std::string notation, int ndp)
+{
+	std::ostringstream a_stream;
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
+
+	if (notation  == fixed) {
+		a_stream << std::fixed << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::fixed << std::setprecision(ndp) << max
+				<< ",  default = " << std::fixed << std::setprecision(ndp) << def;	
+	}
+
+	if (notation  == scientific) {
+		a_stream << std::scientific << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::scientific << std::setprecision(ndp) << max
+				<< ",  default = " << std::scientific << std::setprecision(ndp) << def;	
+	}
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(double min, double max, std::string notation, int ndp)
+{
+	std::ostringstream a_stream;
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
+
+	if (notation  == fixed) {
+		a_stream << std::fixed << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::fixed << std::setprecision(ndp) << max;	
+	}
+
+	if (notation  == scientific) {
+		a_stream << std::scientific << std::setprecision(ndp) << min
+				<< " ..... "
+				<< std::scientific << std::setprecision(ndp) << max;	
+	}
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_num_str(double num, std::string notation, int ndp)
+{
+	std::ostringstream a_stream;
+	std::string fixed = "fixed";
+	std::string scientific = "scientific";
+
+	if (notation  == fixed) {a_stream << std::fixed << std::setprecision(ndp) << num;};
+
+	if (notation  == scientific) {a_stream << std::scientific << std::setprecision(ndp) << num;};
+	
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_num_str(int num)
+{
+	std::ostringstream a_stream;
+
+	a_stream << num;
+	
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_num_str(int num, std::string comment)
+{
+	std::ostringstream a_stream;
+
+	a_stream << num << "   " << comment;
+	
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(int min, int max, int def)
+{
+	std::ostringstream a_stream;
+
+	a_stream << min << " ..... " << max << ",  default = " << def;
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+std::string InputRead::set_stream_str(int min, int max)
+{
+	std::ostringstream a_stream;
+
+	a_stream << min << " ..... " << max;
+
+    return std::string(a_stream.str());
+}
+/******************************************************************************/
+int InputRead::input_file_accessible(std::string fname)
+{
+
+	input_file.open(fname.c_str());
+	if (!input_file.good())
+	{
+		std::cout << "\nCannot find input file '" << fname << "'\n\n" ;
+		return 0;
+	}
+
+	return 1;
+}
+/******************************************************************************/
+int InputRead::check_eol(std::ifstream &file, char &eol, std::string &term)
+{
+	std::string inp_line;
+	int count_n = 0;
+	int count_r = 0;
+
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	while (getline(file,inp_line,'\n')) count_n += 1;
+
+	file.clear();
+	file.seekg(0, std::ios::beg);
+	while (getline(file,inp_line,'\r')) count_r += 1;
+
+	if (count_n >= count_r)
+	{
+		eol = '\n';
+		term = "\n";	// trial and error fix to read problem
+	}
+
+	if (count_r > count_n)
+	{
+		eol = '\r';
+		term = "\n";
+	}
 
 	return 1;
 }
@@ -866,7 +1392,7 @@ int InputRead::print_manual_intro(std::ofstream &file)
 {
 	file << "#####################################################################\n";
 	file << "###                                                               ###\n";
-	file << "###   A brief (and hopefully useful) manual for the dvc code      ###\n";
+	file << "###   A brief manual for the iDVC code      ###\n";
 	file << "###                                                               ###\n";
 	file << "#####################################################################\n";
 	file << "\n";
@@ -882,7 +1408,7 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "\n";
 
 	file << "The dvc code is written in c++ with portability and simple compilation in mind.\n";
-	file << "At present only an single external library (eigen) is used for sparse matrix interpolation calculations.\n";
+	file << "At present only a single external library (eigen) is used for sparse matrix interpolation calculations.\n";
 	file << "Compilation is Makefile controlled. To do a complete rebuild:\n";
 	file << "\n";
 	file << "   Delete all object (.o) files in /include/objects\n";
@@ -903,10 +1429,10 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "Feel free to place comments within your input files.\n";
 	file << "Any line in a dvc_input file beginning with a # character is ignored.\n";
 	file << "The portion of any line following a # character is ignored.\n";
-	file << "Some keywords are only reguired if other keywords have particular values.\n";
+	file << "Some keywords are only required if other keywords have particular values.\n";
 	file << "These CONDITIONAL KEYWORDS are ignored if they are left within an input file but are not needed.\n";
 	file << "\n";
-	file << "The keywords are organized into four groups:\n";
+	file << "The keywords are organized into five groups:\n";
 	file << "\n";
 	file << "   fio_name \t\t   // names of existing files and files created during a run\n";
 	file << "   vox_data \t\t   // description of the voxel data files that are targeted for analysis\n";
@@ -915,7 +1441,7 @@ int InputRead::print_manual_intro(std::ofstream &file)
 	file << "   opt_tune \t\t   // OPTIONAL parameters for tuning and refining the template matching process\n";
 	file << "\n";
 
-	file << "The keywords are described below, with informaiton organized as:\n";
+	file << "The keywords are described below, with information organized as:\n";
 	file << "\n";
 	file << "key_word \t\t   // the keyword exactly as it appears in the input file\n\n";
 	file << "      exemplar: \t\t   // a typical dvc_input line for the keyword\n";
@@ -943,7 +1469,7 @@ int InputRead::print_manual_section(std::ofstream &file, std::string pool)
 		if (manual[i].pool == pool)
 		{
 			file << manual[i].word << "\n\n";
-			file << "\texamplar:\t" << manual[i].word << "\t" << manual[i].exam << "\n";
+			file << "\texample:\t" << manual[i].word << "\t" << manual[i].exam << "\n";
 			file << "\trequired:\t" << manual[i].reqd << "\n";
 			file << "\tsuitable:\t" << manual[i].good << "\n";
 			file << "\n";
@@ -965,10 +1491,10 @@ int InputRead::print_manual_output(std::ofstream &file)
 
 	file << "During program execution:\n\n";
 	file << "   - Information about each point processed is echoed to the command window.\n";
-	file << "   - The point identifier appears first, folowed by the [x,y,z] location.\n";
+	file << "   - The point identifier appears first, followed by the [x,y,z] location.\n";
 	file << "   - The search status appears next.\n";
 	file << "      - Point_Good = successful search convergence within the max displacement.\n";
-	file << "      - Range_Fail = max displacement exceeded; consider increasing the disp_max parameter.\n";
+	file << "      - Range_Fail = max displacement exceeded; consider increasing the step_max parameter.\n";
 	file << "      - Convg_Fail = maximum iterations exceeded; consider increasing subvol_size &/or npts.\n";
 	file << "\n";
 	file << "   - The magnitude of the objective function value at the end of the search is listed as obj=.\n";
@@ -984,7 +1510,7 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "      - Search statistics and timing.\n";
 	file << "\n";
 	file << "   - The DISPLACEMENT file (.disp) contains: \n";
-	file << "      - A tab-deliminited text file of the dvc results.\n";
+	file << "      - A tab-delimited text file of the dvc results.\n";
 	file << "      - A header line appears first identifying columns:\n\n";
 	file << "        n x y z status objmin u v w <phi the psi> <exx eyy ezz exy eyz exz>\n\n";
 	file << "      - n = the point identifier\n";
@@ -1000,6 +1526,770 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "      - Displacement data imported into finite element analysis codes is also useful for strain calculation.\n";
 	file << "\n";
 
+
+	return 1;
+}
+/******************************************************************************/
+/******************************************************************************/
+/*  HTML manual                                                               */
+/*                                                                            */
+/*  print_manual_html() writes the complete manual as a single, self-contained */
+/*  HTML file (no external CSS/JS). It uses the same key_word_help data in    */
+/*  the manual vector as the text manual, so keywords only need to be          */
+/*  maintained in one place (the InputRead constructor).                      */
+/*                                                                            */
+/*  For a PDF: open the .html file in a browser and Print -> Save as PDF.      */
+/*  Print styling hides the navigation sidebar and avoids splitting keywords. */
+/******************************************************************************/
+namespace {
+
+struct ManualPool {
+	const char *id;
+	const char *title;
+	const char *desc;
+};
+
+// Group order and descriptions for the HTML manual (same order as the text manual).
+const ManualPool manual_pools[] = {
+	{"fio_name", "File names",          "Names of existing files and files created during a run."},
+	{"vox_data", "Voxel data",          "Description of the voxel data files that are targeted for analysis."},
+	{"sub_vols", "Subvolumes",          "Description of the subvolumes created for the template matching process."},
+	{"opt_mthd", "Optimization method", "REQUIRED parameters for the default optimization (template matching) process."},
+	{"opt_tune", "Optimization tuning", "OPTIONAL parameters for tuning and refining the template matching process."}
+};
+const int num_manual_pools = sizeof(manual_pools) / sizeof(manual_pools[0]);
+
+std::string html_trim(const std::string &s)
+{
+	const char *ws = " \t\r\n";
+	size_t b = s.find_first_not_of(ws);
+	if (b == std::string::npos) return "";
+	size_t e = s.find_last_not_of(ws);
+	return s.substr(b, e - b + 1);
+}
+
+size_t html_indent(const std::string &s)
+{
+	size_t n = 0;
+	for (char c : s) {
+		if (c == ' ') n += 1;
+		else if (c == '\t') n += 4;
+		else break;
+	}
+	return n;
+}
+
+bool is_word_char(char c)
+{
+	return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+}
+
+// "1. text", "2) text" -> numbered list item
+bool is_numbered_item(const std::string &t, std::string &rest)
+{
+	size_t i = 0;
+	while (i < t.size() && std::isdigit(static_cast<unsigned char>(t[i]))) i++;
+	if (i == 0 || i >= t.size() || (t[i] != '.' && t[i] != ')')) return false;
+	rest = html_trim(t.substr(i + 1));
+	return true;
+}
+
+// "ssd  = standard SSD ..." or "3  = translation only" -> option definition
+bool is_option_line(const std::string &t, std::string &key, std::string &val)
+{
+	std::istringstream ss(t);
+	std::string eq;
+	if (!(ss >> key >> eq) || eq != "=") return false;
+	std::getline(ss, val);
+	val = html_trim(val);
+	return true;
+}
+
+} // namespace
+
+/******************************************************************************/
+std::string InputRead::html_escape(const std::string &s)
+{
+	std::string r;
+	r.reserve(s.size());
+	for (char c : s) {
+		switch (c) {
+			case '&':  r += "&amp;";  break;
+			case '<':  r += "&lt;";   break;
+			case '>':  r += "&gt;";   break;
+			case '"':  r += "&quot;"; break;
+			case '\'': r += "&#39;";  break;
+			default:   r += c;
+		}
+	}
+	return r;
+}
+
+/******************************************************************************/
+// Escape text, then turn any keyword name that appears in it into a link to
+// that keyword's entry (skipping the keyword currently being described).
+std::string InputRead::html_link_keywords(const std::string &text, const std::string &self)
+{
+	std::string esc = html_escape(text);
+	std::string out;
+	size_t i = 0;
+	while (i < esc.size()) {
+		if (is_word_char(esc[i])) {
+			size_t j = i;
+			while (j < esc.size() && is_word_char(esc[j])) j++;
+			std::string tok = esc.substr(i, j - i);
+			bool linked = false;
+			if (tok != self && tok.find('_') != std::string::npos) {
+				for (size_t k = 0; k < manual.size(); k++) {
+					if (manual[k].word == tok) {
+						out += "<a class=\"kwref\" href=\"#kw-" + tok + "\"><code>" + tok + "</code></a>";
+						linked = true;
+						break;
+					}
+				}
+			}
+			if (!linked) out += tok;
+			i = j;
+		} else {
+			out += esc[i++];
+		}
+	}
+	return out;
+}
+
+/******************************************************************************/
+// Convert the plain-text help field into HTML. The help strings were written
+// for a fixed-width text manual, so layout is inferred from indentation:
+//   - lines at the base indent are joined into paragraphs
+//   - 2+ consecutive "name = description" lines become an option table
+//   - deeper-indented "1. ..." lines become a numbered list
+//   - other deeper-indented lines (e.g. data file samples) stay preformatted
+std::string InputRead::help_to_html(const std::string &help, const std::string &self)
+{
+	enum Kind { BLANK, PARA, OPT, NUM, PRE };
+
+	std::vector<std::string> lines;
+	{
+		std::istringstream ss(help);
+		std::string ln;
+		while (std::getline(ss, ln)) lines.push_back(ln);
+	}
+
+	size_t base = std::string::npos;
+	for (const auto &ln : lines)
+		if (!html_trim(ln).empty()) base = std::min(base, html_indent(ln));
+	if (base == std::string::npos) return "";
+
+	std::vector<Kind> kind(lines.size());
+	std::vector<std::string> a(lines.size()), b(lines.size());
+	for (size_t i = 0; i < lines.size(); i++) {
+		std::string t = html_trim(lines[i]);
+		if (t.empty())                              kind[i] = BLANK;
+		else if (html_indent(lines[i]) > base)      kind[i] = is_numbered_item(t, a[i]) ? NUM : PRE;
+		else if (is_option_line(t, a[i], b[i]))     kind[i] = OPT;
+		else                                        kind[i] = PARA;
+		if (kind[i] == PARA || kind[i] == PRE) a[i] = t;
+		if (kind[i] == PRE) a[i] = lines[i].substr(std::min(lines[i].size(), base));
+	}
+	// a lone "x = y" line is ordinary prose, not an option list
+	for (size_t i = 0; i < lines.size(); ) {
+		if (kind[i] != OPT) { i++; continue; }
+		size_t j = i;
+		while (j < lines.size() && kind[j] == OPT) j++;
+		if (j - i < 2)
+			for (size_t k = i; k < j; k++) { kind[k] = PARA; a[k] = html_trim(lines[k]); }
+		i = j;
+	}
+
+	std::ostringstream out;
+	for (size_t i = 0; i < lines.size(); ) {
+		Kind k = kind[i];
+		if (k == BLANK) { i++; continue; }
+		size_t j = i;
+		while (j < lines.size() && kind[j] == k) j++;
+
+		if (k == PARA) {
+			out << "<p>";
+			for (size_t n = i; n < j; n++) out << (n > i ? " " : "") << html_link_keywords(a[n], self);
+			out << "</p>\n";
+		} else if (k == OPT) {
+			out << "<table class=\"opts\">\n";
+			for (size_t n = i; n < j; n++)
+				out << "<tr><td><code>" << html_escape(a[n]) << "</code></td><td>"
+				    << html_link_keywords(b[n], self) << "</td></tr>\n";
+			out << "</table>\n";
+		} else if (k == NUM) {
+			out << "<ol>\n";
+			for (size_t n = i; n < j; n++) out << "<li>" << html_link_keywords(a[n], self) << "</li>\n";
+			out << "</ol>\n";
+		} else { // PRE
+			out << "<pre class=\"sample\">";
+			for (size_t n = i; n < j; n++) out << html_escape(a[n]) << "\n";
+			out << "</pre>\n";
+		}
+		i = j;
+	}
+	return out.str();
+}
+
+/******************************************************************************/
+int InputRead::print_manual_html(std::ofstream &file)
+{
+	std::ostringstream ver, rev;
+	ver << VERSION;
+	rev << REV_DATE;
+
+	// ---------- head and styles ----------
+	file << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+	        "<meta charset=\"utf-8\">\n"
+	        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+	        "<title>DVC Manual " << html_escape(ver.str()) << "</title>\n"
+	        "<style>\n"
+	        ":root{--bg:#fff;--fg:#1d2327;--muted:#5f6b76;--line:#dde3e8;--panel:#f5f7f9;"
+	        "--accent:#1f5f99;--req:#1b7a3d;--cond:#a15c00;--opt:#5f6b76;--code:#eef2f5}\n"
+	        "@media (prefers-color-scheme:dark){:root{--bg:#15191c;--fg:#e3e8ec;--muted:#9aa6b0;"
+	        "--line:#2c343a;--panel:#1c2226;--accent:#7db4e6;--req:#5cc48a;--cond:#e0a454;--opt:#9aa6b0;--code:#232b31}}\n"
+	        "*{box-sizing:border-box}\n"
+	        "html{scroll-behavior:smooth}\n"
+	        "body{margin:0;background:var(--bg);color:var(--fg);"
+	        "font:16px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}\n"
+	        "a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}\n"
+	        "code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}\n"
+	        "code{background:var(--code);padding:.05em .35em;border-radius:4px}\n"
+	        "pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.8em 1em;overflow-x:auto}\n"
+	        "pre code{background:none;padding:0}\n"
+	        ".layout{display:flex;max-width:1200px;margin:0 auto}\n"
+	        "nav{position:sticky;top:0;align-self:flex-start;width:250px;flex:none;height:100vh;overflow-y:auto;"
+	        "padding:1.5em 1em;border-right:1px solid var(--line);font-size:.9em}\n"
+	        "nav h2{font-size:1em;margin:0 0 .6em}\n"
+	        "nav ul{list-style:none;margin:0;padding:0}\n"
+	        "nav li{margin:.15em 0}\n"
+	        "nav ul ul{padding-left:.9em;margin:.2em 0 .6em}\n"
+	        "nav ul ul a{color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em}\n"
+	        "main{flex:1;min-width:0;padding:1.5em 2.5em 4em}\n"
+	        "h1{font-size:2em;margin:.2em 0}\n"
+	        "h2{margin-top:2.2em;padding-bottom:.3em;border-bottom:2px solid var(--line)}\n"
+	        ".meta{color:var(--muted);margin:0 0 1.5em}\n"
+	        "table{border-collapse:collapse}\n"
+	        "table.grid{width:100%;margin:1em 0}\n"
+	        "table.grid th,table.grid td{text-align:left;vertical-align:top;padding:.4em .7em;border-bottom:1px solid var(--line)}\n"
+	        "table.grid th{background:var(--panel)}\n"
+	        ".group-desc{color:var(--muted);margin-top:-.4em}\n"
+	        ".kw{border:1px solid var(--line);border-radius:8px;padding:1em 1.3em;margin:1.2em 0;break-inside:avoid;scroll-margin-top:1em}\n"
+	        ".kw h3{margin:0;font-size:1.15em;display:flex;align-items:center;gap:.6em;flex-wrap:wrap}\n"
+	        ".kw h3 code{font-size:1em;background:none;padding:0}\n"
+	        ".summary{color:var(--muted);margin:.2em 0 .8em}\n"
+	        ".badge{font-size:.72em;font-weight:600;padding:.12em .55em;border-radius:99px;border:1px solid currentColor;"
+	        "font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:.02em}\n"
+	        ".b-req{color:var(--req)}.b-cond{color:var(--cond)}.b-opt{color:var(--opt)}\n"
+	        "dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:.3em 1em;margin:.6em 0 .9em;"
+	        "background:var(--panel);padding:.7em 1em;border-radius:6px}\n"
+	        "dl.facts dt{font-weight:600;color:var(--muted)}dl.facts dd{margin:0}\n"
+	        "table.opts{margin:.5em 0 1em}\n"
+	        "table.opts td{padding:.2em 1em .2em 0;vertical-align:top}\n"
+	        "a.kwref code{color:var(--accent)}\n"
+	        "@media (max-width:800px){.layout{display:block}nav{position:static;width:auto;height:auto;"
+	        "border-right:none;border-bottom:1px solid var(--line)}main{padding:1em}}\n"
+	        "@media print{nav{display:none}main{padding:0}body{font-size:11pt}"
+	        "h2{break-before:page}h2.nobreak{break-before:auto}a{color:inherit}"
+	        ":root{--bg:#fff;--fg:#000;--panel:#f3f3f3;--code:#f0f0f0}}\n"
+	        "</style>\n</head>\n<body>\n<div class=\"layout\">\n";
+
+	// ---------- navigation ----------
+	file << "<nav>\n<h2>DVC Manual</h2>\n<ul>\n"
+	        "<li><a href=\"#intro\">Introduction</a></li>\n"
+	        "<li><a href=\"#running\">Running the code</a></li>\n"
+	        "<li><a href=\"#input\">The input file</a></li>\n";
+	for (int p = 0; p < num_manual_pools; p++) {
+		file << "<li><a href=\"#grp-" << manual_pools[p].id << "\">" << manual_pools[p].title << "</a>\n<ul>\n";
+		for (size_t i = 0; i < manual.size(); i++)
+			if (manual[i].pool == manual_pools[p].id)
+				file << "<li><a href=\"#kw-" << html_escape(manual[i].word) << "\">"
+				     << html_escape(manual[i].word) << "</a></li>\n";
+		file << "</ul></li>\n";
+	}
+	file << "<li><a href=\"#example\">Example input file</a></li>\n"
+	        "<li><a href=\"#output\">Output generated</a></li>\n"
+	        "</ul>\n</nav>\n<main>\n";
+
+	// ---------- introduction ----------
+	/*file << "<h1 id=\"intro\">A brief manual for the DVC executable</h1>\n"
+	        "<p class=\"meta\">Version " << html_escape(ver.str())
+	     << " &middot; Revised " << html_escape(rev.str())
+	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
+	        "<p>The dvc code is written in C++ with portability and simple compilation in mind. "
+	        "At present only a single external library (Eigen) is used for sparse matrix interpolation calculations.</p>\n"
+	        "<p>Compilation is Makefile controlled. To do a complete rebuild:</p>\n"
+	        "<ol><li>Delete all object (<code>.o</code>) files in <code>/include/objects</code>.</li>\n"
+	        "<li>Enter <code>make</code> from a terminal window in the main distribution directory.</li></ol>\n";*/
+
+	file << "<h1 id=\"intro\">A brief manual for the iDVC executable</h1>\n"
+	        "<p class=\"meta\">Version " << html_escape(ver.str())
+	     << " &middot; Revised " << html_escape(rev.str())
+	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
+		 	"<p>"
+	        "The iDVC software was inspired by a need for research-level code with access to internal methods and settings. "
+			"Aditional objectives were established to facilitate accessibility and portability among research groups: "
+			"c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. "
+	        "</p>\n"
+		 	"<p>"
+	        "An early and continuing area of focus is biological tissues evaluated through <i>in situ</i> x-ray tomography. "
+	        "Challenges within that application environment have driven development of the overall algorithmic approach and broadened its aplicability. "
+			"Beginning from a highly generalized context has provided flexibility in managing a range of experimental scenarios. "
+			"</p>\n"
+			"The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. "
+			"Test samples are often geometrically complex and benefit from microstructure-based point clouds as opposed to regular grid regions of interest. "
+			"Large displacement and strain fields are frequently encountered and inspired a wavefront/neighborhood approach to point cloud processing. "
+			"These requirements translated into code that focuses on the basic DVC subvolume tracking process with limited assumptions about sample response. "
+	        "</p>\n";
+
+
+	file << "<h2 id=\"running\" class=\"nobreak\">Running the code</h2>\n"
+	        "<table class=\"grid\">\n<tr><th>Command</th><th>Action</th></tr>\n"
+	        "<tr><td><code>dvc</code></td><td>List command line options in the terminal window</td></tr>\n"
+	        "<tr><td><code>dvc help</code></td><td>Send a brief help message to the terminal window</td></tr>\n"
+	        "<tr><td><code>dvc example</code></td><td>Print an example dvc_input file</td></tr>\n"
+	        "<tr><td><code>dvc manual</code></td><td>Print this manual</td></tr>\n"
+	        "<tr><td><code>dvc form</code></td><td>Print an HTML form (DVC_input_builder.html) for building a dvc_input file</td></tr>\n"
+	        "<tr><td><code>dvc dvc_input</code></td><td>Normal code execution</td></tr>\n"
+	        "</table>\n";
+
+	file << "<h2 id=\"input\" class=\"nobreak\">The input file</h2>\n"
+	        "<p>The file <code>dvc_input</code> is the key to running a digital volume correlation analysis. "
+	        "It is a simple text file that contains <strong>required keywords</strong> and <strong>parameters</strong>. "
+	        "The code parses this file looking for required keywords and appropriate parameter values.</p>\n"
+	        "<p>Feel free to place comments within your input files. Any line beginning with a <code>#</code> "
+	        "character is ignored, as is the portion of any line following a <code>#</code>.</p>\n"
+	        "<p>Some keywords are only required if other keywords have particular values. "
+	        "These <strong>conditional keywords</strong> are ignored if they are left within an input file but are not needed.</p>\n"
+	        "<p>The keywords are organized into " << num_manual_pools << " groups:</p>\n"
+	        "<table class=\"grid\">\n<tr><th>Group</th><th>Contents</th></tr>\n";
+	for (int p = 0; p < num_manual_pools; p++)
+		file << "<tr><td><a href=\"#grp-" << manual_pools[p].id << "\"><code>" << manual_pools[p].id
+		     << "</code></a></td><td>" << manual_pools[p].desc << "</td></tr>\n";
+	file << "</table>\n"
+	        "<p>Each keyword entry below lists:</p>\n"
+	        "<dl class=\"facts\">"
+	        "<dt>Example</dt><dd>a typical dvc_input line for the keyword</dd>"
+	        "<dt>Required</dt><dd>always required, optional, or the conditions when it is required</dd>"
+	        "<dt>Suitable</dt><dd>valid input description, list of suitable values, range and type information</dd>"
+	        "<dt>Nominal</dt><dd>typical setting for required parameters, or none if no typical setting exists</dd>"			
+	        "<dt>Default</dt><dd>default setting for optional parameters</dd>"
+	        "</dl>\n<p>followed by further details on the functionality associated with the keyword and how to set its parameters.</p>\n";
+
+	// ---------- keyword groups ----------
+	for (int p = 0; p < num_manual_pools; p++) {
+		file << "<h2 id=\"grp-" << manual_pools[p].id << "\">" << manual_pools[p].title
+		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+		     << "<p class=\"group-desc\">" << manual_pools[p].desc << "</p>\n";
+
+		for (size_t i = 0; i < manual.size(); i++) {
+			const key_word_help &k = manual[i];
+			if (k.pool != manual_pools[p].id) continue;
+
+			std::string w = html_escape(k.word);
+
+			// requirement badge
+			std::string badge;
+			if (k.reqd == "yes")     badge = "<span class=\"badge b-req\">required</span>";
+			else if (k.reqd == "no") badge = "<span class=\"badge b-opt\">optional</span>";
+			else                     badge = "<span class=\"badge b-cond\">conditional</span>";
+
+			// one-line summary from the hint: first line, without the "###" and "keyword:" prefixes
+			std::string summary = k.hint.substr(0, k.hint.find('\n'));
+			summary = html_trim(summary.substr(std::min(summary.size(), summary.find_first_not_of("# "))));
+			if (summary.compare(0, k.word.size() + 1, k.word + ":") == 0)
+				summary = html_trim(summary.substr(k.word.size() + 1));
+
+			std::string reqd = (k.reqd == "yes") ? "Yes" : (k.reqd == "no") ? "No" : k.reqd;
+
+			std::ostringstream def_or_nom;
+			if (reqd == "Yes") def_or_nom << "<dt>Nominal</dt><dd>" << html_link_keywords(k.dflt, k.word) << "</dd>\n";
+			if (reqd != "Yes" && reqd != "No") def_or_nom << "<dt>Nominal</dt><dd>" << html_link_keywords(k.dflt, k.word) << "</dd>\n"; // conditional
+			if (reqd == "No") def_or_nom << "<dt>Default</dt><dd>" << html_link_keywords(k.dflt, k.word) << "</dd>\n";
+
+			file << "<section class=\"kw\" id=\"kw-" << w << "\">\n"
+			     << "<h3><code>" << w << "</code>" << badge << "</h3>\n";
+			if (!summary.empty())
+				file << "<p class=\"summary\">" << html_link_keywords(summary, k.word) << "</p>\n";
+			file << "<dl class=\"facts\">\n"
+			     << "<dt>Example</dt><dd><code>" << w << "&nbsp;&nbsp;" << html_escape(html_trim(k.exam)) << "</code></dd>\n"
+			     << "<dt>Required</dt><dd>" << html_link_keywords(reqd, k.word) << "</dd>\n"
+			     << "<dt>Suitable</dt><dd>" << html_link_keywords(k.good, k.word) << "</dd>\n"
+				 << def_or_nom.str()
+			     << "</dl>\n"
+			     << help_to_html(k.help, k.word)
+			     << "</section>\n";
+		}
+	}
+
+	// ---------- example input file (same content as "dvc example") ----------
+	file << "<h2 id=\"example\">Example input file</h2>\n"
+	        "<p>A complete <code>dvc_input</code> file. Optional and conditional keywords are commented out with <code>#</code>.</p>\n<pre><code>";
+	for (int p = 0; p < num_manual_pools; p++) {
+		file << "###\n###  Keywords in group " << manual_pools[p].id << "\n###\n\n";
+		for (size_t i = 0; i < manual.size(); i++) {
+			const key_word_help &k = manual[i];
+			if (k.pool != manual_pools[p].id) continue;
+			std::string hint = k.hint.substr(0, k.hint.find('\n'));
+			file << (k.reqd != "yes" ? "# " : "") << html_escape(k.word) << "\t"
+			     << html_escape(html_trim(k.exam)) << "\t" << html_escape(hint) << "\n";
+		}
+		file << "\n";
+	}
+	file << "</code></pre>\n";
+
+	// ---------- output ----------
+	file << "<h2 id=\"output\">Output generated</h2>\n"
+	        "<h3>During program execution</h3>\n<ul>\n"
+	        "<li>Information about each point processed is echoed to the command window.</li>\n"
+	        "<li>The point identifier appears first, followed by the [x,y,z] location.</li>\n"
+	        "<li>The search status appears next:\n<table class=\"opts\">\n"
+	        "<tr><td><code>Point_Good</code></td><td>successful search convergence within the max displacement</td></tr>\n"
+	        "<tr><td><code>Range_Fail</code></td><td>max displacement exceeded; consider increasing the "
+	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
+	        "<tr><td><code>Convg_Fail</code></td><td>maximum iterations exceeded; consider increasing "
+	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and/or "
+	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></td></tr>\n"
+	        "</table></li>\n"
+	        "<li>The magnitude of the objective function value at the end of the search is listed as <code>obj=</code>.\n<ul>\n"
+	        "<li>For <code>obj_function</code> = sad, ssd, and zssd the value is relative, depending on subvolume size and pixel values.</li>\n"
+	        "<li>For <code>obj_function</code> = nssd and znssd the value is scaled between 0 and 2, with zero a perfect match.</li>\n"
+	        "</ul></li>\n"
+	        "<li>The point [x,y,z] displacement is listed next for successful searches.</li>\n</ul>\n";
+
+	file << "<h3>Following program execution</h3>\n"
+	        "<p>The <strong>status file</strong> (<code>.stat</code>) contains:</p>\n<ul>\n"
+	        "<li>An echo of the input file used to control program execution.</li>\n"
+	        "<li>Information about the point cloud, dvc program version, and run date/time.</li>\n"
+	        "<li>Search statistics and timing.</li>\n</ul>\n"
+	        "<p>The <strong>displacement file</strong> (<code>.disp</code>) is a tab-delimited text file of the dvc results. "
+	        "A header line appears first identifying columns:</p>\n"
+	        "<pre><code>n x y z status objmin u v w &lt;phi the psi&gt; &lt;exx eyy ezz exy eyz exz&gt;</code></pre>\n"
+	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
+	        "<tr><td><code>n</code></td><td>the point identifier</td></tr>\n"
+	        "<tr><td><code>x y z</code></td><td>the point location within the reference volume</td></tr>\n"
+	        "<tr><td><code>status</code></td><td>the search outcome: 0 = successful (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
+	        "<tr><td><code>objmin</code></td><td>the objective function magnitude at the end of the search</td></tr>\n"
+	        "<tr><td><code>u v w</code></td><td>the point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
+	        "<tr><td><code>phi the psi</code></td><td>subvolume rotation, if <a class=\"kwref\" href=\"#kw-num_srch_dof\"><code>num_srch_dof</code></a> = 6 or 12</td></tr>\n"
+	        "<tr><td><code>exx eyy ezz exy eyz exz</code></td><td>subvolume strain, if <a class=\"kwref\" href=\"#kw-num_srch_dof\"><code>num_srch_dof</code></a> = 12</td></tr>\n"
+	        "</table>\n"
+	        "<p>The program does not currently calculate strain, but that is planned for upcoming releases.</p>\n<ul>\n"
+	        "<li>MATLAB functions <code>griddata</code>, <code>meshgrid</code>, and <code>gradient</code> are useful for strain calculation.</li>\n"
+	        "<li>Displacement data imported into finite element analysis codes is also useful for strain calculation.</li>\n</ul>\n";
+
+	file << "</main>\n</div>\n</body>\n</html>\n";
+
+	return 1;
+}
+/******************************************************************************/
+/*  HTML input file builder                                                   */
+/*                                                                            */
+/*  print_input_form_html() writes a single, self-contained HTML page (no     */
+/*  external CSS/JS, works offline) with one form row per keyword in the      */
+/*  manual vector. Users fill in values or pick from drop-down lists and the  */
+/*  page saves a dvc_input text file in the same layout as "dvc example".     */
+/*  It can also load an existing dvc_input file for editing.                  */
+/*                                                                            */
+/*  Everything comes from the key_word_help data: hint, good, reqd, exam,     */
+/*  help, plus the form_* fields set in the InputRead constructor from the    */
+/*  same min/max/ok_ constants that input_file_read() checks against.         */
+/******************************************************************************/
+namespace {
+
+std::string form_json_str(const std::string &s)
+{
+	std::string o = "\"";
+	for (unsigned char c : s) {
+		switch (c) {
+			case '"':  o += "\\\""; break;
+			case '\\': o += "\\\\"; break;
+			case '\n': o += "\\n";  break;
+			case '\r': o += "\\r";  break;
+			case '\t': o += "\\t";  break;
+			case '<':  o += "\\u003c"; break;	// keeps "</script>" out of the embedded data
+			case '>':  o += "\\u003e"; break;
+			case '&':  o += "\\u0026"; break;
+			default:
+				if (c < 0x20) { char b[8]; std::snprintf(b, sizeof b, "\\u%04x", c); o += b; }
+				else o += static_cast<char>(c);
+		}
+	}
+	return o + "\"";
+}
+
+std::string form_json_arr(const std::vector<std::string> &v)
+{
+	std::string o = "[";
+	for (size_t i = 0; i < v.size(); i++) { if (i) o += ","; o += form_json_str(v[i]); }
+	return o + "]";
+}
+
+std::string form_json_num(bool has, double d)
+{
+	if (!has) return "null";
+	std::ostringstream s;
+	s << std::setprecision(17) << d;
+	return s.str();
+}
+
+const char *form_css = R"FORM(
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2327;--mut:#5f6b76;--line:#dde3e8;--acc:#1f5f99;--err:#c62828;--ok:#1b7a3d;--req:#1b7a3d;--cond:#a15c00;--code:#eef2f5}
+@media (prefers-color-scheme:dark){:root{--bg:#15191c;--card:#1c2226;--fg:#e3e8ec;--mut:#9aa6b0;--line:#2c343a;--acc:#7db4e6;--err:#ff6b6b;--ok:#5cc48a;--req:#5cc48a;--cond:#e0a454;--code:#232b31}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--acc)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:var(--code);padding:.05em .35em;border-radius:4px}
+header{padding:12px 20px;border-bottom:1px solid var(--line);background:var(--card);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0}
+header .sub{color:var(--mut);font-size:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.85fr);gap:16px;padding:16px 20px;max-width:1600px;margin:0 auto}
+@media (max-width:1000px){main{grid-template-columns:1fr}aside{position:static!important}}
+fieldset{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;padding:8px 14px 6px}
+legend{font-weight:600;padding:0 6px}
+legend code{font-weight:400;margin-left:6px}
+.gdesc{color:var(--mut);font-size:12px;margin:0 0 4px}
+.row{display:grid;grid-template-columns:22px 200px minmax(0,1fr);gap:3px 10px;align-items:start;padding:8px 0;border-top:1px solid var(--line);scroll-margin-top:80px}
+.row label.kw{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;padding-top:5px;word-break:break-all}
+.row .sub2{grid-column:3;color:var(--mut);font-size:12px}
+.row .err{grid-column:3;color:var(--err);font-size:12px}
+.row.off label.kw,.row.off .vals{opacity:.45}
+.row .vals{display:flex;flex-wrap:wrap;gap:6px}
+.row input[type=text],.row select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);min-width:0;flex:1 1 90px}
+.row input.bad{border-color:var(--err);outline:1px solid var(--err)}
+.row input[type=checkbox]{margin-top:8px}
+.badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px;border:1px solid currentColor;margin-left:6px;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;white-space:nowrap}
+.b-req{color:var(--req)}.b-cond{color:var(--cond)}.b-opt{color:var(--mut)}
+.dot{color:var(--req);padding-top:6px;font-size:16px;line-height:1}
+details{grid-column:3;font-size:13px}
+details summary{cursor:pointer;color:var(--acc);font-size:12px}
+details .help{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:6px 0}
+details .help p{margin:.4em 0}
+details pre{background:var(--code);padding:6px 8px;border-radius:5px;overflow:auto;font-size:12px}
+table.opts td{padding:1px 12px 1px 0;vertical-align:top}
+aside{position:sticky;top:72px;align-self:start}
+aside .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+pre#preview{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;max-height:62vh;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre;tab-size:24}
+#status{font-size:13px;margin:8px 0 0}
+#status.bad{color:var(--err)}#status.ok{color:var(--ok)}
+.small{font-size:12px;color:var(--mut)}
+#outname{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);width:170px}
+)FORM";
+
+const char *form_js = R"FORM(
+(function(){
+const S=JSON.parse(document.getElementById('spec').textContent);
+const KW=S.keywords, by={}; KW.forEach(k=>by[k.word]=k);
+const $=id=>document.getElementById(id), form=$('form');
+function el(tag,attrs,kids){const e=document.createElement(tag);for(const a in (attrs||{})){if(a==='text')e.textContent=attrs[a];else if(a==='html')e.innerHTML=attrs[a];else e.setAttribute(a,attrs[a]);}(kids||[]).forEach(c=>e.appendChild(c));return e;}
+function defs(k){return k.n>1||k.type!=='file_old'&&k.type!=='file_new'?k.exam.trim().split(/\s+/):[k.exam.trim()];}
+
+// ---------- build the form ----------
+S.pools.forEach(p=>{
+  const ks=KW.filter(k=>k.pool===p.id); if(!ks.length) return;
+  const fs=el('fieldset',{},[el('legend',{},[document.createTextNode(p.title),el('code',{text:p.id})]),el('p',{class:'gdesc',text:p.desc})]);
+  ks.forEach(k=>{
+    const row=el('div',{class:'row',id:'kw-'+k.word});
+    if(k.mode==='opt'){const cb=el('input',{type:'checkbox',id:'on_'+k.word,title:'Include this optional keyword'});row.appendChild(cb);}
+    else row.appendChild(el('span',{class:'dot',title:k.mode==='req'?'required':'conditional',text:'•'}));
+    const lab=el('label',{class:'kw',for:'v_'+k.word+'_0',text:k.word});
+    lab.appendChild(el('span',{class:'badge '+(k.mode==='req'?'b-req':k.mode==='opt'?'b-opt':'b-cond'),text:k.mode==='req'?'required':k.mode==='opt'?'optional':'conditional'}));
+    row.appendChild(lab);
+    const vals=el('div',{class:'vals'}), d=defs(k);
+    for(let i=0;i<k.n;i++){let inp;
+      if(k.type==='choice'){inp=el('select',{id:'v_'+k.word+'_'+i});k.opts.forEach(o=>inp.appendChild(el('option',{value:o,text:o})));if(k.opts.includes(d[i]))inp.value=d[i];}
+      else{inp=el('input',{type:'text',id:'v_'+k.word+'_'+i,spellcheck:'false'});inp.value=d[i]||'';if(k.n===3)inp.placeholder=['x','y','z'][i];}
+      vals.appendChild(inp);}
+    if(k.type==='file_old'){const fi=el('input',{type:'file',style:'display:none'}),b=el('button',{type:'button',text:'Browse…',title:'Fills in the file name only; browsers do not reveal folders. Type a path if the file is not in the working directory.'});
+      b.onclick=()=>fi.click();fi.onchange=()=>{if(fi.files[0]){$('v_'+k.word+'_0').value=fi.files[0].name;update();}};vals.appendChild(b);vals.appendChild(fi);}
+    row.appendChild(vals);
+    row.appendChild(el('div',{class:'sub2',text:k.summary}));
+    let suit='Suitable: '+k.good; if(k.mode==='cond') suit+='  ·  Required: '+k.reqd; if(k.mode==='opt'&&k.dflt) suit+='  ·  Default if left out: '+k.dflt;
+    row.appendChild(el('div',{class:'sub2',text:suit}));
+    row.appendChild(el('div',{class:'err',id:'err_'+k.word}));
+    if(k.help) row.appendChild(el('details',{},[el('summary',{text:'Manual entry'}),el('div',{class:'help',html:k.help})]));
+    fs.appendChild(row);
+  });
+  form.appendChild(fs);
+});
+
+function vals(k){const v=[];for(let i=0;i<k.n;i++)v.push($('v_'+k.word+'_'+i).value.trim());return v;}
+function condMet(k){if(!k.condK)return true;const c=by[k.condK];if(!c||!active(c))return false;return k.condV.includes(vals(c)[0]);}
+function active(k){if(k.mode==='opt')return $('on_'+k.word).checked;if(k.mode==='cond')return condMet(k);return true;}
+
+const reInt=/^[+-]?\d+$/, reReal=/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+function validate(k){
+  const errs=[],v=vals(k);
+  v.forEach((s,i)=>{const inp=$('v_'+k.word+'_'+i);let bad=false;
+    const isFile=k.type==='file_old'||k.type==='file_new';
+    if(s===''){bad=true;errs.push('a value is required');}
+    else if(isFile&&/[\t#]/.test(s)){bad=true;errs.push('tabs and # are not allowed');}
+    else if(!isFile&&k.type!=='choice'&&/\s/.test(s)){bad=true;errs.push('no spaces allowed');}
+    else if(k.type==='int'&&!reInt.test(s)){bad=true;errs.push('must be a whole number');}
+    else if(k.type==='real'&&!reReal.test(s)){bad=true;errs.push('must be a number');}
+    if(!bad&&(k.type==='int'||k.type==='real')){const x=parseFloat(s);
+      if(k.min!==null&&x<k.min){bad=true;errs.push('must be ≥ '+k.min);}
+      if(k.max!==null&&x>k.max){bad=true;errs.push('must be ≤ '+k.max);}
+      const lk=k.lim[i]&&by[k.lim[i]];
+      if(lk){const lv=parseFloat(vals(lk)[0]);if(isFinite(lv)&&Math.abs(x)>Math.abs(lv)){bad=true;errs.push(['x','y','z'][i]+' must be within ±'+k.lim[i]+' ('+lv+')');}}}
+    inp.classList.toggle('bad',bad);});
+  return [...new Set(errs)];
+}
+
+// ---------- write the dvc_input text (same layout as "dvc example") ----------
+function build(){
+  const nl=$('crlf').checked?'\r\n':'\n', L=[];let nErr=0,first=null;
+  S.pools.forEach(p=>{
+    L.push('###','###\t Keywords in group '+p.id,'###','');
+    KW.filter(k=>k.pool===p.id).forEach(k=>{
+      const on=active(k), row=$('kw-'+k.word);
+      row.classList.toggle('off',!on);
+      let errs=[]; if(on) errs=validate(k); else for(let i=0;i<k.n;i++)$('v_'+k.word+'_'+i).classList.remove('bad');
+      $('err_'+k.word).textContent=errs.join('; ');
+      if(errs.length){nErr++;if(!first)first=row;}
+      L.push((on?'':'# ')+k.word+'\t'+vals(k).map(s=>s===''?'?':s).join(' ')+'\t'+k.hint);
+    });
+    L.push('');
+  });
+  L.push('');
+  return {text:L.join(nl),nErr,first};
+}
+let last=null;
+function update(){
+  last=build();
+  $('preview').textContent=last.text.replace(/\r/g,'');
+  const st=$('status');
+  if(last.nErr){st.className='bad';st.textContent=last.nErr+' keyword(s) need attention before saving.';}
+  else{st.className='ok';st.textContent='All values valid — ready to save.';}
+}
+form.addEventListener('input',update);form.addEventListener('change',update);$('crlf').addEventListener('change',update);
+
+$('save').onclick=()=>{update();
+  if(last.nErr){last.first.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  const a=el('a',{download:$('outname').value.trim()||S.outName});
+  a.href=URL.createObjectURL(new Blob([last.text],{type:'text/plain'}));
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);};
+$('copy').onclick=()=>{update();navigator.clipboard.writeText(last.text).then(()=>{$('copy').textContent='Copied';setTimeout(()=>$('copy').textContent='Copy text',1200);});};
+$('reset').onclick=()=>{KW.forEach(k=>{const d=defs(k);for(let i=0;i<k.n;i++){const e=$('v_'+k.word+'_'+i);e.value=(k.type==='choice'&&!k.opts.includes(d[i]))?k.opts[0]:(d[i]||'');}if(k.mode==='opt')$('on_'+k.word).checked=false;});$('loadmsg').textContent='';update();};
+
+// ---------- load an existing dvc_input file ----------
+function loadText(txt){
+  const seen=new Set(),unknown=[];
+  KW.forEach(k=>{if(k.mode==='opt')$('on_'+k.word).checked=false;});
+  txt.split(/\r\n|\r|\n/).forEach(line=>{
+    let s=line.replace(/^\s+/,''); if(!s||s.startsWith('###'))return;
+    let com=false; if(s[0]==='#'){com=true;s=s.replace(/^#+\s*/,'');}
+    const w=(s.match(/^\S+/)||[''])[0], k=by[w];
+    if(!k){if(!com&&w)unknown.push(w);return;}
+    if(com&&seen.has(k.word))return;              // an active line wins over a commented copy
+    let v;
+    if(k.type==='file_old'||k.type==='file_new'){ // the solver reads file names up to the next tab
+      const f=s.split('\t').map(x=>x.trim()).filter(x=>x); v=[f.length>1?f[1]:(s.split(/\s+/)[1]||'')];}
+    else{const c=s.indexOf('#');v=(c>=0?s.slice(0,c):s).trim().split(/\s+/).slice(1);}
+    for(let i=0;i<k.n;i++){if(v[i]===undefined)continue;const e=$('v_'+k.word+'_'+i);
+      if(k.type==='choice'&&!k.opts.includes(v[i]))unknown.push(k.word+' = '+v[i]);else e.value=v[i];}
+    if(k.mode==='opt')$('on_'+k.word).checked=!com;
+    if(!com)seen.add(k.word);
+  });
+  update();
+  const miss=KW.filter(k=>k.mode!=='opt'&&active(k)&&!seen.has(k.word)).map(k=>k.word);
+  let m='File loaded.';if(unknown.length)m+=' Not recognized: '+unknown.join(', ')+'.';if(miss.length)m+=' Missing from file (example values shown): '+miss.join(', ')+'.';
+  $('loadmsg').textContent=m;
+}
+$('loadbtn').onclick=()=>$('loadfile').click();
+$('loadfile').onchange=e=>{const f=e.target.files[0];if(!f)return;$('outname').value=f.name;const r=new FileReader();r.onload=()=>loadText(r.result);r.readAsText(f);e.target.value='';};
+window.dvcLoadText=loadText;
+
+$('outname').value=S.outName;
+$('crlf').checked=/Win/i.test(navigator.platform||navigator.userAgent);
+update();
+})();
+)FORM";
+
+} // namespace
+
+/******************************************************************************/
+int InputRead::print_input_form_html(std::ofstream &file)
+{
+	std::ostringstream ver;
+	ver << VERSION;
+
+	// ---------- keyword data, embedded as JSON ----------
+	std::ostringstream js;
+	js << "{\"outName\":\"dvc_input.txt\",\"pools\":[";
+	for (int p = 0; p < num_manual_pools; p++) {
+		if (p) js << ",";
+		js << "{\"id\":" << form_json_str(manual_pools[p].id)
+		   << ",\"title\":" << form_json_str(manual_pools[p].title)
+		   << ",\"desc\":" << form_json_str(manual_pools[p].desc) << "}";
+	}
+	js << "],\"keywords\":[";
+	bool first = true;
+	for (int p = 0; p < num_manual_pools; p++) {
+		for (size_t i = 0; i < manual.size(); i++) {
+			const key_word_help &k = manual[i];
+			if (k.pool != manual_pools[p].id) continue;
+
+			std::string mode = (k.reqd == "yes") ? "req" : (k.reqd == "no") ? "opt" : "cond";
+			if (mode == "cond" && k.form_cond_kw.empty()) mode = "req";	// no machine-readable condition: treat as required
+
+			std::string hint = k.hint.substr(0, k.hint.find('\n'));		// written verbatim, as in "dvc example"
+			std::string summary = html_trim(hint.substr(std::min(hint.size(), hint.find_first_not_of("# "))));
+
+			js << (first ? "" : ",\n")
+			   << "{\"word\":" << form_json_str(k.word)
+			   << ",\"pool\":" << form_json_str(k.pool)
+			   << ",\"type\":" << form_json_str(k.form_type)
+			   << ",\"n\":" << (k.form_nval < 1 ? 1 : k.form_nval)
+			   << ",\"exam\":" << form_json_str(html_trim(k.exam))
+			   << ",\"hint\":" << form_json_str(hint)
+			   << ",\"summary\":" << form_json_str(summary)
+			   << ",\"good\":" << form_json_str(k.good)
+			   << ",\"reqd\":" << form_json_str(k.reqd)
+			   << ",\"dflt\":" << form_json_str(k.dflt == "none" ? "" : k.dflt)
+			   << ",\"mode\":\"" << mode << "\""
+			   << ",\"opts\":" << form_json_arr(k.form_opts)
+			   << ",\"min\":" << form_json_num(k.form_has_min, k.form_min)
+			   << ",\"max\":" << form_json_num(k.form_has_max, k.form_max)
+			   << ",\"lim\":" << form_json_arr(k.form_lim_kw)
+			   << ",\"condK\":" << form_json_str(k.form_cond_kw)
+			   << ",\"condV\":" << form_json_arr(k.form_cond_vals)
+			   << ",\"help\":" << form_json_str(help_to_html(k.help, k.word)) << "}";
+			first = false;
+		}
+	}
+	js << "]}";
+
+	// ---------- page ----------
+	file << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+	        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+	        "<title>DVC Input File Builder " << html_escape(ver.str()) << "</title>\n"
+	        "<style>" << form_css << "</style>\n</head>\n<body>\n"
+	        "<header><div><h1>DVC Input File Builder</h1>"
+	        "<div class=\"sub\">Version " << html_escape(ver.str())
+	     << " &middot; fill in the form, then save the <code>dvc_input</code> file and run <code>dvc &lt;file&gt;</code></div></div>\n"
+	        "<div class=\"bar\">"
+	        "<button type=\"button\" id=\"loadbtn\" title=\"Open an existing dvc_input file to edit it\">Load existing file&hellip;</button>"
+	        "<input type=\"file\" id=\"loadfile\" accept=\".txt,.in,.inp,text/plain\" style=\"display:none\">"
+	        "<button type=\"button\" id=\"reset\">Reset to example values</button>"
+	        "</div></header>\n<main>\n"
+	        "<form id=\"form\" autocomplete=\"off\" onsubmit=\"return false\"><div class=\"small\" id=\"loadmsg\" style=\"margin-bottom:8px\"></div></form>\n"
+	        "<aside><div class=\"card\">"
+	        "<div class=\"bar\"><label class=\"small\" for=\"outname\">File name</label><input id=\"outname\" type=\"text\" spellcheck=\"false\">"
+	        "<button type=\"button\" class=\"primary\" id=\"save\">Save input file</button>"
+	        "<button type=\"button\" id=\"copy\">Copy text</button></div>"
+	        "<div class=\"bar\" style=\"margin-top:8px\"><label class=\"small\"><input type=\"checkbox\" id=\"crlf\"> Windows line endings (CRLF)</label></div>"
+	        "<p id=\"status\"></p><pre id=\"preview\"></pre>"
+	        "<div class=\"small\">Optional keywords left unchecked, and conditional keywords that are not needed, "
+	        "are written with a leading <code>#</code> so dvc ignores them.</div>"
+	        "</div></aside>\n</main>\n"
+	        "<script type=\"application/json\" id=\"spec\">" << js.str() << "</script>\n"
+	        "<script>" << form_js << "</script>\n</body>\n</html>\n";
 
 	return 1;
 }
@@ -1044,13 +2334,13 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << kwh_cor_fname.word << "\t" << run->cor_fname << "\n";
 	sta_file << kwh_pts_fname.word << "\t" << run->pts_fname << "\n";
 	sta_file << kwh_out_fname.word << "\t" << run->out_fname << "\n";
+	sta_file << kwh_num_points_to_process.word << "\t" << run->num_points_to_process << "\n";
 	sta_file << "\n";
 
 	// vox_data
 
 	sta_file << kwh_vol_bit_depth.word << "\t" << run->vol_bit_depth << "\n";
-	if (run->vol_bit_depth != 8)
-	{
+	if (run->vol_bit_depth != 8) {
 		sta_file << kwh_vol_endian.word << "\t" << run->vol_endian << "\n";
 	}
 	sta_file << kwh_vol_hdr_lngth.word << "\t" << run->vol_hdr_lngth << "\n";
@@ -1064,36 +2354,29 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << kwh_subvol_geom.word << "\t" << run->subvol_geom << "\n";
 	sta_file << kwh_subvol_size.word << "\t" << run->subvol_size << "\n";
 	sta_file << kwh_subvol_npts.word << "\t" << run->subvol_npts << "\n";
-	sta_file << "\n";
-
-	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
-	if(run->subvol_thresh == "on")
-	{
-		sta_file << kwh_gray_thresh_min.word << "\t" << run->gray_thresh_min  << "\n";
-		sta_file << kwh_gray_thresh_max.word << "\t" << run->gray_thresh_max  << "\n";
-		sta_file << kwh_min_vol_fract.word << "\t" << run->min_vol_fract << "\n";
-	}
+		sta_file << kwh_subvol_aspect.word << "\t" << run->subvol_aspect[0] << "\t" << run->subvol_aspect[1] << "\t" << run->subvol_aspect[2] << "\n";
 	sta_file << "\n";
 
 	// opt_mthd
 
-	sta_file << kwh_disp_max.word << "\t"<< run->disp_max << "\n";
 	sta_file << kwh_num_srch_dof.word << "\t"<< run->num_srch_dof << "\n";
 	sta_file << kwh_obj_function.word << "\t"<< run->obj_function << "\n";
 	sta_file << kwh_interp_type.word << "\t"<< run->interp_type << "\n";
+	sta_file << kwh_start_position.word << "\t" << run->start_position[0] << "\t" << run->start_position[1] << "\t" << run->start_position[2] << "\n";
+	sta_file << kwh_start_estimate.word << "\t" << run->start_estimate[0] << "\t" << run->start_estimate[1] << "\t" << run->start_estimate[2] << "\n";
+	sta_file << kwh_step_max.word << "\t"<< run->step_max << "\n";
+
 	sta_file << "\n";
 
 	// opt_tune
 
-	sta_file << kwh_rigid_trans.word << "\t" << run->rigid_trans[0] << "\t" << run->rigid_trans[1] << "\t" << run->rigid_trans[2] << "\n";
-	sta_file << kwh_basin_radius.word << "\t" << run->basin_radius << "\n";
-	sta_file << kwh_subvol_aspect.word << "\t" << run->subvol_aspect[0] << "\t" << run->subvol_aspect[1] << "\t" << run->subvol_aspect[2] << "\n";
+	sta_file << kwh_cost_tol.word << "\t"<< run->cost_tol << "\n";
+	sta_file << kwh_step_tol.word << "\t"<< run->step_tol << "\n";
+	sta_file << kwh_max_iter.word << "\t"<< run->max_iter << "\n";
+
+	sta_file << "\n ### end of input file echo \n";
 
 	// point cloud and version information
-
-	sta_file << "\n";
-	sta_file << "### end of input file echo";
-	sta_file << "\n";
 
 	sta_file << "\n" << "Point Cloud contains " << search_num_pts << " points\n\n";
 	sta_file << "\t" << "bounding box min = [";
@@ -1104,6 +2387,17 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << "\n" << "running under dvc code version: " << VERSION << "\n\n";
 
 	return 1;
+
+	/*
+	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
+	if(run->subvol_thresh == "on")
+	{
+		sta_file << kwh_gray_thresh_min.word << "\t" << run->gray_thresh_min  << "\n";
+		sta_file << kwh_gray_thresh_max.word << "\t" << run->gray_thresh_max  << "\n";
+		sta_file << kwh_min_vol_fract.word << "\t" << run->min_vol_fract << "\n";
+	}
+	sta_file << "\n";
+	*/
 }
 /******************************************************************************/
 int InputRead::append_time_date(std::string fname, std::string label, char* dt)
@@ -1166,16 +2460,24 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 {
 	std::ofstream res_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
 
+	res_file << std::fixed << std::setprecision(0);
 	res_file << n;
 
+	res_file << std::fixed << std::setprecision(3);
 	res_file << "\t" << pt.x() << "\t" << pt.y() << "\t" << pt.z();
 
+	res_file << std::fixed << std::setprecision(0);
 	res_file << "\t" << status;
 
+	res_file << std::fixed << std::setprecision(6);
 	res_file << "\t" << obj_min;
 
 	res_file << std::fixed << std::setprecision(6);
-
+	// this prints just the dispalcements
+	for (int i=0; i<3; i++) {
+		res_file << "\t" << result[i];
+	} 
+	
 	// this prints full search params, disp, rotation, strain if used
 	/*
 	for (int i=0; i<result.size(); i++)
@@ -1183,12 +2485,6 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 		res_file << "\t" << result[i];
 	} 
 	*/
-
-	// this prints just the dispalcements
-	for (int i=0; i<3; i++)
-	{
-		res_file << "\t" << result[i];
-	} 
 
 	res_file << "\n";
 
@@ -1247,28 +2543,107 @@ std::string InputRead::limits_to_string(std::vector<int> val)
 	return std_str;
 }
 /******************************************************************************/
+/*  Keyword line parsing                                                      */
+/*                                                                            */
+/*  get_line_with_keyword() returns a cleaned keyword line:                   */
+/*    - the keyword must be the first word on the line (exact match)          */
+/*    - lines whose first non-blank character is # are comments               */
+/*    - everything from the first # onward is removed (the ### hints)         */
+/*    - stray \r and \n characters (CRLF files) and a UTF-8 byte order mark  */
+/*      are removed                                                           */
+/*  so the parse_line_* functions only ever see "keyword  value(s)".          */
+/*                                                                            */
+/*  Every parse_line_* function then checks that:                             */
+/*    - each expected value is present and reads as the expected type         */
+/*    - nothing else follows the values (catches "4008abc", "5.5" for an int, */
+/*      a missing or an extra x/y/z component, etc.)                          */
+/*  Previously a missing value left the variable uninitialized, which could   */
+/*  pass or fail depending on whatever was in memory (intermittent errors).   */
+/******************************************************************************/
+namespace {
+
+const char *kwl_ws = " \t\r\n";
+
+// remove leading/trailing blanks, tabs, CR and LF
+std::string kwl_trim(const std::string &s)
+{
+	size_t b = s.find_first_not_of(kwl_ws);
+	if (b == std::string::npos) return "";
+	size_t e = s.find_last_not_of(kwl_ws);
+	return s.substr(b, e - b + 1);
+}
+
+// true if the stream holds nothing more than whitespace
+bool kwl_at_end(std::istringstream &ss)
+{
+	std::string extra;
+	return !(ss >> extra);
+}
+
+// standard error report for a keyword line with bad parameters
+void kwl_report(const key_word_help &kwh, const std::string &keyline, const std::string &why)
+{
+	std::cout << std::endl << "Input Error: " << kwh.word << " contains an invalid parameter";
+	if (!why.empty()) std::cout << " (" << why << ")";
+	std::cout << "." << std::endl;
+	std::cout << "   line read:  " << kwl_trim(keyline) << std::endl;
+	std::cout << "   expected:   " << kwh.good << std::endl << std::endl;
+}
+
+// the file name after the keyword: everything up to the next tab (or end of line),
+// so names containing spaces work when separated by tabs; works with spaces too
+std::string kwl_file_name(const std::string &keyline, const std::string &keyword)
+{
+	size_t b = keyline.find(keyword);					// keyword is first on the line
+	if (b == std::string::npos) return "";
+	b = keyline.find_first_not_of(kwl_ws, b + keyword.size());
+	if (b == std::string::npos) return "";
+	size_t e = keyline.find('\t', b);
+	return kwl_trim(keyline.substr(b, e == std::string::npos ? std::string::npos : e - b));
+}
+
+} // namespace
+
+/******************************************************************************/
 int InputRead::get_line_with_keyword(std::string keyword, std::string &keyline, bool req)
-// with the input file already open, look for line containing keyword
-// ignore any input file lines starting with a # character, indicating comment
+// with the input file already open, look for the line that starts with keyword
+// lines starting with # (after any blanks) are comments; text after a # is ignored
 {
 	std::string inp_line;		// getline loads into here
 
 	input_file.clear();
 	input_file.seekg(0, std::ios::beg);
 
+	bool first_line = true;
 	while (getline(input_file, inp_line, inp_eol))
 	{
-		inp_line += inp_term;
-
-		if (inp_line[0]!='#')	// ignore any lines that start with this character
-		{
-			if (inp_line.find(keyword)!=std::string::npos)	// passes if in_line contains keyword
-			{
-				keyline = inp_line;
-				return 1;
-			}
+		// UTF-8 byte order mark written by some Windows editors
+		if (first_line) {
+			size_t bom = inp_line.find("\xEF\xBB\xBF");
+			if (bom != std::string::npos && inp_line.find_first_not_of("\r\n") == bom) inp_line.erase(bom, 3);
 		}
+		first_line = false;
 
+		// strip comments, including the ### hints that follow parameter values
+		size_t hash = inp_line.find('#');
+		if (hash != std::string::npos) inp_line.erase(hash);
+
+		// remove any \r or \n left over from line endings: check_eol() selects '\r' for
+		// Windows (CRLF) files, so each line then begins with the '\n' of the previous one
+		inp_line.erase(std::remove_if(inp_line.begin(), inp_line.end(),
+		                              [](char c) { return c == '\r' || c == '\n'; }), inp_line.end());
+
+		// the keyword must be the first word on the line (an exact match), so a keyword
+		// mentioned elsewhere on another line is never mistaken for its own line
+		size_t b = inp_line.find_first_not_of(" \t");
+		if (b == std::string::npos) continue;		// blank or comment-only line
+		size_t e = inp_line.find_first_of(" \t", b);
+		if (e == std::string::npos) e = inp_line.size();
+		if (e - b == keyword.size() && inp_line.compare(b, e - b, keyword) == 0)
+		{
+			keyline = inp_line.substr(b);
+			return 1;
+		}
 	}
 
 	if (req) std::cout << "\n\nInput Error: keyword '" << keyword << "' not found in input file.\n\n";
@@ -1286,19 +2661,13 @@ int InputRead::parse_line_old_file(key_word_help kwh, std::string &arg1, unsigne
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
-	std::string word;
-	std::string str1;
+	std::string str1 = kwl_file_name(keyline, kwh.word);
+	if (str1.empty()) {
+		kwl_report(kwh, keyline, "no file name given");
+		return param_invalid;
+	}
 
-	io_keyline.str(keyline);
-
-	while (word == "")
-		getline(io_keyline, word, '\t');
-
-	while (str1 == "")
-		getline(io_keyline, str1, '\t');
-
-	std::ifstream old_file(str1.c_str());
+	std::ifstream old_file(str1.c_str(), std::ios::binary);
 
 	if (old_file.good())
 	{
@@ -1309,8 +2678,8 @@ int InputRead::parse_line_old_file(key_word_help kwh, std::string &arg1, unsigne
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " cannot find file: " << str1 << "\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	std::cout << std::endl << "Input Error: " << kwh.word << " cannot find file: " << str1 << std::endl;
+	std::cout << kwh.hint << std::endl << std::endl;
 
 	return param_invalid;
 }
@@ -1324,17 +2693,11 @@ int InputRead::parse_line_new_file(key_word_help kwh, std::string &arg1, bool re
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
-	std::string word;
-	std::string str1;
-
-	io_keyline.str(keyline);
-
-	while (word == "")
-		getline(io_keyline, word, '\t');
-
-	while(str1=="")
-		getline(io_keyline, str1, '\t');
+	std::string str1 = kwl_file_name(keyline, kwh.word);
+	if (str1.empty()) {
+		kwl_report(kwh, keyline, "no file name given");
+		return param_invalid;
+	}
 
 	std::ofstream new_file(str1.c_str());
 
@@ -1346,8 +2709,7 @@ int InputRead::parse_line_new_file(key_word_help kwh, std::string &arg1, bool re
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "cannot create a file with this name");
 
 	return param_invalid;
 }
@@ -1360,15 +2722,16 @@ int InputRead::parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int 
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
-	double int1;
+	int int1 = 0;
 
-	io_keyline.str(keyline);
+	if (!(io_keyline >> word >> int1) || !kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "one whole number expected");
+		return param_invalid;
+	}
 
-	io_keyline >> word >> int1;
-
-	for (int i=0; i<vals.size(); i++)
+	for (size_t i=0; i<vals.size(); i++)
 	{
 		if (int1 == vals[i])
 		{
@@ -1377,8 +2740,7 @@ int InputRead::parse_line_vec_val(key_word_help kwh, std::vector<int> vals, int 
 		}
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "not one of the allowed values");
 
 	return param_invalid;
 }
@@ -1391,15 +2753,16 @@ int InputRead::parse_line_vec_val(key_word_help kwh, std::vector<std::string> va
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
 	std::string str1;
 
-	io_keyline.str(keyline);
+	if (!(io_keyline >> word >> str1) || !kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "one value expected");
+		return param_invalid;
+	}
 
-	io_keyline >> word >> str1;
-
-	for (int i=0; i<vals.size(); i++)
+	for (size_t i=0; i<vals.size(); i++)
 	{
 		if (str1 == vals[i])
 		{
@@ -1408,8 +2771,7 @@ int InputRead::parse_line_vec_val(key_word_help kwh, std::vector<std::string> va
 		}
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "not one of the allowed values");
 
 	return param_invalid;
 }
@@ -1422,13 +2784,14 @@ int InputRead::parse_line_min_max(key_word_help kwh, int min, int max, int &arg1
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
-	int int1;
+	int int1 = 0;
 
-	io_keyline.str(keyline);
-
-	io_keyline >> word >> int1;
+	if (!(io_keyline >> word >> int1) || !kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "one whole number expected");
+		return param_invalid;
+	}
 
 	if ((int1 >= min) && (int1 <= max))
 	{
@@ -1436,56 +2799,56 @@ int InputRead::parse_line_min_max(key_word_help kwh, int min, int max, int &arg1
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "out of range");
 
 	return param_invalid;
 }
 /******************************************************************************/
 int InputRead::parse_line_min_max(key_word_help kwh, unsigned int min, unsigned int max, unsigned int& arg1, bool req)
-// check that int argument is between min and max inclusive
+// check that unsigned int argument is between min and max inclusive
 {
 	std::string keyline;
 
 	if (!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
-	unsigned int int1;
+	long long int1 = 0;		// read wider and signed: ">> unsigned" silently wraps "-5" to a huge value
 
-	io_keyline.str(keyline);
+	if (!(io_keyline >> word >> int1) || !kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "one whole number expected");
+		return param_invalid;
+	}
 
-	io_keyline >> word >> int1;
-
-	if ((int1 >= min) && (int1 <= max))
+	if ((int1 >= (long long)min) && (int1 <= (long long)max))
 	{
-		arg1 = int1;
+		arg1 = (unsigned int)int1;
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "out of range");
 
 	return param_invalid;
 }
 
 /******************************************************************************/
 int InputRead::parse_line_min_max(key_word_help kwh, double min, double max, double &arg1, bool req)
-// check that int argument is between min and max inclusive
+// check that double argument is between min and max inclusive
 {
 	std::string keyline;
 
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
-	double dbl1;
+	double dbl1 = 0.0;
 
-	io_keyline.str(keyline);
-
-	io_keyline >> word >> dbl1;
+	if (!(io_keyline >> word >> dbl1) || !kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "one number expected");
+		return param_invalid;
+	}
 
 	if ((dbl1 >= min) && (dbl1 <= max))
 	{
@@ -1493,8 +2856,7 @@ int InputRead::parse_line_min_max(key_word_help kwh, double min, double max, dou
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "out of range");
 
 	return param_invalid;
 }
@@ -1508,13 +2870,14 @@ int InputRead::parse_line_min_max_rel(key_word_help kwh, double min, double max,
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
-	double doub1,doub2;
+	double doub1 = 0.0, doub2 = 0.0;
 
-	io_keyline.str(keyline);
-
-	io_keyline >> word >> doub1 >> doub2;
+	if (!(io_keyline >> word >> doub1 >> doub2) || !kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "two numbers expected");
+		return param_invalid;
+	}
 
 	if ((doub1 >= min) && (doub1 <= max) && (doub2 >= min) && (doub2 <= max) && (doub2 > doub1))
 	{
@@ -1523,71 +2886,80 @@ int InputRead::parse_line_min_max_rel(key_word_help kwh, double min, double max,
 		return 1;
 	}
 
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
+	kwl_report(kwh, keyline, "out of range, or second value not greater than first");
 
 	return param_invalid;
 }
 /******************************************************************************/
 int InputRead::parse_line_dvect(key_word_help kwh, std::vector<double> &vect_lim, std::vector<double> &vect_val, bool req)
+// vect_val.size() doubles, each with |value| <= |vect_lim[i]|
+// vect_val is only changed if every value is good
 {
 	std::string keyline;
 
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
 	std::vector<double> vect(vect_val.size());
 
-	io_keyline.str(keyline);
-
 	io_keyline >> word;
 
-	int ok = 0;
-	for (int i=0; i<vect.size(); i++) {
-		io_keyline >> vect[i];
-		if (fabs(vect[i])>fabs(vect_lim[i])) break;
-		vect_val[i] = vect[i];
-		ok += 1;
+	for (size_t i=0; i<vect.size(); i++) {
+		if (!(io_keyline >> vect[i])) {
+			kwl_report(kwh, keyline, std::to_string(vect.size()) + " numbers expected");
+			return param_invalid;
+		}
+	}
+	if (!kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "exactly " + std::to_string(vect.size()) + " numbers expected");
+		return param_invalid;
+	}
+	for (size_t i=0; i<vect.size(); i++) {
+		if (fabs(vect[i]) > fabs(vect_lim[i])) {
+			kwl_report(kwh, keyline, "value outside the volume dimensions");
+			return param_invalid;
+		}
 	}
 
-	if (ok == vect.size()) return 1;
-
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
-
-	return param_invalid;
+	vect_val = vect;
+	return 1;
 }
 /******************************************************************************/
 int InputRead::parse_line_dvect(key_word_help kwh, double min, double max, std::vector<double> &vect_val, bool req)
+// vect_val.size() doubles, each between min and max inclusive
+// vect_val is only changed if every value is good
 {
 	std::string keyline;
 
 	if(!get_line_with_keyword(kwh.word, keyline, req))
 		return keywd_missing;
 
-	std::istringstream io_keyline;
+	std::istringstream io_keyline(keyline);
 	std::string word;
 	std::vector<double> vect(vect_val.size());
 
-	io_keyline.str(keyline);
-
 	io_keyline >> word;
 
-	int ok = 0;
-	for (int i=0; i<vect.size(); i++) {
-		io_keyline >> vect[i];
-		if ((vect[i]<min)||(vect[i]>max)) break;
-		vect_val[i] = vect[i];
-		ok += 1;
+	for (size_t i=0; i<vect.size(); i++) {
+		if (!(io_keyline >> vect[i])) {
+			kwl_report(kwh, keyline, std::to_string(vect.size()) + " numbers expected");
+			return param_invalid;
+		}
+	}
+	if (!kwl_at_end(io_keyline)) {
+		kwl_report(kwh, keyline, "exactly " + std::to_string(vect.size()) + " numbers expected");
+		return param_invalid;
+	}
+	for (size_t i=0; i<vect.size(); i++) {
+		if ((vect[i] < min) || (vect[i] > max)) {
+			kwl_report(kwh, keyline, "out of range");
+			return param_invalid;
+		}
 	}
 
-	if (ok == vect.size()) return 1;
-
-	std::cout << "\nInput Error: " << kwh.word << " contains an invalid parameter.\n\n";
-	std::cout << kwh.hint << "\n\n" << kwh.help;
-
-	return param_invalid;
+	vect_val = vect;
+	return 1;
 }
 /******************************************************************************/
