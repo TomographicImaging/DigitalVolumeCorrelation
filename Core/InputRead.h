@@ -172,7 +172,7 @@ public:
 	const int vol_hdr_min = 0;
 	const int vol_hdr_max = 4096;
 
-	const int vol_dim_min = 100;
+	const int vol_dim_min = 10;
 	const int vol_dim_max = 8000;
 
 	const int subvol_size_min = 10;

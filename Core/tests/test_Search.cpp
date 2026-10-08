@@ -15,7 +15,7 @@ RunControl make_test_run_control(
     int bspline_order,
     int ndof = 6)
 {
-    RunControl rc;
+    RunControl rc{};
     rc.ref_fname = ref_file;
     rc.cor_fname = cor_file;
     rc.vol_wide = nx;
@@ -38,6 +38,9 @@ RunControl make_test_run_control(
     rc.int_typ = bspline ? (bspline_order == 3 ? tri_bspline_3 :
                            (bspline_order == 5 ? tri_bspline_5 : tri_bspline_7))
                          : tricubic;
+    rc.max_iter = 20;
+    rc.cost_tol = 1e-6;
+    rc.step_tol = 1e-4;
     return rc;
 }
 
@@ -47,10 +50,10 @@ void test_search_construction() {
 
     // Create 15x15x15 synthetic volumes
     write_synthetic_raw_volume(ref_file, 15, 15, 15, 0, 1, [](int x, int y, int z) {
-        return 50.0 + x + y + z;
+        return 128.0 + 20.0 * sin(x*0.5) + 20.0 * cos(y*0.5) + 20.0 * sin(z*0.5);
     });
     write_synthetic_raw_volume(cor_file, 15, 15, 15, 0, 1, [](int x, int y, int z) {
-        return 50.0 + x + y + z;
+        return 128.0 + 20.0 * sin(x*0.5) + 20.0 * cos(y*0.5) + 20.0 * sin(z*0.5);
     });
 
     // Test B-spline construction with orders 3, 5, 7
@@ -153,10 +156,10 @@ void test_search_trgrid_and_map_objective() {
     std::string cor_file = "tmp_search_cor3.raw";
 
     write_synthetic_raw_volume(ref_file, nx, ny, nz, 0, 1, [](int x, int y, int z) {
-        return 30.0 + x + y + z;
+        return 128.0 + 20.0 * sin(x*0.5) + 20.0 * cos(y*0.5) + 20.0 * sin(z*0.5);
     });
     write_synthetic_raw_volume(cor_file, nx, ny, nz, 0, 1, [](int x, int y, int z) {
-        return 30.0 + x + y + z;
+        return 128.0 + 20.0 * sin(x*0.5) + 20.0 * cos(y*0.5) + 20.0 * sin(z*0.5);
     });
 
     RunControl rc = make_test_run_control(ref_file, cor_file, nx, ny, nz, ZNSSD, true, 3, 3);
@@ -194,15 +197,16 @@ void test_search_trgrid_and_map_objective() {
 }
 
 void test_search_process_point_bspline() {
+    std::cout << "test_search_process_point_bspline running" << std::endl;
     const int nx = 30, ny = 30, nz = 30;
     std::string ref_file = "tmp_search_ref4.raw";
     std::string cor_file = "tmp_search_cor4.raw";
 
     write_synthetic_raw_volume(ref_file, nx, ny, nz, 0, 1, [](int x, int y, int z) {
-        return 30.0 + x + y + z;
+        return 128.0 + 20.0 * sin(x*0.5) + 20.0 * cos(y*0.5) + 20.0 * sin(z*0.5);
     });
     write_synthetic_raw_volume(cor_file, nx, ny, nz, 0, 1, [](int x, int y, int z) {
-        return 30.0 + x + y + z;
+        return 128.0 + 20.0 * sin(x*0.5) + 20.0 * cos(y*0.5) + 20.0 * sin(z*0.5);
     });
 
     RunControl rc = make_test_run_control(ref_file, cor_file, nx, ny, nz, ZNSSD, true, 3, 3);
@@ -227,6 +231,7 @@ void test_search_process_point_bspline() {
 }
 
 void test_search_stream_operator() {
+    std::cout << "test_search_stream_operator running" << std::endl;
     std::string ref_file = "tmp_search_ref_stream.raw";
     std::string cor_file = "tmp_search_cor_stream.raw";
 
@@ -240,6 +245,7 @@ void test_search_stream_operator() {
     for (auto obj : objs) {
         for (auto interp : interps) {
             for (auto geo : geos) {
+                std::cout << "interp: " << interp << " geo: " << geo << std::endl;
                 RunControl rc = make_test_run_control(ref_file, cor_file, 15, 15, 15, obj, false, 0);
                 rc.int_typ = interp;
                 rc.sub_geo = geo;
@@ -248,11 +254,14 @@ void test_search_stream_operator() {
                 else if (interp == tri_bspline_7) { rc.bspline = true; rc.bspline_order = 7; }
                 else { rc.bspline = false; rc.bspline_order = 0; }
 
+                std::cout << "  Creating Search..." << std::endl;
                 Search s(&rc);
+                std::cout << "  Streaming..." << std::endl;
                 std::ostringstream oss;
                 oss << s;
                 std::string str = oss.str();
                 ASSERT_TRUE(str.find("Search settings:") != std::string::npos);
+                std::cout << "  Done." << std::endl;
             }
         }
     }
@@ -262,11 +271,12 @@ void test_search_stream_operator() {
 }
 
 void test_search_pt_setup_interp_types() {
+    std::cout << "test_search_pt_setup_interp_types running" << std::endl;
     std::string ref_file = "tmp_search_ref_interp.raw";
     std::string cor_file = "tmp_search_cor_interp.raw";
 
-    write_synthetic_raw_volume(ref_file, 20, 20, 20, 0, 1, [](int x, int y, int z) { return 30.0 + x; });
-    write_synthetic_raw_volume(cor_file, 20, 20, 20, 0, 1, [](int x, int y, int z) { return 30.0 + x; });
+    write_synthetic_raw_volume(ref_file, 20, 20, 20, 0, 1, [](int x, int y, int z) { return 128.0 + 20.0 * sin(x*0.5); });
+    write_synthetic_raw_volume(cor_file, 20, 20, 20, 0, 1, [](int x, int y, int z) { return 128.0 + 20.0 * sin(x*0.5); });
 
     std::vector<Interp_Type> types = {trilinear, tricubic, tri_bspline_3};
     for (auto ityp : types) {
@@ -295,6 +305,8 @@ int main() {
     test_search_jacobian_and_obj_fcns();
     test_search_trgrid_and_map_objective();
     test_search_process_point_bspline();
+    test_search_stream_operator();
+    test_search_pt_setup_interp_types();
 
     TEST_RUNNER_SUMMARY();
 }

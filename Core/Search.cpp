@@ -24,6 +24,7 @@ Author(s): Brian Bay (OSU)
 Search::Search(RunControl *run)
 {
 	rc = run;	// gives all member functions of Search direct access to RunControl without passing
+	fcld = nullptr; // Initialize to prevent segfault in destructor if process_point is not called
 
 	bytes_per = rc->vol_bit_depth/8;
 	subv_rad = (rc->subvol_size)/2.0;	// easier to use than subvol_size

@@ -115,8 +115,8 @@ void test_staleness_and_interpolation() {
     Point vox_max(nx, ny, nz);
     BoundBox vox_box(vox_min, vox_max);
 
-    Point reg_min(2.0, 2.0, 2.0);
-    Point reg_max(28.0, 28.0, 28.0);
+    Point reg_min(4.0, 4.0, 4.0);
+    Point reg_max(26.0, 26.0, 26.0);
     BoundBox region(reg_min, reg_max);
 
     // Construct Interpolate with order 7 (can also test 3 and 5)
