@@ -30,6 +30,7 @@ Author(s): Brian Bay (OSU)
 #include <sstream>
 #include <limits>
 #include <cstdlib>
+#include <ctime>
 
 // for new point cloud read code
 #include <cerrno>
