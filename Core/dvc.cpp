@@ -259,13 +259,12 @@ int main(int argc, char *argv[])
 		// this is the index of the point being processed
 		int n = data.order[i];
 
-		std::cout << i << "/" << N << " " ;
-		std::cout << data.labels[n] << "\t";
-		std::cout << std::setprecision(3) << std::fixed;
-		std::cout << data.points[n].x() << " ";
-		std::cout << data.points[n].y() << " ";
-		std::cout << data.points[n].z() << " ";
-		std::cout << "\t";
+		std::cout << i << "/" << N << "  " ;
+		std::cout << data.labels[n] << "  ";
+		std::cout << std::setprecision(2) << std::fixed;
+		std::cout << "x= " << data.points[n].x() << " ";
+		std::cout << "y= " << data.points[n].y() << " ";
+		std::cout << "z= " << data.points[n].z() << " ";
 
 		try
 		{
@@ -281,12 +280,14 @@ int main(int argc, char *argv[])
 
 			// this outputs in search order, may want to reshuffle at the end
 			in.append_result(run.res_fname, data.labels[n], data.points[n], point_good, optimize.obj_min, optimize.par_min);
-			std::cout << "Point_Good (" << status_txt << optimize.iter_stats.nits << ")" << "\t";
+			std::cout << "Point_Good (" << status_txt << optimize.iter_stats.nits << ")";
+			if (optimize.iter_stats.nits > 9) {std::cout << " ";} else {std::cout << "  ";};
 			std::cout << std::setprecision(6);
-			std::cout << "obj= " << optimize.obj_min;
-			std::cout << std::setw(12) << "dx= " << optimize.par_min[0];
-			std::cout << std::setw(12) << "dy= " << optimize.par_min[1];
-			std::cout << std::setw(12) << "dz= " << optimize.par_min[2];
+			std::cout << "obj= " << optimize.obj_min << "  ";
+			std::cout << std::setprecision(2) << std::fixed;
+			std::cout << "u= " << optimize.par_min[0] << " ";
+			std::cout << "v= " << optimize.par_min[1] << " ";
+			std::cout << "w= " << optimize.par_min[2] << " ";
 
 			// put results into record for this point
 			data.results[trg][n].status = point_good;

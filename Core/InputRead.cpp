@@ -1498,8 +1498,8 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "      - Convg_Fail = maximum iterations exceeded; consider increasing subvol_size &/or npts.\n";
 	file << "\n";
 	file << "   - The magnitude of the objective function value at the end of the search is listed as obj=.\n";
-	file << "      - For obj_function = sad, ssd, and zssd the value is relative, depending on subvolume size and pixel values.\n";
-	file << "      - For obj_function = nssd and znssd the value is scaled between 0 and 2, with zero a perfect match.\n";
+	file << "      - For obj_function = ssd and zssd the value is relative, depending on subvol_npts and voxel values.\n";
+	file << "      - For obj_function = nssd and znssd the value is scaled between 0 and 1, with zero a perfect match.\n";
 
 	file << "   - The point [x,y,z] displacement is listed next for successful searches.\n";
 	file << "\n";
@@ -1512,18 +1512,24 @@ int InputRead::print_manual_output(std::ofstream &file)
 	file << "   - The DISPLACEMENT file (.disp) contains: \n";
 	file << "      - A tab-delimited text file of the dvc results.\n";
 	file << "      - A header line appears first identifying columns:\n\n";
-	file << "        n x y z status objmin u v w <phi the psi> <exx eyy ezz exy eyz exz>\n\n";
-	file << "      - n = the point identifier\n";
-	file << "      - x y z = the point location within the reference volume\n";
-	file << "      - status = the search outcome: 0 = successful (no error), -1 = Range_Fail, -2 = Convg_Fail\n";
-	file << "      - objmin = the objective function magnitude at the end of the search\n";
-	file << "      - u v w = the point displacement: [location in target volume] - [location in reference volume]\n";
-	file << "      - <phi the psi> = subvolume rotation, if num_srch_dof = 6 or 12\n";
-	file << "      - <exx eyy ezz exy eyz exz> = subvolume strain, if num_srch_dof = 12\n";
+	file << "        n x y z status objmin u v w\n\n";
+	file << "      - n = point label\n";
+	file << "      - x y z = point location within the reference volume\n";
+	file << "      - status = search outcome: 0 = successful (no error), -1 = Range_Fail, -2 = Convg_Fail\n";
+	file << "      - objmin = residual objective function magnitude at the end of the search\n";
+	file << "      - u v w = point displacement: [location in target volume] - [location in reference volume]\n";
 	file << "\n";
-	file << "   - The program does not currently calculate strain, but that is planned for upcoming releases \n";
-	file << "      - MATLAB functions griddata, meshgrid, and gradient are useful for strain calculation.\n";
-	file << "      - Displacement data imported into finite element analysis codes is also useful for strain calculation.\n";
+	file << "   - In general DVC is run with 6 or 12 search degrees of freedom.\n";
+	file << "      - These settings utilize subvolume rotation and strain information, but values are not included in .disp.\n";
+	file << "      - More reliable strain and rotation values reguire evaluation of point neighborhoods.\n";
+	file << "      - This allows adjustment of neighborhood size and generates more accurate displacement gradient information.\n";
+	file << "\n";
+	file << "   - The companion 'strain' program manages post-processing of 'dvc' .disp output files. \n";
+	file << "      - The basis of analysis is fitting 3D polynomial functions to point neighborhoods.\n";
+	file << "      - Gradients of the best-fit polynomials are used to form displacement gradient tensors.\n";
+	file << "      - Engineering and Lagrangian strain tensors and displacement gradient tensors are avaialble for output.\n";
+	file << "      - The analysis approach is useful for typical 'compact' point clouds with good connectivity.\n";
+	file << "      - Point clouds based on complex microstructures or fibre arrangements may need other post-processing methods.\n";
 	file << "\n";
 
 
@@ -1810,6 +1816,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 	}
 	file << "<li><a href=\"#example\">Example input file</a></li>\n"
 	        "<li><a href=\"#output\">Output generated</a></li>\n"
+			"<li><a href=\"#postprocessing\">Post-processing</a></li>\n"
 	        "</ul>\n</nav>\n<main>\n";
 
 	// ---------- introduction ----------
@@ -1829,12 +1836,12 @@ int InputRead::print_manual_html(std::ofstream &file)
 	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
 		 	"<p>"
 	        "The iDVC software was inspired by a need for research-level code with access to internal methods and settings. "
-			"Aditional objectives were established to facilitate accessibility and portability among research groups: "
+			"Additional objectives were established to facilitate accessibility and portability among research groups: "
 			"c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. "
 	        "</p>\n"
 		 	"<p>"
 	        "An early and continuing area of focus is biological tissues evaluated through <i>in situ</i> x-ray tomography. "
-	        "Challenges within that application environment have driven development of the overall algorithmic approach and broadened its aplicability. "
+	        "Challenges within that application environment have driven development of the overall algorithmic approach and broadened its applicability. "
 			"Beginning from a highly generalized context has provided flexibility in managing a range of experimental scenarios. "
 			"</p>\n"
 			"The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. "
@@ -1941,9 +1948,15 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 	// ---------- output ----------
 	file << "<h2 id=\"output\">Output generated</h2>\n"
-	        "<h3>During program execution</h3>\n<ul>\n"
-	        "<li>Information about each point processed is echoed to the command window.</li>\n"
-	        "<li>The point identifier appears first, followed by the [x,y,z] location.</li>\n"
+
+//	        "<h3>During program execution</h3>\n<ul>\n"
+			"<h3>During program execution</h3>"
+
+	        "<p>Information about each point processed is echoed to the command window, e.g.:</p><ul>"
+			"<li>5/10  6463  x= 283.23 y= 603.92 z= 257.31 Point_Good (par in 7)  obj= 0.063045  u= -2.25 v= 3.84 w= 4.15</li></ul>"
+
+	        "<p>Point count / num_points_to_process is followed by the point identifier and [x,y,z] location.</p>"
+/*
 	        "<li>The search status appears next:\n<table class=\"opts\">\n"
 	        "<tr><td><code>Point_Good</code></td><td>successful search convergence within the max displacement</td></tr>\n"
 	        "<tr><td><code>Range_Fail</code></td><td>max displacement exceeded; consider increasing the "
@@ -1952,32 +1965,60 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and/or "
 	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></td></tr>\n"
 	        "</table></li>\n"
-	        "<li>The magnitude of the objective function value at the end of the search is listed as <code>obj=</code>.\n<ul>\n"
-	        "<li>For <code>obj_function</code> = sad, ssd, and zssd the value is relative, depending on subvolume size and pixel values.</li>\n"
-	        "<li>For <code>obj_function</code> = nssd and znssd the value is scaled between 0 and 2, with zero a perfect match.</li>\n"
-	        "</ul></li>\n"
-	        "<li>The point [x,y,z] displacement is listed next for successful searches.</li>\n</ul>\n";
+*/
+	        "<p>The search status appears next:</p><ul>"
+	        "<li>Point_Good: successful search convergence</li>"
+	        "<li>Range_Fail: iteration reached perimeter of search range, consider increasing <a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a></li>"
+//	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
+	        "<li>Convg_Fail: maximum iterations exceeded, re-evaluate "
+	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and "
+	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></li></ul>"			
 
-	file << "<h3>Following program execution</h3>\n"
-	        "<p>The <strong>status file</strong> (<code>.stat</code>) contains:</p>\n<ul>\n"
-	        "<li>An echo of the input file used to control program execution.</li>\n"
-	        "<li>Information about the point cloud, dvc program version, and run date/time.</li>\n"
-	        "<li>Search statistics and timing.</li>\n</ul>\n"
-	        "<p>The <strong>displacement file</strong> (<code>.disp</code>) is a tab-delimited text file of the dvc results. "
-	        "A header line appears first identifying columns:</p>\n"
-	        "<pre><code>n x y z status objmin u v w &lt;phi the psi&gt; &lt;exx eyy ezz exy eyz exz&gt;</code></pre>\n"
+			"<p>Convergence status is further clarified by listing the controlling criteria and the number of iterations, e.g.</p><ul>"
+			"<li>(obj in 6) = objective function change fell below threshold in 6 iterations</li>"
+			"<li>(par in 7) = parameter vector change fell below threshold in 7 iterations</li></ul>"
+
+	        "<p>The magnitude of the objective function value at the end of the search is displayed as obj.</p><ul>"
+	        "<li>For objective functions ssd and zssd the value is relative, depending on subvolume size and voxel values</li>"
+	        "<li>For objective functions nssd and znssd the value is scaled between 0 and 1, with zero a perfect match</li></ul>"
+
+	        "<p>The point displacement [u,v,w] is listed for successful searches.</p>";
+
+	file << "<h3>Following program execution</h3>"
+
+	        "<p>The <strong>status file</strong> (<code>.stat</code>) contains:</p><ul>"
+	        "<li>An echo of the input file used to control program execution.</li>"
+	        "<li>Information about the point cloud, dvc program version, and run date/time.</li>"
+	        "<li>Search statistics and timing.</li></ul>"
+
+	        "<p>The <strong>displacement file</strong> (<code>.disp</code>) is a tab-delimited text file of the dvc results.</p><ul>"
+	        "<li>A header line appears first followed by data for each cloud point.</li></ul>"
+	        "<pre><code>n x y z status objmin u v w </code></pre>\n"
 	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
 	        "<tr><td><code>n</code></td><td>the point identifier</td></tr>\n"
 	        "<tr><td><code>x y z</code></td><td>the point location within the reference volume</td></tr>\n"
-	        "<tr><td><code>status</code></td><td>the search outcome: 0 = successful (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
+	        "<tr><td><code>status</code></td><td>the search outcome: 0 = Point_Good (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
 	        "<tr><td><code>objmin</code></td><td>the objective function magnitude at the end of the search</td></tr>\n"
 	        "<tr><td><code>u v w</code></td><td>the point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
-	        "<tr><td><code>phi the psi</code></td><td>subvolume rotation, if <a class=\"kwref\" href=\"#kw-num_srch_dof\"><code>num_srch_dof</code></a> = 6 or 12</td></tr>\n"
-	        "<tr><td><code>exx eyy ezz exy eyz exz</code></td><td>subvolume strain, if <a class=\"kwref\" href=\"#kw-num_srch_dof\"><code>num_srch_dof</code></a> = 12</td></tr>\n"
 	        "</table>\n"
-	        "<p>The program does not currently calculate strain, but that is planned for upcoming releases.</p>\n<ul>\n"
-	        "<li>MATLAB functions <code>griddata</code>, <code>meshgrid</code>, and <code>gradient</code> are useful for strain calculation.</li>\n"
-	        "<li>Displacement data imported into finite element analysis codes is also useful for strain calculation.</li>\n</ul>\n";
+
+			"<p>The dvc executable does not calculate strain or other kinematic quantities. That is managed as post-processing.</p>\n";
+
+	// ---------- post-processing ----------
+
+	file << "<h2 id=\"postprocessing\">Post-processing</h2>\n"
+	        "<p>"
+			"The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) "
+	        "Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. "
+	        "The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) "
+			"Further processing of the basic data can be very project-specific and is therefore encapsulated into a seperate analysis stage. "
+			"</p>\n"
+
+	        "<p>"
+	        "</p>\n"
+
+	        "<p>"
+	        "</p>\n";
 
 	file << "</main>\n</div>\n</body>\n</html>\n";
 
@@ -2473,7 +2514,7 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 	res_file << "\t" << obj_min;
 
 	res_file << std::fixed << std::setprecision(6);
-	// this prints just the dispalcements
+	// this prints just the displacements
 	for (int i=0; i<3; i++) {
 		res_file << "\t" << result[i];
 	} 
