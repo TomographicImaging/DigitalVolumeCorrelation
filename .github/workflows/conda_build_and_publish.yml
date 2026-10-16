@@ -24,7 +24,7 @@ jobs:
         channels: conda-forge
         use-mamba: true
         conda-remove-defaults: "true"
-    - run: conda install conda-build
+    - run: conda install -n base conda-build
     - name: conda build & test
       run: conda build -c conda-forge --override-channels --output-folder dist recipe
     - if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
