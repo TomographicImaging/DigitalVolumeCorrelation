@@ -1338,6 +1338,12 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 	while (getline(ifs, line)) {
 		std::stringstream ss(line);
 
+
+//		std::cout << "first line = " << line << std::endl;
+//		std::cout << "ss.peek() = " << ss.peek() << std::endl;
+
+
+
 		// use header line to judge whether or not this is a .disp file
 		if (loop_count == 0) {
 			if(ss.peek() != 'n') {
