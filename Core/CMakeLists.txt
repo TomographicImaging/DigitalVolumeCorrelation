@@ -57,6 +57,7 @@ SET (DVC_SRCS ${DVC_SRCS}
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
 
+
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0") 
   set (OpenMP_EXE_LINKER_FLAGS OpenMP::OpenMP_CXX)
 else()
@@ -74,6 +75,8 @@ add_dependencies(cildvc_static eigen)
 target_include_directories(cildvc_static PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
     $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 # target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
 target_link_libraries(cildvc_static ${OpenMP_EXE_LINKER_FLAGS} )
@@ -84,16 +87,16 @@ target_link_libraries(cildvc_static ${OpenMP_EXE_LINKER_FLAGS} )
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 
 target_link_libraries (dvc cildvc_static)
-include_directories(dvc PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR} 
+target_include_directories(dvc PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 
         $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 )
 
 add_executable (strain ${CMAKE_CURRENT_SOURCE_DIR}/strain.cpp )
 
 target_link_libraries (strain cildvc_static)
-include_directories(strain PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR} 
+target_include_directories(strain PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 
     $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 )
 
