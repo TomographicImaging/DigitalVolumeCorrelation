@@ -7,38 +7,53 @@ on:
   pull_request: {branches: [master]}
 jobs:
   conda:
-    defaults: {run: {shell: 'bash -el {0}'}}
-    runs-on: ${{ matrix.os }}-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    runs-on: windows-latest
+    env:
+      CONDA_PKGS_DIRS: D:\conda_pkgs
+      CONDA_BLD_PATH: D:\conda_bld
+      TMP: D:\tmp
+      TEMP: D:\tmp
     strategy:
       matrix:
         os: [ubuntu, macos, windows]
     steps:
-    - uses: actions/checkout@v5
-      with: {fetch-depth: 0}
-    - if: matrix.os == 'windows'
-      uses: ilammy/msvc-dev-cmd@v1
-    - uses: conda-incubator/setup-miniconda@v4
-      with:
-        python-version: 3.12
-        mamba-version: "*"
-        channels: conda-forge
-        use-mamba: true
-        conda-remove-defaults: "true"
-    - run: conda install -n base conda-build
-    - name: conda build & test
-      run: conda build -c conda-forge --override-channels --output-folder dist recipe
-    - if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      name: anaconda upload -c ccpi
-      run: |
-        conda install anaconda-client
-        anaconda -v -t ${{ secrets.CCPI_CONDA_TOKEN }} upload --force --label ${{ startsWith(github.ref, 'refs/tags') && 'main' || 'dev' }} dist/*/*.tar.bz2
-    - if: startsWith(github.ref, 'refs/tags')
-      name: conda upload -c tomography.stfc.ac.uk/conda
-      run: |
-        if test ${{ matrix.os }} = windows; then choco install --no-progress rsync; fi
-        echo '${{ secrets.STFC_SSH_KEY }}' > ./key
-        chmod 600 ./key
-        cd dist
-        rsync -e 'ssh -o StrictHostKeyChecking=no -i ./key' -R */*.tar.bz2 '${{ secrets.STFC_SSH_HOST }}:${{ secrets.STFC_SSH_CONDA_DIR }}'
-        ssh -o StrictHostKeyChecking=no -i ./key ${{ secrets.STFC_SSH_HOST }} \
-          'bash -lic "conda index --bz2 --zst --run-exports --channeldata --rss -n ccpi ${{ secrets.STFC_SSH_CONDA_DIR }}"'
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Prepare Windows temp dirs
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path D:\conda_pkgs | Out-Null
+          New-Item -ItemType Directory -Force -Path D:\conda_bld | Out-Null
+          New-Item -ItemType Directory -Force -Path D:\tmp | Out-Null
+      - if: matrix.os == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          python-version: 3.12
+          mamba-version: "*"
+          channels: conda-forge
+          use-mamba: true
+          conda-remove-defaults: "true"
+      - run: conda install -n base conda-build
+      - name: conda build & test
+        run: conda build -c conda-forge --override-channels --output-folder dist recipe
+      - if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+        name: anaconda upload -c ccpi
+        run: |
+          conda install anaconda-client
+          anaconda -v -t ${{ secrets.CCPI_CONDA_TOKEN }} upload --force --label ${{ startsWith(github.ref, 'refs/tags') && 'main' || 'dev' }} dist/*/*.tar.bz2
+      - if: startsWith(github.ref, 'refs/tags')
+        name: conda upload -c tomography.stfc.ac.uk/conda
+        run: |
+          if test ${{ matrix.os }} = windows; then choco install --no-progress rsync; fi
+          echo '${{ secrets.STFC_SSH_KEY }}' > ./key
+          chmod 600 ./key
+          cd dist
+          rsync -e 'ssh -o StrictHostKeyChecking=no -i ./key' -R */*.tar.bz2 '${{ secrets.STFC_SSH_HOST }}:${{ secrets.STFC_SSH_CONDA_DIR }}'
+          ssh -o StrictHostKeyChecking=no -i ./key ${{ secrets.STFC_SSH_HOST }} \
+            'bash -lic "conda index --bz2 --zst --run-exports --channeldata --rss -n ccpi ${{ secrets.STFC_SSH_CONDA_DIR }}"'
