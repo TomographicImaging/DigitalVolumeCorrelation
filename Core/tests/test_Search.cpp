@@ -5,6 +5,8 @@
 #include "DataCloud.h"
 #include "test_utils.h"
 
+std::ostream& operator<<(std::ostream& strm, const Search& a);
+
 // Helper to configure a RunControl struct for testing Search
 RunControl make_test_run_control(
     const std::string& ref_file,
@@ -310,4 +312,3 @@ int main() {
 
     TEST_RUNNER_SUMMARY();
 }
-
