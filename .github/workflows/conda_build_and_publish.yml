@@ -7,10 +7,12 @@ on:
   pull_request: {branches: [master]}
 jobs:
   conda:
+    permissions:
+      contents: read
     defaults:
       run:
         shell: bash -el {0}
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
         os: [ubuntu, macos, windows]
