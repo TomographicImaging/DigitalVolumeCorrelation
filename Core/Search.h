@@ -133,12 +133,9 @@ private:
 	double bspline_jacobian_at(const std::vector<double> &a, int ndof,
 		std::vector<double> &base_res, std::vector< std::vector<double> > &J);
 
-#if defined(_WIN32) || defined(__WIN32__)
-	//friend CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search & ) ;
-#else
-	friend CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search &);
-#endif
 };
+
+CCPI_EXPORT std::ostream& operator<<(std::ostream&, const Search &);
 
 /******************************************************************************/
 

@@ -1082,9 +1082,6 @@ void Search::random_global(double displ_max, double basin_radius)
 
 /******************************************************************************/
 
-#if defined(_WIN32) || defined(__WIN32__)
-/**/
-#else
 std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
 
@@ -1149,5 +1146,4 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 		"max_iter " << std::fixed << std::setprecision(0) << a.rc->max_iter << std::endl <<
 		")";
 }
-#endif
 
