@@ -51,3 +51,6 @@ subvol_aspect		1.0 1.0 1.0		### subvolume aspect ratio
 
 num_points_to_process 10
 
+start_position 10.0 10.0 10.0
+start_estimate 0.0 0.0 0.0
+step_max 2

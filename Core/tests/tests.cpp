@@ -152,11 +152,7 @@ int main(int argc, char *argv[])
 	// *** print configuration to screen
 	//std::cout << optimize << std::endl;
 	std::string objfun;
-	if (run.obj_fcn == SAD)
-	{
-		//obj_fcn = &obj_SAD;
-		objfun = std::string("objective function SAD");
-	}
+
 	if (run.obj_fcn == SSD)
 	{
 		//obj_fcn = &obj_SSD;
@@ -193,13 +189,8 @@ int main(int argc, char *argv[])
 		"disp max " << run.disp_max << std::endl <<
 		")";
 		*/
-#if defined(_WIN32) || defined(__WIN32__)
-		//std::cout << std::endl << std::endl << "*************************" << std::endl;
-		//std::cout << "Search: ( " << std::endl << optimize <<  std::endl << ") " << std::endl <<std::endl;
-#else
 	std::cout << std::endl << std::endl << "*************************" << std::endl;
 	std::cout << "Search: ( " << std::endl << optimize << std::endl << ") " << std::endl << std::endl;
-#endif
 
 	// main search loop
 
@@ -250,7 +241,7 @@ int main(int argc, char *argv[])
 
 			try
 			{
-				optimize.process_point(trg, n, &data, 1);
+				optimize.process_point(trg, n, 0, 0, &data);
 			}
 			catch (Point_Good)
 			{

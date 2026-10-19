@@ -24,8 +24,9 @@ Author(s): Brian Bay (OSU)
 /******************************************************************************/
 Matrix_4d::Matrix_4d(int nx, int ny, int nz)
 {
-	nnk = 72;	// total number of values stored at each point
+	nnk = 73;	// total number of values stored at each point
 	Lek_off = 8;	// offset to the 1st Lekien coefficient
+	Bsp_off = 72;	// offset to the B-spline interpolation coefficient
 
 	nnx = nx;
 	nny = ny;

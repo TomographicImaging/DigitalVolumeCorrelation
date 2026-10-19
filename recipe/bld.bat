@@ -17,11 +17,11 @@
 ::   Author(s): Edoardo Pasca (UKRI-STFC)
 ::              Laura Murgatroyd (UKRI-STFC)
 
-mkdir "%SRC_DIR%\ccpi"
-cd %SRC_DIR%/ccpi
+mkdir "%SRC_DIR%\ccpi" 2>nul
+cd /d "%SRC_DIR%\ccpi"
 
 :: issue cmake to create setup.py
-cmake "%RECIPE_DIR%\.." -DBUILD_CUDA=OFF -DCMAKE_BUILD_TYPE="Release" -DLIBRARY_LIB="%CONDA_PREFIX%\lib" -DLIBRARY_INC="%CONDA_PREFIX%" -DCMAKE_INSTALL_PREFIX="%PREFIX%\Library" -DBUILD_TEST=ON
+cmake -S "%RECIPE_DIR%\.." -G "Ninja" -DBUILD_CUDA=OFF -DCMAKE_BUILD_TYPE="Release" -DLIBRARY_LIB="%CONDA_PREFIX%\lib" -DLIBRARY_INC="%CONDA_PREFIX%" -DCMAKE_INSTALL_PREFIX="%PREFIX%\Library" -DBUILD_TEST=ON
 
 :: nmake install
 :: if errorlevel 1 exit 1
@@ -29,7 +29,7 @@ cmake "%RECIPE_DIR%\.." -DBUILD_CUDA=OFF -DCMAKE_BUILD_TYPE="Release" -DLIBRARY_
 :: For visual studio 2019:
 :: issue cmake to create setup.py for windows
 :: cmake "%RECIPE_DIR%\.."  -G "Visual Studio 16 2019" -A x64 -DBUILD_PYTHON_WRAPPERS=OFF -DCONDA_BUILD=ON -DBUILD_CUDA=OFF -DCMAKE_BUILD_TYPE="Release" -DLIBRARY_LIB="%CONDA_PREFIX%\lib" -DLIBRARY_INC="%CONDA_PREFIX%" -DCMAKE_INSTALL_PREFIX="%PREFIX%\Library" 
-cmake --build . --target install --config Release
-
+cmake --build . --target install --config Release -j
+ctest --output-on-failure
 if errorlevel 1 exit 1
 

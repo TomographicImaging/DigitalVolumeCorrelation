@@ -49,6 +49,11 @@ coarse microstructures within samples.
 // [0] = the voxel value
 // [1..7] = derivatives of voxel values
 // [8..71] = Lekien coeff's
+// [72] = B-spline interpolation coefficient (Unser-style recursive-filter scheme;
+//        see Interpolate::kernels_bspline / tri_bspline / tri_bspline_grad). This
+//        is seeded from [0] and then overwritten in place by the separable
+//        causal/anticausal prefilter, so [0] keeps holding the raw voxel value
+//        for nearest/tri_lin/tri_cub_Lek exactly as before.
 //
 
 #ifndef MATRIX4D_H
@@ -87,6 +92,13 @@ public:
 	int siz_z() { return nnz; }
 	int siz_k() { return nnk; }
 	int Lek_offset() { return Lek_off; }
+	int Bsp_offset() { return Bsp_off; }
+
+	double get_bsp(int x, int y, int z) const
+		{ return mat4d[x*nnyzk + y*nnzk + z*nnk + Bsp_off];}
+
+	void set_bsp(int x, int y, int z, double val)
+		{ mat4d[x*nnyzk + y*nnzk + z*nnk + Bsp_off] = val;}
 
 	double get_c0(int c0, int k) const { return mat4d[c0 + shift_c0 + k];}
 	double get_c1(int c0, int k) const { return mat4d[c0 + shift_c1 + k];}
@@ -141,6 +153,7 @@ private:
 	int nnzk;               // Area of the zk plane
 	int nnyzk;              // Volume of the yzk space
 	int Lek_off;            // Index of the first Lekien coefficient in dimension k
+	int Bsp_off;            // Index of the B-spline coefficient in dimension k
 
 	int xh, yh, zh; // mat4d bytes between coefficients in a given spatial dimension
 
