@@ -323,7 +323,12 @@ int main(int argc, char *argv[])
 	// read_disp_file_cst_sv checks for "n" as first character of neader line
 	// if not present prints error message and returns 0 to abort the run
 	DispRead disp;
-	if (!disp.read_disp_file_cst_sv(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
+	//if (!disp.read_disp_file_cst_sv(fname_disp, data.labels, data.points, status, objmin, dis)) return 0;
+
+	if (!disp.read_disp_file_generalized(fname_disp, data.labels, data.points, status, objmin, dis)) return 0;
+
+
+
 	int ndisp_pts = data.points.size();
 
 	//

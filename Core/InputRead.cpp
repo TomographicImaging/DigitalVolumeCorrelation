@@ -767,6 +767,138 @@ static bool read_line(std::istream& is, std::string& line)
     }
 }
 /******************************************************************************/
+
+int InputRead::read_disp_file_generalized(std::string fname, 
+						std::vector<int> &search_labels, 
+						std::vector<Point> &search_points, 
+						std::vector<int> &status, 
+						std::vector<double> &objmin, 
+						std::vector<Point> &dis)
+{
+
+	using namespace tbl;
+
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);
+	if (!ifs) { 
+		std::cout << ".disp file not found" << std::endl << std::endl;
+		return 0; 
+	}
+	ifs.close(); // remaining code does not directly use ifs, just used for file access check
+
+    ReadOptions opt;
+    opt.columns.push_back(ColumnSpec("id", ColType::Int));
+    opt.columns.push_back(ColumnSpec("x",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("y",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("z",  ColType::Double));
+	opt.columns.push_back(ColumnSpec("status",  ColType::Int));
+	opt.columns.push_back(ColumnSpec("objmin",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("u",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("v",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("w",  ColType::Double));
+    opt.read_extra = false;
+
+    Table t;
+    std::string err;
+    if (!read_table(fname, opt, t, err)) {
+        std::cerr << err << "\n";
+        return 0;
+    }
+
+    // Copy into the structures the core code already uses
+    const std::vector<int>&    id = t.columns[0].ints;
+    const std::vector<double>& x  = t.columns[1].doubles;
+    const std::vector<double>& y  = t.columns[2].doubles;
+    const std::vector<double>& z  = t.columns[3].doubles;
+	const std::vector<int>&    stat = t.columns[4].ints;
+    const std::vector<double>& objm = t.columns[5].doubles;
+	const std::vector<double>& u  = t.columns[6].doubles;
+    const std::vector<double>& v  = t.columns[7].doubles;
+    const std::vector<double>& w  = t.columns[8].doubles;
+
+	search_labels = id;
+	status = stat;
+	objmin = objm;
+
+	search_points.clear();
+    search_points.reserve(t.rows);
+	dis.clear();
+	dis.reserve(t.rows);
+    for (std::size_t r = 0; r < t.rows; ++r) {
+        search_points.push_back(Point(x[r], y[r], z[r]));
+		dis.push_back(Point(u[r], v[r], w[r]));
+	}
+
+    if (t.skipped_rows || t.bad_values || t.padded_rows)
+        std::cerr << fname << ": " << t.skipped_rows << " rows skipped, "
+                  << t.bad_values << " bad values, " << t.padded_rows << " rows padded\n";
+	
+    return 1;
+}
+
+/******************************************************************************/
+
+int InputRead::read_point_cloud_generalized(RunControl *run,
+                        std::vector<int>& search_labels,
+                        std::vector<Point>& search_points,
+                        std::vector<std::vector<double> >& added_columns,
+                        std::vector<std::string>& added_column_names)
+{
+
+	using namespace tbl;
+
+	std::string fname = run->pts_fname.c_str();
+
+	std::ifstream ifs(run->pts_fname.c_str(), std::ifstream::in);
+	if (!ifs) { 
+		std::cout << "Point cloud file not found" << std::endl << std::endl;
+		return 0; 
+	}
+	ifs.close(); // remaining code does not directly use ifs, just used for file access check
+
+    ReadOptions opt;
+    opt.columns.push_back(ColumnSpec("id", ColType::Int));
+    opt.columns.push_back(ColumnSpec("x",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("y",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("z",  ColType::Double));
+    opt.read_extra = true;
+
+    Table t;
+    std::string err;
+    if (!read_table(fname, opt, t, err)) {
+        std::cerr << err << "\n";
+        return 0;
+    }
+
+    // Copy into the structures the core code already uses
+    const std::vector<int>&    id = t.columns[0].ints;
+    const std::vector<double>& x  = t.columns[1].doubles;
+    const std::vector<double>& y  = t.columns[2].doubles;
+    const std::vector<double>& z  = t.columns[3].doubles;
+
+    search_labels = id;
+
+    search_points.clear();
+    search_points.reserve(t.rows);
+    for (std::size_t r = 0; r < t.rows; ++r)
+        search_points.push_back(Point(x[r], y[r], z[r]));
+
+    added_column_names.clear();
+    for (std::size_t e = 0; e < t.n_extra(); ++e)
+        added_column_names.push_back(t.columns[t.n_spec + e].name);
+
+    added_columns.assign(t.rows, std::vector<double>(t.n_extra()));
+    for (std::size_t r = 0; r < t.rows; ++r)
+        for (std::size_t e = 0; e < t.n_extra(); ++e)
+            added_columns[r][e] = t.columns[t.n_spec + e].doubles[r];
+
+    if (t.skipped_rows || t.bad_values || t.padded_rows)
+        std::cerr << fname << ": " << t.skipped_rows << " rows skipped, "
+                  << t.bad_values << " bad values, " << t.padded_rows << " rows padded\n";
+    return 1;
+}
+
+/******************************************************************************/
+
 int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels, 
 	std::vector<std::vector<double>> &added_columns, std::vector<std::string> &added_column_names)
 {
@@ -784,10 +916,6 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
 
 	double min_z = std::numeric_limits<double>::max();
 	double max_z = std::numeric_limits<double>::min();
-	
-	
-
-	
 	
 	int count = 0;
 	size_t n_added = 0;      // number of added columns (widest row or header)
@@ -873,10 +1001,6 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
 		// optional warning: n_padded short rows padded, n_bad_values non-numeric values set to NaN
 	}
 
-
-
-
-
 	if (count == 0)
 	{
 		std::cout << std::endl;
@@ -893,10 +1017,6 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
 	Point max_pt(max_x, max_y, max_z);
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
-
-
-
-
 
     return 1;
 }
@@ -1318,7 +1438,11 @@ int DispRead::get_val(std::stringstream &ss, Point &val) {
 		return 0;
 	}
 
-}/******************************************************************************/
+}
+
+/******************************************************************************/
+
+
 int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis) {
 
 	// .disp file is:	n	x	y	z	status	objmin	u	v	w (int, 3xdouble->point, int, double, 3xdouble->point)
@@ -1337,12 +1461,6 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	while (getline(ifs, line)) {
 		std::stringstream ss(line);
-
-
-//		std::cout << "first line = " << line << std::endl;
-//		std::cout << "ss.peek() = " << ss.peek() << std::endl;
-
-
 
 		// use header line to judge whether or not this is a .disp file
 		if (loop_count == 0) {
@@ -3009,4 +3127,379 @@ int InputRead::parse_line_dvect(key_word_help kwh, double min, double max, std::
 	vect_val = vect;
 	return 1;
 }
+/******************************************************************************/
+
+// for generalized point could read code
+
+namespace tbl {
+
+// ---------------------------------------------------------------- helpers
+
+bool read_line(std::istream& is, std::string& line)
+{
+    line.clear();
+    std::streambuf* sb = is.rdbuf();
+    for (;;) {
+        int c = sb->sbumpc();
+        if (c == std::char_traits<char>::eof()) {
+            if (line.empty()) { is.setstate(std::ios::eofbit); return false; }
+            return true;
+        }
+        if (c == '\n') return true;
+        if (c == '\r') {
+            if (sb->sgetc() == '\n') sb->sbumpc();
+            return true;
+        }
+        line += static_cast<char>(c);
+    }
+}
+
+// Removes surrounding whitespace, then one pair of surrounding double quotes.
+static void trim_field(std::string& s)
+{
+    std::size_t b = s.find_first_not_of(" \t\r\n");
+    if (b == std::string::npos) { s.clear(); return; }
+    std::size_t e = s.find_last_not_of(" \t\r\n");
+    s = s.substr(b, e - b + 1);
+    if (s.size() >= 2 && s[0] == '"' && s[s.size() - 1] == '"')
+        s = s.substr(1, s.size() - 2);
+}
+
+// Lines containing a comma (outside quotes): split on commas, empty fields kept.
+// Other lines: split on runs of spaces and tabs.
+// Quoted fields may contain the delimiter. Trailing empty fields are dropped.
+void split_fields(const std::string& line, std::vector<std::string>& f)
+{
+    f.clear();
+
+    bool comma_mode = false;
+    {
+        bool q = false;
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            if (line[i] == '"') q = !q;
+            else if (line[i] == ',' && !q) { comma_mode = true; break; }
+        }
+    }
+
+    std::string cur;
+    bool in_quotes = false;
+
+    if (comma_mode) {
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+            if (c == '"') { in_quotes = !in_quotes; cur += c; }
+            else if (c == ',' && !in_quotes) { trim_field(cur); f.push_back(cur); cur.clear(); }
+            else cur += c;
+        }
+        trim_field(cur);
+        f.push_back(cur);
+    } else {
+        bool have = false;  // a field has started (so "" counts as a field)
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+            if (c == '"') { in_quotes = !in_quotes; cur += c; have = true; }
+            else if (!in_quotes && (c == ' ' || c == '\t' || c == '\r' || c == '\n')) {
+                if (have) { trim_field(cur); f.push_back(cur); cur.clear(); have = false; }
+            }
+            else { cur += c; have = true; }
+        }
+        if (have) { trim_field(cur); f.push_back(cur); }
+    }
+
+    while (!f.empty() && f.back().empty()) f.pop_back();
+}
+
+bool field_to_int(const std::string& s, int& v)
+{
+    if (s.empty()) return false;
+    char* end;
+    errno = 0;
+    long x = std::strtol(s.c_str(), &end, 10);
+    if (*end != '\0' || errno == ERANGE || x < INT_MIN || x > INT_MAX) return false;
+    v = static_cast<int>(x);
+    return true;
+}
+
+bool field_to_double(const std::string& s, double& v)
+{
+    if (s.empty()) return false;
+    char* end;
+    double x = std::strtod(s.c_str(), &end);
+    if (*end != '\0' || !std::isfinite(x)) return false;
+    v = x;
+    return true;
+}
+
+static bool iequals(const std::string& a, const std::string& b)
+{
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i)
+        if (std::tolower(static_cast<unsigned char>(a[i])) !=
+            std::tolower(static_cast<unsigned char>(b[i]))) return false;
+    return true;
+}
+
+const Column* Table::find(const std::string& name) const
+{
+    for (std::size_t i = 0; i < columns.size(); ++i)
+        if (iequals(columns[i].name, name)) return &columns[i];
+    return nullptr;
+}
+
+// ---------------------------------------------------------------- column storage
+
+static void push_missing(Column& c)
+{
+    switch (c.type) {
+        case ColType::Int:    c.ints.push_back(kMissingInt);       break;
+        case ColType::Double: c.doubles.push_back(kMissingDouble); break;
+        case ColType::Text:   c.texts.push_back(std::string());    break;
+    }
+}
+
+static std::size_t col_size(const Column& c)
+{
+    switch (c.type) {
+        case ColType::Int:    return c.ints.size();
+        case ColType::Double: return c.doubles.size();
+        default:              return c.texts.size();
+    }
+}
+
+// Converts a field without storing it. Text is valid if non-empty.
+static bool field_ok(const std::string& s, ColType t)
+{
+    int i; double d;
+    switch (t) {
+        case ColType::Int:    return field_to_int(s, i);
+        case ColType::Double: return field_to_double(s, d);
+        default:              return !s.empty();
+    }
+}
+
+// Stores a field; on failure stores the missing value. Returns false if the
+// field was non-empty but invalid.
+static bool push_value(Column& c, const std::string& s)
+{
+    switch (c.type) {
+        case ColType::Int: {
+            int v;
+            if (field_to_int(s, v)) { c.ints.push_back(v); return true; }
+            c.ints.push_back(kMissingInt);
+            return s.empty();
+        }
+        case ColType::Double: {
+            double v;
+            if (field_to_double(s, v)) { c.doubles.push_back(v); return true; }
+            c.doubles.push_back(kMissingDouble);
+            return s.empty();
+        }
+        default:
+            c.texts.push_back(s);
+            return true;
+    }
+}
+
+// ---------------------------------------------------------------- reader
+
+// Chooses where each spec column lives in the file. By header name if every
+// required spec name is present (and match_by_name is on); optional columns not
+// named in the header get index -1 (absent: stored as missing). Otherwise by position.
+static void build_mapping(const ReadOptions& opt, const std::vector<std::string>& header,
+                          std::vector<int>& index, bool& by_name)
+{
+    const std::size_t n = opt.columns.size();
+    index.assign(n, 0);
+    for (std::size_t i = 0; i < n; ++i) index[i] = static_cast<int>(i);
+    by_name = false;
+
+    if (!opt.match_by_name || header.empty()) return;
+
+    std::vector<int> named(n, -1);
+    for (std::size_t i = 0; i < n; ++i) {
+        for (std::size_t h = 0; h < header.size(); ++h) {
+            if (iequals(header[h], opt.columns[i].name)) { named[i] = static_cast<int>(h); break; }
+        }
+        if (named[i] < 0 && opt.columns[i].required) return;  // required name missing: stay positional
+    }
+    index = named;
+    by_name = true;
+}
+
+// Largest file field index used by a spec column (absent columns ignored).
+static std::size_t max_field_index(const std::vector<int>& index)
+{
+    std::size_t m = 0;
+    for (std::size_t i = 0; i < index.size(); ++i)
+        if (index[i] >= 0 && static_cast<std::size_t>(index[i]) > m) m = index[i];
+    return m;
+}
+
+bool read_table(std::istream& is, const ReadOptions& opt, Table& out)
+{
+    out = Table();
+    const std::size_t n_spec = opt.columns.size();
+    out.n_spec = n_spec;
+
+    for (std::size_t i = 0; i < n_spec; ++i) {
+        Column c;
+        c.name = opt.columns[i].name;
+        c.type = opt.columns[i].type;
+        c.in_file = true;
+        out.columns.push_back(c);
+    }
+
+    std::vector<int> index;               // spec column -> file field index
+    std::vector<std::string> header;      // header fields (empty if none)
+    std::vector<int> extra_file_col;      // extra column -> file column (for default names)
+    std::vector<std::size_t> row_extras;  // number of extra fields on each stored row
+    bool by_name = false;
+    build_mapping(opt, header, index, by_name);
+
+    std::size_t max_index = max_field_index(index);
+
+    std::size_t n_required = 0;
+    for (std::size_t i = 0; i < n_spec; ++i)
+        if (opt.columns[i].required) ++n_required;
+
+    std::vector<std::string> fields;
+    std::vector<bool> used;
+    std::string line;
+    bool first_line = true;
+    bool data_started = false;
+    bool header_done = (opt.header == HeaderMode::Absent);
+
+    while (read_line(is, line))
+    {
+        if (first_line) {
+            first_line = false;
+            if (line.compare(0, 3, "\xEF\xBB\xBF") == 0) line.erase(0, 3);
+        }
+
+        split_fields(line, fields);
+        if (fields.empty()) continue;
+        if (opt.comment && !fields[0].empty() && fields[0][0] == opt.comment) continue;
+
+        // Explicit header: first non-comment line, no questions asked
+        if (opt.header == HeaderMode::Present && !header_done) {
+            header = fields;
+            header_done = true;
+            build_mapping(opt, header, index, by_name);
+            max_index = max_field_index(index);
+            continue;
+        }
+
+        // Is this a data row? Every required spec column must be present and valid.
+        bool is_data = true;
+        for (std::size_t i = 0; i < n_spec && is_data; ++i) {
+            if (!opt.columns[i].required || index[i] < 0) continue;
+            std::size_t k = static_cast<std::size_t>(index[i]);
+            if (k >= fields.size() || !field_ok(fields[k], opt.columns[i].type)) is_data = false;
+        }
+
+        if (!is_data) {
+            if (opt.header == HeaderMode::Auto && !data_started && fields.size() >= n_required) {
+                // Candidate header; the last one before the data wins
+                header = fields;
+                build_mapping(opt, header, index, by_name);
+                max_index = max_field_index(index);
+            } else if (data_started) {
+                ++out.skipped_rows;
+            }
+            continue;
+        }
+        data_started = true;
+
+        // Spec columns
+        used.assign(std::max(fields.size(), max_index + 1), false);
+        for (std::size_t i = 0; i < n_spec; ++i) {
+            if (index[i] < 0) { push_missing(out.columns[i]); continue; }  // not in this file
+            std::size_t k = static_cast<std::size_t>(index[i]);
+            used[k] = true;
+            if (k < fields.size()) {
+                if (!push_value(out.columns[i], fields[k])) ++out.bad_values;
+            } else {
+                push_missing(out.columns[i]);
+            }
+        }
+
+        // Extra columns: every file field not used by a spec column, in file order
+        std::size_t n_row_extra = 0;
+        if (opt.read_extra) {
+            for (std::size_t k = 0; k < fields.size(); ++k) {
+                if (used[k]) continue;
+                std::size_t e = n_row_extra++;
+                if (e >= out.n_extra()) {
+                    Column c;
+                    c.type = opt.extra_type;
+                    c.in_file = true;
+                    for (std::size_t r = 0; r < out.rows; ++r) push_missing(c);  // backfill
+                    out.columns.push_back(c);
+                    extra_file_col.push_back(static_cast<int>(k));
+                }
+                if (!push_value(out.columns[n_spec + e], fields[k])) ++out.bad_values;
+            }
+        }
+        row_extras.push_back(n_row_extra);
+        ++out.rows;
+
+        // Pad extra columns this row didn't reach
+        for (std::size_t c = n_spec; c < out.columns.size(); ++c)
+            if (col_size(out.columns[c]) < out.rows) push_missing(out.columns[c]);
+    }
+
+    // Columns named in the header but absent from every data row
+    if (opt.read_extra && !header.empty()) {
+        std::vector<bool> hused(header.size(), false);
+        for (std::size_t i = 0; i < n_spec; ++i)
+            if (index[i] >= 0 && static_cast<std::size_t>(index[i]) < header.size()) hused[index[i]] = true;
+        std::size_t e = 0;
+        for (std::size_t k = 0; k < header.size(); ++k) {
+            if (hused[k]) continue;
+            if (e >= out.n_extra()) {
+                Column c;
+                c.type = opt.extra_type;
+                    c.in_file = true;
+                for (std::size_t r = 0; r < out.rows; ++r) push_missing(c);
+                out.columns.push_back(c);
+                extra_file_col.push_back(static_cast<int>(k));
+            }
+            ++e;
+        }
+    }
+
+    for (std::size_t r = 0; r < row_extras.size(); ++r)
+        if (row_extras[r] < out.n_extra()) ++out.padded_rows;
+
+    // Names: spec columns keep their spec names; extras use header names or "colN"
+    for (std::size_t e = 0; e < out.n_extra(); ++e) {
+        std::size_t k = static_cast<std::size_t>(extra_file_col[e]);
+        Column& c = out.columns[n_spec + e];
+        if (k < header.size() && !header[k].empty()) c.name = header[k];
+        else c.name = "col" + std::to_string(k + 1);
+    }
+
+    for (std::size_t i = 0; i < n_spec; ++i)
+        out.columns[i].in_file = (index[i] >= 0);
+
+    out.has_header = !header.empty();
+    out.matched_by_name = by_name;
+    return true;
+}
+
+bool read_table(const std::string& filename, const ReadOptions& opt,
+                Table& out, std::string& error)
+{
+    std::ifstream ifs(filename.c_str(), std::ios::in | std::ios::binary);
+    if (!ifs) {
+        error = "cannot open file: " + filename;
+        out = Table();
+        return false;
+    }
+    error.clear();
+    return read_table(ifs, opt, out);
+}
+
+} // namespace tbl
+
 /******************************************************************************/

@@ -170,10 +170,15 @@ int main(int argc, char *argv[])
 	// parse and check the input file
 	if(!in.input_file_read(&run)) return 0;
 
-	// instantiate a DataCloud
+	// instantiate a DataCloud and read point cloud file
 	DataCloud data;
-//	if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;		// original point read function, updated in _tsc
-	if(!in.read_point_cloud_tsc(&run, data.points, data.labels, data.added_columns, data.added_column_names)) return 0;
+	//if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;		// original point read function, updated in _tsc
+	//if(!in.read_point_cloud_tsc(&run, data.points, data.labels, data.added_columns, data.added_column_names)) return 0;
+
+	// for generalized point could read code
+	if(!in.read_point_cloud_generalized(&run, data.labels, data.points, data.added_columns, data.added_column_names)) return 0;
+
+
 	std::cout << std::endl << "cloud contains " << data.points.size() << " points" << std::endl;
 	data.organize_cloud(&run);		// sort overall by distance from global starting_point and establish heighbors
 
