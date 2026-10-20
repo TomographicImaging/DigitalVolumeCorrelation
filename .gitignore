@@ -1,3 +1,4 @@
 Core/CCPiDefines.h
 Core/eigen
 build
+Core/tests/*.profraw
