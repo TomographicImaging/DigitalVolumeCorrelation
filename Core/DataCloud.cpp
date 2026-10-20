@@ -42,7 +42,7 @@ DataCloud::DataCloud ()
 /******************************************************************************/
 void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh)
 {
-	std::cout << "Saving sorted pointcloud" << std::endl;
+	std::cout << "Saving sorted pointcloud" << std::endl << std::endl;
 
     std::ofstream sorted_pc_file;
 	sorted_pc_file.open(fname + ".sort.csv");

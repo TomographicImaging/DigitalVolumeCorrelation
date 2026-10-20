@@ -322,12 +322,13 @@ int main(int argc, char *argv[])
 	// read .disp file and check for success
 	// read_disp_file_cst_sv checks for "n" as first character of neader line
 	// if not present prints error message and returns 0 to abort the run
+
 	DispRead disp;
+	// legacy disp file read code
 	//if (!disp.read_disp_file_cst_sv(fname_disp, data.labels, data.points, status, objmin, dis)) return 0;
 
+	// for generalized disp file read code
 	if (!disp.read_disp_file_generalized(fname_disp, data.labels, data.points, status, objmin, dis)) return 0;
-
-
 
 	int ndisp_pts = data.points.size();
 
@@ -354,7 +355,11 @@ int main(int argc, char *argv[])
 	// sort option
 	if (!do_sort_read) {
 		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
-		data.sort_order_neighbors(data.points[0]);
+		// legacy brute-force sort
+		//data.sort_order_neighbors(data.points[0]);
+
+		// kdtree sort
+		data.sort_neighbors_kdtree(data.points[0]);
 		data.write_sort_file(fname_base,data.neigh);
 	}
 
@@ -390,9 +395,9 @@ int main(int argc, char *argv[])
 	}
 
 	// output here to catch flag setting as well
-	if (yz_only) {std::cout << "using 2d yz coordinate plane analsis" << std::endl;}
-	if (zx_only) {std::cout << "using 2d zx coordinate plane analsis" << std::endl;}
-	if (xy_only) {std::cout << "using 2d xy coordinate plane analsis" << std::endl;}
+	if (yz_only) {std::cout << "using 2d yz coordinate plane analysis" << std::endl;}
+	if (zx_only) {std::cout << "using 2d zx coordinate plane analysis" << std::endl;}
+	if (xy_only) {std::cout << "using 2d xy coordinate plane analysis" << std::endl;}
 
 	// echo other run parameters and guide faulty command line arguments
 	std::cout << "using strain window: " << ndp << std::endl;
@@ -409,7 +414,7 @@ int main(int argc, char *argv[])
 		std::cout << "using strain window refill " << std::endl;
 	}
 
-	std::cout << "nsort_pts =" << nsort_pts << std::endl;
+//	std::cout << "nsort_pts =" << nsort_pts << std::endl;
 	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
 
 	//
@@ -563,9 +568,9 @@ int main(int argc, char *argv[])
 			DG(j,2) = par(3) + 2*par(6)*base.z() + par(8)*base.y() + par(9)*base.x();
 
 			// local volume fit displacement values
-			displ[j] = distance*( par(0) \
-								+ par(1)*base.x() + par(2)*base.y() + par(3)*base.z() \
-								+ par(4)*base.x()*base.x() + par(5)*base.y()*base.y() + par(6)*base.z()*base.z() \
+			displ[j] = distance*( par(0) 
+								+ par(1)*base.x() + par(2)*base.y() + par(3)*base.z() 
+								+ par(4)*base.x()*base.x() + par(5)*base.y()*base.y() + par(6)*base.z()*base.z() 
 								+ par(7)*base.x()*base.y() + par(8)*base.y()*base.z() + par(9)*base.x()*base.z() );
 		}
 		data.dis_vfit.push_back(displ);
