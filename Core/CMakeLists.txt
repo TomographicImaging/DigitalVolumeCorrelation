@@ -18,8 +18,6 @@
 #   Author(s): Edoardo Pasca (UKRI-STFC)
 #              Brian Bay (OSU)
 
-#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/CCPiDefines.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/CCPiDefines.h)
 
 
