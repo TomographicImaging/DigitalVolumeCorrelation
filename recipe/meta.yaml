@@ -29,6 +29,7 @@ build:
   number: {{ environ.get('GIT_DESCRIBE_NUMBER', 1)}}
 
 test:
+  - numpy
   files:
     - Core/tests/datacloud_input.txt
     - Core/tests/grid_input.roi
