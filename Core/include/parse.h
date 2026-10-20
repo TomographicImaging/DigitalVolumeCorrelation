@@ -34,7 +34,7 @@ struct npy_header {
 	bool isFortranOrder;
 	int header_length;
 	char * the_header;
-	int major, minor;
+	char major, minor;
 	int data_offset;
 };
 

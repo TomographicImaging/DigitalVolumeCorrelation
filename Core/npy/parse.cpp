@@ -21,16 +21,16 @@ Author(s): Edoardo Pasca (UKRI-STFC)
 
 
 
-int main(int argc, char**argv) {
-	npy_header nh;
-	if (argc > 1) {
-		parse_npy(argv[1], &nh);
-		std::cout << "PROVA " << nh.header_length << std::endl;
-		std::cout << "PROVA " << nh.bit << std::endl;
-		return 0;
-	}
-	else return -1;
-}
+// int main(int argc, char**argv) {
+// 	npy_header nh;
+// 	if (argc > 1) {
+// 		parse_npy(argv[1], &nh);
+// 		std::cout << "PROVA " << nh.header_length << std::endl;
+// 		std::cout << "PROVA " << nh.bit << std::endl;
+// 		return 0;
+// 	}
+// 	else return -1;
+// }
 
 int parse_npy(char*fname, npy_header * head){
 	std::ifstream ifs;
@@ -49,7 +49,7 @@ int parse_npy(char*fname, npy_header * head){
 	ifs.read(&minor, 1);
 	offset++;
 
-	//std::cout << "Version: " << (short)(major) << "." << (short)(minor) << std::endl;
+	// std::cout << "Version: " << (short)(major) << "." << (short)(minor) << std::endl;
 
 	if (major == 1) {
 		ifs.read(header_v1, 2);
@@ -114,7 +114,7 @@ int parse_npy(char*fname, npy_header * head){
 					//std::cout << "parse_key parsing  1 -> 0" << std::endl;
 					parsing = 0;
 					keys.push_back(key);
-					std::cout << "key = " << key <<  std::endl;
+					// std::cout << "key = " << key <<  std::endl;
 					key.clear();
 				}
 			}
@@ -144,7 +144,7 @@ int parse_npy(char*fname, npy_header * head){
 				if (c == ':') {
 					//parsing = 0;
 				}
-				else if ((c == 0x27 )) {
+				else if (c == 0x27 ) {
 					if (parsing == 0) {
 						parsing = 1;
 						if (isstring == 0) {
@@ -155,7 +155,7 @@ int parse_npy(char*fname, npy_header * head){
 							isstring = 0;
 							parsing = 0;
 							values.push_back(val);
-							std::cout << "val = " << val << std::endl;
+							// std::cout << "val = " << val << std::endl;
 							val.clear();
 							parse_key = 1;
 							parse_value = 0;
@@ -179,7 +179,7 @@ int parse_npy(char*fname, npy_header * head){
 						else {
 							parsing = 0;
 							values.push_back(val);
-							std::cout << "val = " << val << std::endl;
+							// std::cout << "val = " << val << std::endl;
 							val.clear();
 							parse_key = 1;
 							parse_value = 0;
@@ -191,7 +191,7 @@ int parse_npy(char*fname, npy_header * head){
 					if (istruefalse == 1) {
 						istruefalse = 0;
 						values.push_back(val);
-						std::cout << "val = " << val << std::endl;
+						// std::cout << "val = " << val << std::endl;
 						val.clear();
 						parse_key = 1;
 						parse_value = 0;
@@ -218,7 +218,7 @@ int parse_npy(char*fname, npy_header * head){
 					parsing = 0;
 					std::string str{ "tuple" };
 					values.push_back(str);
-					std::cout << "val = " << val << std::endl;
+					// std::cout << "val = " << val << std::endl;
 					val.clear();
 					parse_key = 1;
 					parse_value = 0;
@@ -231,19 +231,19 @@ int parse_npy(char*fname, npy_header * head){
 
 		j++;
 	}
-	std::cout << std::endl;
+	// std::cout << std::endl;
 
 	
-	for (auto val : values) {
-		std::cout << "val " << val << std::endl;
-	}
+	// for (auto val : values) {
+	// 	std::cout << "val " << val << std::endl;
+	// }
 	
-	for (auto key : keys) {
-		std::cout << "key " << key << std::endl;
-	}
-	for (auto key : tuple) {
-		std::cout << "tuple :" << key << std::endl;
-	}
+	// for (auto key : keys) {
+	// 	std::cout << "key " << key << std::endl;
+	// }
+	// for (auto key : tuple) {
+	// 	std::cout << "tuple :" << key << std::endl;
+	// }
 	
 	ifs.close();
 	// pass the header to Python as it is easier to handle text
@@ -263,20 +263,27 @@ int parse_npy(char*fname, npy_header * head){
 	head->minor = minor;
 	if (values[0][2] == '1') {
 		head->bit = 8;
-		std::cout << "8 bit" << std::endl;
-		head->data_offset = 6 + 1 + 1 + 2 + header_length;
+		// std::cout << "8 bit" << std::endl;
+		
 	}
 	else if (values[0][2] == '2'){
 		head->bit = 16;
-		std::cout << "16 bit" << std::endl;
-		head->data_offset = 6 + 1 + 1 + 4 + header_length;
+		// std::cout << "16 bit" << std::endl;
+		// head->data_offset = 6 + 1 + 1 + 4 + header_length;
 	}
+
 	else {
-		std::cout << "error parsing bit" << std::endl;
+		// std::cout << "error parsing bit" << std::endl;
+	}
+	if (major == 1){
+		head->data_offset = 6 + 1 + 1 + 2 + header_length;
+	}
+	else if (major == 2) {
+		head->data_offset = 6 + 1 + 1 + 4 + header_length;
 	}
 	head->the_header =  the_header;
 
-	std::cout << "data offset " << head->data_offset << std::endl;
+	// std::cout << "data offset " << head->data_offset << std::endl;
 
 	return 0;
 }
