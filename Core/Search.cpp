@@ -1088,45 +1088,45 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	// SSD, ZSSD, NSSD, ZNSSD
 	std::string objfun;
 	switch (run->obj_fcn) {
-		case SSD:
+		case Objfcn_Type::SSD:
 			objfun = "SSD";
 			break;
-		case ZSSD:
+		case Objfcn_Type::ZSSD:
 			objfun = "ZSSD";
 			break;
-		case NSSD:
+		case Objfcn_Type::NSSD:
 			objfun = "NSSD";
 			break;
-		case ZNSSD:
+		case Objfcn_Type::ZNSSD:
 			objfun = "ZNSSD";
 			break;
 	}
 
 	std::string inttyp;
 	switch (run->int_typ) {
-		case trilinear:
+		case Interp_Type::trilinear:
 			inttyp = "trilinear";
 			break;
-		case tricubic:
+		case Interp_Type::tricubic:
 			inttyp = "tricubic";
 			break;
-		case tri_bspline_3:
+		case Interp_Type::tri_bspline_3:
 			inttyp = "tri_bspline_3";
 			break;
-		case tri_bspline_5:
+		case Interp_Type::tri_bspline_5:
 			inttyp = "tri_bspline_5";
 			break;
-		case tri_bspline_7:
+		case Interp_Type::tri_bspline_7:
 			inttyp = "tri_bspline_7";
 			break;
 	}
 
 	std::string geotyp;
 	switch (run->sub_geo) {
-		case cube:
+		case Subvol_Type::cube:
 			geotyp = "cube";
 			break;
-		case sphere:
+		case Subvol_Type::sphere:
 			geotyp = "sphere";
 			break;
 	}
