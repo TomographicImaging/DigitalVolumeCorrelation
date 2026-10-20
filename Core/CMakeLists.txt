@@ -18,12 +18,7 @@
 #   Author(s): Edoardo Pasca (UKRI-STFC)
 #              Brian Bay (OSU)
 
-#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
-   file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
-endif()
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h.in ${CMAKE_CURRENT_SOURCE_DIR}/CCPiDefines.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/CCPiDefines.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/CCPiDefines.h)
 
 
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.7)
@@ -57,6 +52,7 @@ SET (DVC_SRCS ${DVC_SRCS}
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )
 
+
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0") 
   set (OpenMP_EXE_LINKER_FLAGS OpenMP::OpenMP_CXX)
 else()
@@ -74,6 +70,9 @@ add_dependencies(cildvc_static eigen)
 target_include_directories(cildvc_static PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/eigen>
     $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 # target_link_libraries(cildvc_static ${OpenMP_CXX_LIBRARIES})
 target_link_libraries(cildvc_static ${OpenMP_EXE_LINKER_FLAGS} )
@@ -84,16 +83,16 @@ target_link_libraries(cildvc_static ${OpenMP_EXE_LINKER_FLAGS} )
 add_executable (dvc ${CMAKE_CURRENT_SOURCE_DIR}/dvc.cpp )
 
 target_link_libraries (dvc cildvc_static)
-include_directories(dvc PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR} 
+target_include_directories(dvc PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 
         $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 )
 
 add_executable (strain ${CMAKE_CURRENT_SOURCE_DIR}/strain.cpp )
 
 target_link_libraries (strain cildvc_static)
-include_directories(strain PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR} 
+target_include_directories(strain PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 
     $<BUILD_INTERFACE:${OpenMP_CXX_INCLUDE_DIRS}>
 )
 
@@ -107,13 +106,6 @@ endif()
 # set_property(TARGET parse_header PROPERTY CXX_STANDARD 11)
 
 set_property(TARGET cildvc_static PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-#INSTALL(TARGETS cilDVC EXPORT CCPiDVCTargets
-#        LIBRARY  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-#	PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}" COMPONENT dev
-#	RUNTIME  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT bin
-#	ARCHIVE  DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
-#       )
 
 set(INSTALL_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
