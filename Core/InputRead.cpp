@@ -558,8 +558,8 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_old_file(kwh_pts_fname, run->pts_fname, pts_file_length, true) != input_line_ok ) return 0;
 	if(parse_line_new_file(kwh_out_fname, run->out_fname, true) != 1 ) return 0;
 
-	run->res_fname = run->out_fname + ".disp";
-	run->sta_fname = run->out_fname + ".stat";
+	run->res_fname = run->out_fname + ".disp.csv";
+	run->sta_fname = run->out_fname + ".stat.txt";
 
 	// optional keyword (reqd = "no"): default 0 processes the full cloud
 	run->num_points_to_process = num_points_to_process_def;
@@ -2110,12 +2110,12 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 	file << "<h3>Following program execution</h3>"
 
-	        "<p>The <strong>status file</strong> (<code>.stat</code>) contains:</p><ul>"
+	        "<p>The <strong>status file</strong> (<code>.stat.txt</code>) contains:</p><ul>"
 	        "<li>An echo of the input file used to control program execution.</li>"
 	        "<li>Information about the point cloud, dvc program version, and run date/time.</li>"
 	        "<li>Search statistics and timing.</li></ul>"
 
-	        "<p>The <strong>displacement file</strong> (<code>.disp</code>) is a tab-delimited text file of the dvc results.</p><ul>"
+	        "<p>The <strong>displacement file</strong> (<code>.disp.csv</code>) is a comma seperated variable file of the dvc results.</p><ul>"
 	        "<li>A header line appears first followed by data for each cloud point.</li></ul>"
 	        "<pre><code>n x y z status objmin u v w </code></pre>\n"
 	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
@@ -2597,22 +2597,22 @@ int InputRead::result_header(std::string fname, int num_params)
 
 	res_file << "n";
 
-	res_file << "\t" << "x" << "\t" << "y" << "\t" << "z";
+	res_file << "," << "x" << "," << "y" << "," << "z";
 
-	res_file << "\t" << "status";
+	res_file << "," << "status";
 
-	res_file << "\t" << "objmin";
+	res_file << "," << "objmin";
 
-	res_file << "\t" << "u" << "\t" << "v" << "\t" << "w";
+	res_file << "," << "u" << "," << "v" << "," << "w";
 
 	// changed .disp output to just include displacements
 	/*
-	if (num_params > 3) res_file << "\t" << "phi" << "\t" << "the" << "\t" << "psi";
+	if (num_params > 3) res_file << "," << "phi" << "," << "the" << "," << "psi";
 
 	if (num_params > 6)
 	{
-		res_file << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz";
-		res_file << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz";
+		res_file << "," << "exx" << "," << "eyy" << "," << "ezz";
+		res_file << "," << "exy" << "," << "eyz" << "," << "exz";
 	}
 	*/
 
@@ -2629,25 +2629,25 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 	res_file << n;
 
 	res_file << std::fixed << std::setprecision(3);
-	res_file << "\t" << pt.x() << "\t" << pt.y() << "\t" << pt.z();
+	res_file << "," << pt.x() << "," << pt.y() << "," << pt.z();
 
 	res_file << std::fixed << std::setprecision(0);
-	res_file << "\t" << status;
+	res_file << "," << status;
 
 	res_file << std::fixed << std::setprecision(6);
-	res_file << "\t" << obj_min;
+	res_file << "," << obj_min;
 
 	res_file << std::fixed << std::setprecision(6);
 	// this prints just the displacements
 	for (int i=0; i<3; i++) {
-		res_file << "\t" << result[i];
+		res_file << "," << result[i];
 	} 
 	
 	// this prints full search params, disp, rotation, strain if used
 	/*
 	for (int i=0; i<result.size(); i++)
 	{
-		res_file << "\t" << result[i];
+		res_file << "," << result[i];
 	} 
 	*/
 

@@ -428,8 +428,6 @@ int main(int argc, char *argv[])
 	//       + c4*x^2 + c5*y^2 + c6*z^2
 	//       + c7*x*y + c8*y*z + c9*x*z
 
-	std::vector<Eigen::MatrixXd> DG_all_pts = {};	// store for possible output
-
 	for (unsigned int i=0; i<data.points.size(); i++) {
 
 		// get neighborhood indices for this point
@@ -576,12 +574,8 @@ int main(int argc, char *argv[])
 								+ par(7)*base.x()*base.y() + par(8)*base.y()*base.z() + par(9)*base.x()*base.z() );
 		}
 		data.dis_vfit.push_back(displ);
-
-		
 		dgd = {DG(0,0),DG(0,1),DG(0,2),DG(1,0),DG(1,1),DG(1,2),DG(2,0),DG(2,1),DG(2,2)};
 		data.DispGrd.push_back(dgd);
-
-		DG_all_pts.emplace_back(DG);	// get rid of after write change
 
 		//data.DispGrd
 
