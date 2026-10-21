@@ -42,114 +42,7 @@ StrainCalc::StrainCalc ()
 }
 
 /******************************************************************************/
-/*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
-{
-    // loop through current arg list, if flag found, remove from list and return true
 
-    for (unsigned int i=0; i<argc; i++) {
-        std::string argstr(argv[i]);
-        if (argstr.compare(flag) == 0) {
-            for (unsigned int j=i; j<argc-1; j++) {
-                argv[j] = argv[j+1];
-            }
-            argc -= 1;
-            return 1;
-        }
-    }
-    return 0;
-}
-*/
-/******************************************************************************/
-/*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
-{
-    // look for command line flag followed by a single integer argument
-
-    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-        std::string argstr(argv[i]);
-        if (argstr.compare(flag) == 0) {			// found the flag
-            if (argc > i+1) {						// if there is a next argument try to convert
-                try {								// flag and number found
-                    val = std::stoi(argv[i+1]);
-                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-                        argv[j] = argv[j+2];
-                    }
-                    argc -= 2;
-                    return 1;						// return true
-                }
-                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
-                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-                        argv[j] = argv[j+1];
-                    }
-                    argc -= 1;
-                    std::cout << "argument after " << flag << " not valid" << std::endl;
-                    return 0;
-                }
-            }
-            // no next argument on command line, notify and pull flag
-            std::cout << "no argument after " << flag << " flag" << std::endl;
-            argc -= 1;
-        }
-    }
-    return 0;
-}
-*/
-/******************************************************************************/
-/*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val)
-{
-    // look for command line flag followed by a single float-double argument
-
-    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-        std::string argstr(argv[i]);
-        if (argstr.compare(flag) == 0) {			// found the flag
-            if (argc > i+1) {						// if there is a next argument try to convert
-                try {								// flag and number found
-                    val = std::stod(argv[i+1]);
-                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-                        argv[j] = argv[j+2];
-                    }
-                    argc -= 2;
-                    return 1;		// return success
-                }
-                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
-                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-                        argv[j] = argv[j+1];
-                    }
-                    argc -= 1;
-                    std::cout << "argument after " << flag << " not valid" << std::endl;
-                    return 0;
-                }
-            }
-            // no next argument on command line, notify and pull flag
-            std::cout << "no argument after " << flag << " flag" << std::endl;
-            argc -= 1;
-        }
-    }
-    return 0;
-}
-*/
-/******************************************************************************/
-/*
-int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[])
-{
-    // clear extraneous flags
-
-    for (unsigned int i=0; i<argc; i++) {
-        std::string argstr(argv[i]);
-        if (argstr.compare(pos, len, flag) == 0) {
-            std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
-            for (unsigned int j=i; j<argc-1; j++) {
-                argv[j] = argv[j+1];
-            }
-            argc -= 1;
-            return 1;
-        }
-    }
-    return 0;
-}
-*/
 /******************************************************************************/
 
 int main(int argc, char *argv[])
@@ -418,6 +311,7 @@ int main(int argc, char *argv[])
 //	std::cout << "nsort_pts =" << nsort_pts << std::endl;
 	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
 
+	/******************************************************************************/
 	//
 	// strain calculation begins here
 	//
@@ -497,8 +391,8 @@ int main(int argc, char *argv[])
 		Eigen::MatrixXd XtXm = Eigen::MatrixXd(nmp,nmp);
 		Eigen::VectorXd par = Eigen::VectorXd(nmp);			// the polynomial parameters, c0->9
 
-		Eigen::MatrixXd DG = Eigen::MatrixXd(nsd,nsd);		// deformation gradient
-		Eigen::MatrixXd ST = Eigen::MatrixXd(nsd,nsd);		// strain tensor storage
+		Eigen::Matrix3d DG;		// deformation gradient
+		Eigen::Matrix3d ST;		// strain tensor storage
 
 		std::vector<double> lam(nsd);			// eigenvalues for a point
 		std::vector<double> str(nsd*nsd);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for strain pushback to data
@@ -577,7 +471,47 @@ int main(int argc, char *argv[])
 		dgd = {DG(0,0),DG(0,1),DG(0,2),DG(1,0),DG(1,1),DG(1,2),DG(2,0),DG(2,1),DG(2,2)};
 		data.DispGrd.push_back(dgd);
 
-		//data.DispGrd
+
+		// ***** introduce unified kinematic approach here
+		// no specialized fiber/plane orientation output included yet
+
+		// instantiate the Kinematics class
+		const strain::Kinematics k(DG);
+
+		// generate derived quantities
+		PointResultBasic k_res;
+		k_res.valid = k.valid();                    // false if det F <= 0: values below are NaN
+        k_res.J = k.jacobian();
+        k_res.volumetric = k.volumetricStrain();
+        k_res.equivalent = k.equivalentStrain();
+        k_res.principalStrain = k.principalStretches().array() - 1.0;
+        k_res.biot = k.biot();
+        k_res.henc = k.hencky();
+        k_res.grla = k.greenLagrange();
+        k_res.rotationVector = k.rotationVector();
+
+		// these calculate the principal values for each strain tensor and return as a simple vector
+		const Eigen::Array3d lambda = k.principalStretches().array();
+		Eigen::Vector3d biotP = (lambda - 1.0).matrix();
+		Eigen::Vector3d grlaP = (0.5 * (lambda.square() - 1.0)).matrix();
+		Eigen::Vector3d hencP = lambda.log().matrix();
+
+		str = {k_res.biot(0,0),k_res.biot(1,1),k_res.biot(2,2),
+				k_res.biot(0,1),k_res.biot(1,2),k_res.biot(0,2),
+				 biotP[0],biotP[1],biotP[2]};
+		data.Biot.push_back(str);
+
+		str = {k_res.grla(0,0),k_res.grla(1,1),k_res.grla(2,2),
+				k_res.grla(0,1),k_res.grla(1,2),k_res.grla(0,2),
+				 grlaP[0],grlaP[1],grlaP[2]};
+		data.GrLa.push_back(str);
+
+		str = {k_res.henc(0,0),k_res.henc(1,1),k_res.henc(2,2),
+				k_res.henc(0,1),k_res.henc(1,2),k_res.henc(0,2),
+				 hencP[0],hencP[1],hencP[2]};
+		data.Henc.push_back(str);
+
+		// ***** original Lstr, Estr, dgrd code
 
 		// Engineering strain tensor
 
@@ -624,19 +558,41 @@ int main(int argc, char *argv[])
 
 	// output result files
 
-	// Engineering strain
+	// Biot strain (new)
+	if (out_Estr) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Biot.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Biot);
+	}
+
+	// Engineering strain (old)
 	if (out_Estr) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
 		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Estrain);
 	}
 
-	// Lagrangian strain
+	// Lagrangian strain (new)
+	if (out_Lstr) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".GrLa.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.GrLa);
+	}
+
+	// Lagrangian strain (old)
 	if (out_Lstr) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
 		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Lstrain);
 	}
+
+	// Hencky (ln, true) strain (new) - note, integrate into command line parse
+	if (out_Lstr) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Henc.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Henc);
+	}
+
 
 	// displacement gradient
 	if (out_dgrd) {
@@ -670,4 +626,114 @@ void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &dat
 
 	return;
 }
+/******************************************************************************/
+// old command line parsed, not used
+/*
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
+{
+    // loop through current arg list, if flag found, remove from list and return true
+
+    for (unsigned int i=0; i<argc; i++) {
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {
+            for (unsigned int j=i; j<argc-1; j++) {
+                argv[j] = argv[j+1];
+            }
+            argc -= 1;
+            return 1;
+        }
+    }
+    return 0;
+}
+*/
+/******************************************************************************/
+/*
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
+{
+    // look for command line flag followed by a single integer argument
+
+    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {			// found the flag
+            if (argc > i+1) {						// if there is a next argument try to convert
+                try {								// flag and number found
+                    val = std::stoi(argv[i+1]);
+                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+                        argv[j] = argv[j+2];
+                    }
+                    argc -= 2;
+                    return 1;						// return true
+                }
+                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
+                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+                        argv[j] = argv[j+1];
+                    }
+                    argc -= 1;
+                    std::cout << "argument after " << flag << " not valid" << std::endl;
+                    return 0;
+                }
+            }
+            // no next argument on command line, notify and pull flag
+            std::cout << "no argument after " << flag << " flag" << std::endl;
+            argc -= 1;
+        }
+    }
+    return 0;
+}
+*/
+/******************************************************************************/
+/*
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val)
+{
+    // look for command line flag followed by a single float-double argument
+
+    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {			// found the flag
+            if (argc > i+1) {						// if there is a next argument try to convert
+                try {								// flag and number found
+                    val = std::stod(argv[i+1]);
+                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+                        argv[j] = argv[j+2];
+                    }
+                    argc -= 2;
+                    return 1;		// return success
+                }
+                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
+                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+                        argv[j] = argv[j+1];
+                    }
+                    argc -= 1;
+                    std::cout << "argument after " << flag << " not valid" << std::endl;
+                    return 0;
+                }
+            }
+            // no next argument on command line, notify and pull flag
+            std::cout << "no argument after " << flag << " flag" << std::endl;
+            argc -= 1;
+        }
+    }
+    return 0;
+}
+*/
+/******************************************************************************/
+/*
+int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[])
+{
+    // clear extraneous flags
+
+    for (unsigned int i=0; i<argc; i++) {
+        std::string argstr(argv[i]);
+        if (argstr.compare(pos, len, flag) == 0) {
+            std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+            for (unsigned int j=i; j<argc-1; j++) {
+                argv[j] = argv[j+1];
+            }
+            argc -= 1;
+            return 1;
+        }
+    }
+    return 0;
+}
+*/
 /******************************************************************************/

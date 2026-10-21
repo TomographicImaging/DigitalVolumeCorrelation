@@ -437,6 +437,19 @@ public:
 	// results from the STRAIN calculation executable
 	//
 
+    // *** new variables for the generalized kinematics code, will ultimately replace the legacy ones
+
+	// Biot strain components and principals, rotation invariant engineering strain
+	std::vector< std::vector<double> > Biot;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+
+    // Green-Lagrange strain components and principals
+	std::vector< std::vector<double> > GrLa;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+
+    // Hencky strain components and principals
+	std::vector< std::vector<double> > Henc;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+
+    // ***
+
     // Displacement gradient tensor values
 	std::vector< std::vector<double> > DispGrd;	// ux,uy,uz,vx,vy,vz,wx,wy,wz
 
