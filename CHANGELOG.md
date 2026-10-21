@@ -1,8 +1,10 @@
 # Changelog
 ## v26.0.0
-
+- NEW: Dependency on Eigen 3.4.1
 - NEW: Faster KD Tree point cloud sorting
 - NEW: tri bspline interpolation for subvolume
+- Refactor of includes
+- Added parse of npy files header
 - Backward incompatible changes:
   - Parameter renaming:
     - disp_max, renamed to step_max. It used to be max displacement for the sample, but is now max change in the parameter vector during point processing. It is a critical parameter, set as small as possible for efficiency and optimization control. The term “step” is being used for optimization tolerancing (see below) and is descriptive in this context.

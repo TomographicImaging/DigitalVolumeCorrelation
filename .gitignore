@@ -1,3 +1,5 @@
 Core/CCPiDefines.h
 Core/eigen
 build
+Core/tests/*.profraw
+Core/tests/__pycache__
