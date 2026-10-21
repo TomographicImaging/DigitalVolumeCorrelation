@@ -40,113 +40,114 @@ StrainCalc::StrainCalc ()
 	objmin_thresh_max = 1.0;		// all points used
 	objmin_thresh_def = 1.0;		// default is no thresholding
 }
+
 /******************************************************************************/
 /*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
 {
-	// loop through current arg list, if flag found, remove from list and return true
+    // loop through current arg list, if flag found, remove from list and return true
 
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {
-			for (unsigned int j=i; j<argc-1; j++) {
-				argv[j] = argv[j+1];
-			}
-			argc -= 1;
-			return 1;
-		}
-	}
-	return 0;
+    for (unsigned int i=0; i<argc; i++) {
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {
+            for (unsigned int j=i; j<argc-1; j++) {
+                argv[j] = argv[j+1];
+            }
+            argc -= 1;
+            return 1;
+        }
+    }
+    return 0;
 }
 */
 /******************************************************************************/
 /*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
 {
-	// look for command line flag followed by a single integer argument
+    // look for command line flag followed by a single integer argument
 
-	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {			// found the flag
-			if (argc > i+1) {						// if there is a next argument try to convert
-				try {								// flag and number found
-					val = std::stoi(argv[i+1]);
-					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-						argv[j] = argv[j+2];
-					}
-					argc -= 2;
-					return 1;						// return true
-				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
-					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-						argv[j] = argv[j+1];
-					}
-					argc -= 1;
-					std::cout << "argument after " << flag << " not valid" << std::endl;
-					return 0;
-				}
-			}
-			// no next argument on command line, notify and pull flag
-			std::cout << "no argument after " << flag << " flag" << std::endl;
-			argc -= 1;
-		}
-	}
-	return 0;
+    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {			// found the flag
+            if (argc > i+1) {						// if there is a next argument try to convert
+                try {								// flag and number found
+                    val = std::stoi(argv[i+1]);
+                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+                        argv[j] = argv[j+2];
+                    }
+                    argc -= 2;
+                    return 1;						// return true
+                }
+                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
+                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+                        argv[j] = argv[j+1];
+                    }
+                    argc -= 1;
+                    std::cout << "argument after " << flag << " not valid" << std::endl;
+                    return 0;
+                }
+            }
+            // no next argument on command line, notify and pull flag
+            std::cout << "no argument after " << flag << " flag" << std::endl;
+            argc -= 1;
+        }
+    }
+    return 0;
 }
 */
 /******************************************************************************/
 /*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val)
 {
-	// look for command line flag followed by a single float-double argument
+    // look for command line flag followed by a single float-double argument
 
-	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {			// found the flag
-			if (argc > i+1) {						// if there is a next argument try to convert
-				try {								// flag and number found
-					val = std::stod(argv[i+1]);
-					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-						argv[j] = argv[j+2];
-					}
-					argc -= 2;
-					return 1;		// return success
-				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
-					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-						argv[j] = argv[j+1];
-					}
-					argc -= 1;
-					std::cout << "argument after " << flag << " not valid" << std::endl;
-					return 0;
-				}
-			}
-			// no next argument on command line, notify and pull flag
-			std::cout << "no argument after " << flag << " flag" << std::endl;
-			argc -= 1;
-		}
-	}
-	return 0;
+    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {			// found the flag
+            if (argc > i+1) {						// if there is a next argument try to convert
+                try {								// flag and number found
+                    val = std::stod(argv[i+1]);
+                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+                        argv[j] = argv[j+2];
+                    }
+                    argc -= 2;
+                    return 1;		// return success
+                }
+                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
+                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+                        argv[j] = argv[j+1];
+                    }
+                    argc -= 1;
+                    std::cout << "argument after " << flag << " not valid" << std::endl;
+                    return 0;
+                }
+            }
+            // no next argument on command line, notify and pull flag
+            std::cout << "no argument after " << flag << " flag" << std::endl;
+            argc -= 1;
+        }
+    }
+    return 0;
 }
 */
 /******************************************************************************/
 /*
 int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[])
 {
-	// clear extraneous flags
+    // clear extraneous flags
 
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare(pos, len, flag) == 0) {
-			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
-			for (unsigned int j=i; j<argc-1; j++) {
-				argv[j] = argv[j+1];
-			}
-			argc -= 1;
-			return 1;
-		}
-	}
-	return 0;
+    for (unsigned int i=0; i<argc; i++) {
+        std::string argstr(argv[i]);
+        if (argstr.compare(pos, len, flag) == 0) {
+            std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+            for (unsigned int j=i; j<argc-1; j++) {
+                argv[j] = argv[j+1];
+            }
+            argc -= 1;
+            return 1;
+        }
+    }
+    return 0;
 }
 */
 /******************************************************************************/
@@ -502,7 +503,8 @@ int main(int argc, char *argv[])
 		Eigen::MatrixXd ST = Eigen::MatrixXd(nsd,nsd);		// strain tensor storage
 
 		std::vector<double> lam(nsd);			// eigenvalues for a point
-		std::vector<double> str(nsd*nsd);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
+		std::vector<double> str(nsd*nsd);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for strain pushback to data
+		std::vector<double> dgd(nsd*nsd);		// ux,uy,uz,vx,vy,vz,wx,wy,wz for a point, for disp grad pushback to data
 		std::vector<double> displ(nsd);			// u,v,w calculated from the fit equations
 
 		for (unsigned int j=0; j<ngp; j++) {	// not simply ndp, points may have different numbers of sw points
@@ -575,7 +577,13 @@ int main(int argc, char *argv[])
 		}
 		data.dis_vfit.push_back(displ);
 
-		DG_all_pts.emplace_back(DG);
+		
+		dgd = {DG(0,0),DG(0,1),DG(0,2),DG(1,0),DG(1,1),DG(1,2),DG(2,0),DG(2,1),DG(2,2)};
+		data.DispGrd.push_back(dgd);
+
+		DG_all_pts.emplace_back(DG);	// get rid of after write change
+
+		//data.DispGrd
 
 		// Engineering strain tensor
 
@@ -622,70 +630,50 @@ int main(int argc, char *argv[])
 
 	// output result files
 
-	std::string hdr = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
-	std::string of_name;
-
 	// Engineering strain
 	if (out_Estr) {
-		std::ofstream strain_results_E;
-		of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
-		std::cout << "output file: " << of_name << std::endl;
-		strain_results_E.open(of_name);
-		strain_results_E << hdr << std::endl;
-		for (unsigned int i=0; i<data.points.size(); i++)
-		{
-			strain_results_E << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-			for (auto &j : data.dis_vfit[i]){strain_results_E << "," << j;}
-			strain_results_E << "," << data.pts_in_sw[i];
-			strain_results_E << "," << data.sw_rad[i];
-			for (auto &j : data.Estrain[i]){strain_results_E << "," << j;}
-			strain_results_E << std::endl;
-		}
-		strain_results_E.close();
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Estrain);
 	}
 
 	// Lagrangian strain
 	if (out_Lstr) {
-		std::ofstream strain_results_L;
-		of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
-		std::cout << "output file: " << of_name << std::endl;
-		strain_results_L.open(of_name);
-		strain_results_L << hdr << std::endl;
-		for (unsigned int i=0; i<data.points.size(); i++)
-		{
-			strain_results_L << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-			for (auto &j : data.dis_vfit[i]){strain_results_L << "," << j;}
-			strain_results_L << "," << data.pts_in_sw[i];
-			strain_results_L << "," << data.sw_rad[i];
-			for (auto &j : data.Lstrain[i]){strain_results_L << "," << j;}
-			strain_results_L << std::endl;
-		}
-		strain_results_L.close();
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Lstrain);
 	}
 
 	// displacement gradient
 	if (out_dgrd) {
-		std::ofstream dispgrad_results;
-		of_name = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
-		std::cout << "output file: " << of_name << std::endl;
-		dispgrad_results.open(of_name);
-		dispgrad_results << "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz" << std::endl;
-		for (unsigned int i=0; i<data.points.size(); i++) {
-			dispgrad_results << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-			for (auto &j : data.dis_vfit[i]){dispgrad_results << "," << j;}
-			dispgrad_results << "," << data.pts_in_sw[i];
-			dispgrad_results << "," << data.sw_rad[i];
-
-			for (unsigned int j=0; j<3; j++)
-				for (unsigned int k=0; k<3; k++)
-					dispgrad_results << "," << DG_all_pts[i](j,k);
-
-			dispgrad_results << std::endl;
-		}
-		dispgrad_results.close();
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz";
+		strain.write_output(fname, header, data, data.DispGrd);
 	}
 
 	std::cout << std::endl;
 	return 0;
+}
+/******************************************************************************/
+void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &data, std::vector<std::vector<double>> &output)
+{
+	std::ofstream outfile;
+	outfile.open(fname);
+
+	outfile << hdr << std::endl;
+
+	for (unsigned int i=0; i<data.points.size(); i++)
+	{
+		outfile << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+		for (auto &j : data.dis_vfit[i]){outfile << "," << j;}
+		outfile << "," << data.pts_in_sw[i];
+		outfile << "," << data.sw_rad[i];
+		for (auto &j : output[i]){outfile << "," << j;}		
+		outfile << std::endl;
+	}
+
+	outfile.close();
+
+	return;
 }
 /******************************************************************************/

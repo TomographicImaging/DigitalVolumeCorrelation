@@ -437,6 +437,9 @@ public:
 	// results from the STRAIN calculation executable
 	//
 
+    // Displacement gradient tensor values
+	std::vector< std::vector<double> > DispGrd;	// ux,uy,uz,vx,vy,vz,wx,wy,wz
+
 	// Engineering strain components and principals
 	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
 	

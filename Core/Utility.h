@@ -52,9 +52,9 @@ enum Endian_Type {
 	little, big
 };
 /******************************************************************************/
-const std::string ok_subvol_geom_line = "cube sphere";
+const std::string ok_subvol_geom_line = "grid sphere";
 enum Subvol_Type {
-	cube, sphere
+	grid, sphere
 };
 /******************************************************************************/
 const std::string ok_obj_fcn_line = "ssd zssd nssd znssd";

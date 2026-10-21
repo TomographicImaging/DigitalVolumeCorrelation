@@ -228,23 +228,23 @@ InputRead::InputRead()
 	// sub_vols
 
 	kwh_subvol_geom.word = "subvol_geom";
-	kwh_subvol_geom.exam = "cube";
+	kwh_subvol_geom.exam = "grid";
 	kwh_subvol_geom.reqd = "yes";
 	kwh_subvol_geom.pool = "sub_vols";
-	kwh_subvol_geom.hint = "### cube, sphere: geometry of the subvolumes";
+	kwh_subvol_geom.hint = "### grid, sphere: geometry of the subvolumes";
 	kwh_subvol_geom.good = limits_to_string(ok_subvol_geom);
 	kwh_subvol_geom.dflt = ok_subvol_geom[0];
 	kwh_subvol_geom.help.assign("Defines geometry of the subvolumes created around each search point.\n");
-	kwh_subvol_geom.help.append("Cubes are the classic, but essentially arbitrary, subvolume geometry.\n");
-	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based cloud point geometries.\n");
+	kwh_subvol_geom.help.append("Grids are the classic, but essentially arbitrary, subvolume geometry.\n");
+	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based point cloud geometries.\n");
 	kwh_subvol_geom.help.append("Fundamentally a subvolume is a set of image intensity values retreived from the reference volume.\n");
 	kwh_subvol_geom.help.append("In this DVC code points within subvolumes are not limited to discrete voxel values.\n");
 	kwh_subvol_geom.help.append("They are treated as sampling points, retrieved from the reference volume through interpolation.\n");
 	kwh_subvol_geom.help.append("Note that spheres, with random sampling point distributions, return slightly different results on repeat runs.\n");
 	kwh_subvol_geom.help.append("This is a useful aspect of spheres.\n");
-	kwh_subvol_geom.help.append("Subvolumes generally overlap and spheres increase sampling density. Cubes do not as the overlap points are identical.\n");
-	kwh_subvol_geom.help.append("But sampling stability can be useful when comparing other run parameter settings. Use cubes in those cases.\n");
-	kwh_subvol_geom.help.append("   cube\t\tsampling points distributed uniformly accross a 3D grid\n");
+	kwh_subvol_geom.help.append("Subvolumes generally overlap and spheres increase sampling density. Grids do not as the overlap points are identical.\n");
+	kwh_subvol_geom.help.append("But sampling stability can be useful when comparing other run parameter settings. Use grids in those cases.\n");
+	kwh_subvol_geom.help.append("   grid\t\tsampling points distributed uniformly accross a 3D grid\n");
 	kwh_subvol_geom.help.append("   sphere\t\tsampling points distributed randomly throughout a sphere\n");
 	kwh_subvol_geom.set_form_choice(ok_subvol_geom);	// input form
 	manual.push_back(kwh_subvol_geom);
@@ -275,7 +275,7 @@ InputRead::InputRead()
 	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume.\n");
 	kwh_subvol_npts.help.append("   In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n");
 	kwh_subvol_npts.help.append("   Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n");
-	kwh_subvol_npts.help.append("   For cubes a uniform grid of approximately subvol_npts is generated.\n");
+	kwh_subvol_npts.help.append("   For grids a uniform grid of approximately subvol_npts is generated.\n");
 	kwh_subvol_npts.help.append("   For spheres subvol_npts are randomly distributed within the subvolume.\n");
 	kwh_subvol_npts.help.append("   This parameter has a strong effect on computation time, so be careful.\n");
 	kwh_subvol_npts.set_form_int(subvol_npts_min, subvol_npts_max);	// input form

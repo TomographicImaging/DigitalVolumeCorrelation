@@ -28,7 +28,7 @@ Search::Search(RunControl *run)
 
 	bytes_per = rc->vol_bit_depth/8;
 	subv_rad = (rc->subvol_size)/2.0;	// easier to use than subvol_size
-	if (rc->sub_geo == Subvol_Type::cube) subv_num = pow(ceil(pow((double)rc->subvol_npts,1.0/3.0)),3.0);
+	if (rc->sub_geo == Subvol_Type::grid) subv_num = pow(ceil(pow((double)rc->subvol_npts,1.0/3.0)),3.0);
 	if (rc->sub_geo == Subvol_Type::sphere) subv_num = rc->subvol_npts;
 
 	// establish pointer to function set in input file
@@ -156,7 +156,7 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
 	}
 
-	if (rc->sub_geo == Subvol_Type::cube) {
+	if (rc->sub_geo == Subvol_Type::grid) {
 		Point sub_min = srch_pt;
 		sub_min.move_by(-subv_rad*rc->subvol_aspect[0], -subv_rad*rc->subvol_aspect[1], -subv_rad*rc->subvol_aspect[2]);
 		Point sub_max = srch_pt;
@@ -878,8 +878,8 @@ void Search::trgrid_global(double displ_max, double basin_radius, int n, bool ou
 		try {obj_val = obj_val_at(par_cur);}
 		catch (Range_Fail) {throw Range_Fail();}
 
-// output subvol values, code check, use subvol_geom cube, need basin_radius on
-// raw: cube root of file_size/8, 64-bit real, little endian
+// output subvol values, code check, use subvol_geom grid, need basin_radius on
+// raw: grid root of file_size/8, 64-bit real, little endian
 //		if (n==0 && z==0 && y==0 && x==0) {
 //				std::ofstream out("tar_subvol_echo.raw", std::ofstream::out | std::ofstream::binary);
 //				out.write((char*)&tar_subvol[0], tar_subvol.size()*sizeof(double));
@@ -1123,8 +1123,8 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 
 	std::string geotyp;
 	switch (run->sub_geo) {
-		case cube:
-			geotyp = "cube";
+		case grid:
+			geotyp = "grid";
 			break;
 		case sphere:
 			geotyp = "sphere";

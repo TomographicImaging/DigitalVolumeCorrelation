@@ -240,7 +240,7 @@ void test_search_stream_operator() {
 
     std::vector<Objfcn_Type> objs = {SSD, ZSSD, NSSD, ZNSSD};
     std::vector<Interp_Type> interps = {trilinear, tricubic, tri_bspline_3, tri_bspline_5, tri_bspline_7};
-    std::vector<Subvol_Type> geos = {cube, sphere};
+    std::vector<Subvol_Type> geos = {grid, sphere};
 
     for (auto obj : objs) {
         for (auto interp : interps) {

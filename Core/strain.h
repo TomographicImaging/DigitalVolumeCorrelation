@@ -76,6 +76,9 @@ public:
 	double objt_max() const {return objmin_thresh_max;}
 	double objt_def() const {return objmin_thresh_def;}
 
+	void write_output (std::string fname, std::string hdr, DataCloud &data, std::vector<std::vector<double>> &output);
+
+
 private:
 	
 	int num_mod_para;				// number of model parameters (terms in the polynomial)
