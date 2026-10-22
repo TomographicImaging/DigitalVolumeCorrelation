@@ -2136,13 +2136,78 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. "
 	        "The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) "
 			"Further processing of the basic data can be very project-specific and is therefore encapsulated into a seperate analysis stage. "
-			"</p>\n"
+			"</p>"
+
+			"<h3>The <i>strain</i> executable</h3>"
 
 	        "<p>"
-	        "</p>\n"
+			"The most commmon post-processing step is strain calculation, and an executable is provided along with <i>dvc</i> for that purpose. " 
+			"The strain program is driven by command-line arguments as explained below, but the basic run process is very simple. "
+			"From the same terminal window as the <i>dvc</i> run just follow the word <i>strain</i> with the name of a standard <i>dvc</i> output file: "
+			"</p>"
+
+			"<pre><code>strain my_project.disp.csv </code></pre>\n"
+
+			"This will calculate strain for each cloud point under a set of default conditions, and generate an output file. "
+			"However, to fully understand the strain calculation and generate useful results, some background information is required. "
+
+			"<ul>"
+				"<li>"
+					"Strain as used here is a 3D tensor quantity defined within the context of continuum mechanics. "
+					"This has point cloud implications. A relatively dense and connected cloud works best. "
+				"</li>"
+				"<li>"
+					"Spatial gradients of displacement vector components form the basis of strain calculations. "
+					"With displacements only avaialble at discrete cloud points, local point neighborhoods are required for determing gradients."
+				"</li>"
+				"<li>"
+					"A neighborhood is formed around each point in the cloud by sorting and selecting the <i>n</i> nearest points. "
+					"Number of points in the neighborhood, the <i>strain window</i> size <i>sw</i>, is an important user-defined variable. "
+				"</li>"
+				"<li>"
+					"Displacement vector components of points within the strain window are fit to a 3D polynomial through a least-squares process. "
+					"Gradients of the displacement components are defined as derivatives of the polynomial at the location of the base cloud point. "
+				"</li>"
+				"<li>"
+					"An added benefit of the polynomial fitting process is the ability to sample the polynomial for displacement components. "
+					"This generates a smoothed representaiton of the original data. "
+				"</li>"
+			"</ul>"
+	        
+			"<p>"
+				"Two sets of command line arguments control the process: 1) management of the strain windows, and 2) selection of output"
+			"</p>"
+
+			"<h3>Strain window settings</h3>"
+
+	        "<table class=\"grid\">\n<tr><th>Argument</th><th>Description</th></tr>\n"
+	        	"<tr><td><code>-sw 30</code></td><td>set strain window size to 30 points (default = 25, min = 10, max = 75)</td></tr>\n"
+	        	"<tr><td><code>-t 0.1</code></td><td>eliminate window points with objmin above 0.1 (default = 1.0, pass all converged points)</td></tr>\n"
+	        	"<tr><td><code>-r</code></td><td>refill strain window to sw if points were eliminated (default is no refill)</td></tr>\n"
+	        "</table>\n"
 
 	        "<p>"
-	        "</p>\n";
+				"Strain window size shares characteristics with other neighborhood calculations. Small is noisier but with better spatial resolution. "
+	        	"Large is smoothed but with poorer spatial resolution. Much depends on the point cloud spacing and quality of the image volumes. "
+				"Strain window point number can seem large in 3D: a relatively modest 3x3x3 neighborhood is 27 points. "
+			"</p>"		
+
+
+			"<h3>Output options</h3>"
+
+			"<table class=\"grid\">\n<tr><th>Argument</th><th>Output File</th></tr>\n"
+	        	"<tr><td><code>-B</code></td><td>.Biot.csv - rotation invariant engineering strain tensor</td></tr>\n"
+	        	"<tr><td><code>-L</code></td><td>.GrLa.csv - Green-Lagrange finite strain tensor (default output)</td></tr>\n"
+	        	"<tr><td><code>-H</code></td><td>.Henc.csv - Hencky  logarithmic (true) strain tensor</td></tr>\n"
+	        	"<tr><td><code>-D</code></td><td>.dgrd.csv - displacement gradient tensor</td></tr>\n"
+	        	"<tr><td><code>-A</code></td><td> output all available kinematic quantities</td></tr>\n"
+			"</table>\n"
+
+	        "<p>"
+				"Each output request creates a seperate file with the extension shown. Data is generated for each point in the cloud. "
+				"Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. "
+				"The displacement gradient is not symmetric and all nine components are listed. "
+	        "</p>";
 
 	file << "</main>\n</div>\n</body>\n</html>\n";
 
