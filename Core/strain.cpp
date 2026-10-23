@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 	// prepare local vectors and instantiate a data cloud for .disp file data storage
 	std::vector<int> status;
 	std::vector<double> objmin;
-	std::vector<Point> dis;
+	std::vector<Point> dis;			// point displacements
 
 	// read .disp file and check for success
 	// read_disp_file_cst_sv checks for "n" as first character of neader line
@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
 		// get neighborhood indices for this point
 		std::vector<int> nbr_ind = data.neigh[i];
 
-		// find matrix scaling factor and load neighborhood vectors npos and ndis for current point
+		// find matrix scaling factor and load neighborhood vectors snpos and sndis for current point
 		// using the distance to the current point (neighborhood center) for scaling
 		Point origin(0.0, 0.0, 0.0);
 		double distance = data.points[i].pt_dist(origin);
@@ -356,22 +356,26 @@ int main(int argc, char *argv[])
 		// scale the calculation location (x,y,z in the polyfit)
 		Point base(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
-		std::vector<Point> npos = {};	// neighbor position
-		std::vector<Point> ndis = {};
+		// note: scaling is done because positions may be in the thousands and displacement in the thousandths
+		std::vector<Point> npos = {};	// neighbor positions admitted to the sw, use for evaluating sw voxel size
+		std::vector<Point> snpos = {};	// scaled neighbor positions admitted to the sw
+		std::vector<Point> sndis = {};	// scaled neighbor displacements admitted to the sw
 
 		// establish neighborhoods and load neighbor position and displacement data
-		// the for and whle loops versions are essentially identical but the while loop looks for more good points
+		// the for and while loop versions are essentially identical but the while loop looks for more good points up to sw setting
 		// ndp is the requested number of neighborhood points for the strain windows
 		// check nbr status, objmin threshold, and still within range of available nbr points
-
+		
 		if (!refill) {
 			int indx = 0;
 			for (unsigned int j=0; j<ndp; j++) {
 				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {
+					Point pos(data.points[nbr_ind[indx]].x(), data.points[nbr_ind[indx]].y(), data.points[nbr_ind[indx]].z());
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
-					npos.push_back(spos);
+					npos.push_back(pos);
+					snpos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-					ndis.push_back(sdis);
+					sndis.push_back(sdis);
 				}
 				indx += 1;	// generally would use j but the while loop version needs to count
 			}
@@ -380,10 +384,12 @@ int main(int argc, char *argv[])
 			int np = 0;
 			while ( (np < ndp) && (indx < ndp_max) ) {
 				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {
+					Point pos(data.points[nbr_ind[indx]].x(), data.points[nbr_ind[indx]].y(), data.points[nbr_ind[indx]].z());
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
-					npos.push_back(spos);
+					npos.push_back(pos);
+					snpos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-					ndis.push_back(sdis);
+					sndis.push_back(sdis);
 					np += 1;
 				}
 				indx += 1;
@@ -391,17 +397,33 @@ int main(int argc, char *argv[])
 		}
 
 		// if no points in neigh then pts_in_sw becomes zero
-		data.pts_in_sw.push_back(npos.size());
+		data.pts_in_sw.push_back(snpos.size());
 
-		if (npos.size() == 0) {
-			data.sw_rad.emplace_back(0.0);
+		// determine sw_size in voxels as cube root of the bounding box volume
+		double min_x = std::numeric_limits<double>::max();
+		double max_x = std::numeric_limits<double>::min();
+		double min_y = std::numeric_limits<double>::max();
+		double max_y = std::numeric_limits<double>::min();
+		double min_z = std::numeric_limits<double>::max();
+		double max_z = std::numeric_limits<double>::min();
+
+		for (unsigned int j=0; j<npos.size(); j++) {
+			min_x = std::min(min_x, npos[j].x());  max_x = std::max(max_x, npos[j].x());
+			min_y = std::min(min_y, npos[j].y());  max_y = std::max(max_y, npos[j].y());
+			min_z = std::min(min_z, npos[j].z());  max_z = std::max(max_z, npos[j].z());
+		}
+		double npos_box_vol = (max_x - min_x)*(max_y - min_y)*(max_z - min_z);
+		double box_equiv_edge = std::cbrt(npos_box_vol);
+
+		if (snpos.size() == 0) {
+			data.sw_size.emplace_back(0.0);
 
 		} else {
-			data.sw_rad.emplace_back(distance*base.pt_dist(npos.back()));
+			data.sw_size.emplace_back(box_equiv_edge);
 		}
 
-		int ngp = npos.size();		// number of good points, may be zero
-		int nmp = strain.nmp();				// set by poly model choice, fixed in constructor
+		int ngp = snpos.size();		// number of good points, may be zero
+		int nmp = strain.nmp();		// set by poly model choice, fixed in constructor
 		int nsd = 3;				// number of spatial dimensions for calc
 
 		// OLS variables sized to number of good points and reinitialized
@@ -423,21 +445,21 @@ int main(int argc, char *argv[])
 
 			Xm(j,0) = 1;
 
-			Xm(j,1) = npos[j].x();
-			Xm(j,2) = npos[j].y();
-			Xm(j,3) = npos[j].z();
+			Xm(j,1) = snpos[j].x();
+			Xm(j,2) = snpos[j].y();
+			Xm(j,3) = snpos[j].z();
 
-			Xm(j,4) = npos[j].x()*npos[j].x();
-			Xm(j,5) = npos[j].y()*npos[j].y();
-			Xm(j,6) = npos[j].z()*npos[j].z();
+			Xm(j,4) = snpos[j].x()*snpos[j].x();
+			Xm(j,5) = snpos[j].y()*snpos[j].y();
+			Xm(j,6) = snpos[j].z()*snpos[j].z();
 
-			Xm(j,7) = npos[j].x()*npos[j].y();
-			Xm(j,8) = npos[j].y()*npos[j].z();
-			Xm(j,9) = npos[j].x()*npos[j].z();
+			Xm(j,7) = snpos[j].x()*snpos[j].y();
+			Xm(j,8) = snpos[j].y()*snpos[j].z();
+			Xm(j,9) = snpos[j].x()*snpos[j].z();
 
-			dvs(j,0) = ndis[j].x();
-			dvs(j,1) = ndis[j].y();
-			dvs(j,2) = ndis[j].z();
+			dvs(j,0) = sndis[j].x();
+			dvs(j,1) = sndis[j].y();
+			dvs(j,2) = sndis[j].z();
 
 			// adjust for coordinate plane point clouds, auto detected or activated with -xy, -yz, -zx flags
 
@@ -538,28 +560,28 @@ int main(int argc, char *argv[])
 	// Biot strain (new)
 	if (out_Biot) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Biot.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Biot);
 	}
 
 	// Lagrangian strain (new)
 	if (out_GrLa) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".GrLa.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.GrLa);
 	}
 
 	// Hencky (ln, true) strain (new) - note, integrate into command line parse
 	if (out_Henc) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Henc.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Henc);
 	}
 
 	// displacement gradient
 	if (out_dgrd) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,ux,uy,uz,vx,vy,vz,wx,wy,wz";
 		strain.write_output(fname, header, data, data.DispGrd);
 	}
 
@@ -576,10 +598,13 @@ void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &dat
 
 	for (unsigned int i=0; i<data.points.size(); i++)
 	{
-		outfile << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+		outfile << data.labels[i];
+		outfile << std::fixed << std::setprecision(2);
+		outfile << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
 		for (auto &j : data.dis_vfit[i]){outfile << "," << j;}
 		outfile << "," << data.pts_in_sw[i];
-		outfile << "," << data.sw_rad[i];
+		outfile << "," << std::fixed << std::setprecision(2) << data.sw_size[i];
+		outfile << std::fixed << std::setprecision(6);
 		for (auto &j : output[i]){outfile << "," << j;}		
 		outfile << std::endl;
 	}
@@ -640,14 +665,14 @@ void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &dat
 	// Engineering strain (old)
 	if (out_Estr) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Estrain);
 	}
 
 	// Lagrangian strain (old)
 	if (out_Lstr) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Lstrain);
 	}
 	*/

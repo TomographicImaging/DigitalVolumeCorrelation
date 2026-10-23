@@ -144,22 +144,17 @@ public:
     // Hencky strain components and principals
 	std::vector< std::vector<double> > Henc;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
 
-    // ***
-
     // Displacement gradient tensor values
 	std::vector< std::vector<double> > DispGrd;	// ux,uy,uz,vx,vy,vz,wx,wy,wz
 
-	// Engineering strain components and principals
-	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
-	
-	// Lagrangian strain components and principals
-	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
+    // Generalized rotation (screw axis) of the material region, direction x magnitude (radians)
+    std::vector< std::vector<double> > RotAxis;	// rx,ry,rz
 
 	// displacement components computed at cloud locations from the volume fitting process
 	std::vector< std::vector<double> > dis_vfit;	// u,v,w
 
-	// strain window radius (without half the subvol size) computed at cloud locations
-	std::vector<double> sw_rad;
+	// strain window size, computed as cube root of the neighborhood volume
+    std::vector<double> sw_size;
 
 	// for variable neighborhood approaches, num of pts in the strain window
 	std::vector<int> pts_in_sw;
