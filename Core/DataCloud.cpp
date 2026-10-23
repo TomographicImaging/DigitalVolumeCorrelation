@@ -36,8 +36,10 @@ bool sortByIndex(const DualSort &lhs, const DualSort &rhs) { return lhs.index < 
 /******************************************************************************/
 DataCloud::DataCloud ()
 {
-	nbr_num_save_default = 75;		// store this many nearest neighbor points in the .sort file
-	
+	// store this many nearest neighbor points in the .sort file
+	// number chosen mainly to support strain, this is a 5x5x5 neighborhood
+
+	nbr_num_save_default = 125;		
 }
 /******************************************************************************/
 void DataCloud::write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh)

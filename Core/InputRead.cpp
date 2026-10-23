@@ -855,6 +855,13 @@ int InputRead::read_point_cloud_generalized(RunControl *run,
 	}
 	ifs.close(); // remaining code does not directly use ifs, just used for file access check
 
+	double min_x = std::numeric_limits<double>::max();
+	double max_x = std::numeric_limits<double>::min();
+	double min_y = std::numeric_limits<double>::max();
+	double max_y = std::numeric_limits<double>::min();
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = std::numeric_limits<double>::min();
+
     ReadOptions opt;
     opt.columns.push_back(ColumnSpec("id", ColType::Int));
     opt.columns.push_back(ColumnSpec("x",  ColType::Double));
@@ -879,8 +886,13 @@ int InputRead::read_point_cloud_generalized(RunControl *run,
 
     search_points.clear();
     search_points.reserve(t.rows);
-    for (std::size_t r = 0; r < t.rows; ++r)
+    for (std::size_t r = 0; r < t.rows; ++r) {
         search_points.push_back(Point(x[r], y[r], z[r]));
+
+		min_x = std::min(min_x, x[r]);  max_x = std::max(max_x, x[r]);
+		min_y = std::min(min_y, y[r]);  max_y = std::max(max_y, y[r]);
+		min_z = std::min(min_z, z[r]);  max_z = std::max(max_z, z[r]);
+	}
 
     added_column_names.clear();
     for (std::size_t e = 0; e < t.n_extra(); ++e)
@@ -894,6 +906,24 @@ int InputRead::read_point_cloud_generalized(RunControl *run,
     if (t.skipped_rows || t.bad_values || t.padded_rows)
         std::cerr << fname << ": " << t.skipped_rows << " rows skipped, "
                   << t.bad_values << " bad values, " << t.padded_rows << " rows padded\n";
+
+
+	// additional steps after file read
+
+	if (search_points.empty()) {
+		std::cout << std::endl;
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted." << std::endl;
+		std::cout << "Run 'dvc manual' and check content and formatting guidelines." << std::endl;
+		std::cout << std::endl;
+		return 0;
+	}
+	
+	search_num_pts = search_points.size();
+
+	Point min_pt(min_x, min_y, min_z);
+	Point max_pt(max_x, max_y, max_z);
+	search_box->move_to(min_pt, max_pt);
+
     return 1;
 }
 
@@ -2181,7 +2211,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 			"<h3>Strain window settings</h3>"
 
 	        "<table class=\"grid\">\n<tr><th>Argument</th><th>Description</th></tr>\n"
-	        	"<tr><td><code>-sw 30</code></td><td>set strain window size to 30 points (default = 25, min = 10, max = 75)</td></tr>\n"
+	        	"<tr><td><code>-sw 30</code></td><td>set strain window size to 30 points (default = 25, min = 10, max = 125)</td></tr>\n"
 	        	"<tr><td><code>-t 0.1</code></td><td>eliminate window points with objmin above 0.1 (default = 1.0, pass all converged points)</td></tr>\n"
 	        	"<tr><td><code>-r</code></td><td>refill strain window to sw if points were eliminated (default is no refill)</td></tr>\n"
 	        "</table>\n"
@@ -2189,7 +2219,17 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "<p>"
 				"Strain window size shares characteristics with other neighborhood calculations. Small is noisier but with better spatial resolution. "
 	        	"Large is smoothed but with poorer spatial resolution. Much depends on the point cloud spacing and quality of the image volumes. "
-				"Strain window point number can seem large in 3D: a relatively modest 3x3x3 neighborhood is 27 points. "
+				"Strain window point number can seem large in 3D: a relatively modest 3x3x3 neighborhood is 27 points, 5x5x5 is 125. "
+				"The minimum <i>sw</i> is the number of coefficients in the volumetric polynomial, which is 10, but as with all function fits more is better. "
+				"The maximum value is set somewhat arbitrarily at 125 to manage the data overhead for large point clouds. "
+			"</p>"	
+
+	        "<p>"
+				"Filling the strain window requires some care. Any points within the local neighborhood that do not converge are eliminated. "
+	        	"Any points with relatively high objmin values (a match quality metric) may represent outliers and are best eliminated as well. "
+				"The threshold option can be used to filter out the influence of those points on the polynomial fitting process. "
+				"That leaves the issue of whether to look further into the neighborhood and 'refill' to the specified <i>sw</i> value. "
+				"This increases the effective strain window size, but maintains data support for the fitting process."
 			"</p>"		
 
 

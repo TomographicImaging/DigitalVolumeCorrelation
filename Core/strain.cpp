@@ -71,9 +71,18 @@ int main(int argc, char *argv[])
 	bool yz_only = false;
 	bool zx_only = false;
 
-	bool out_Estr = false;
-	bool out_Lstr = true;
+	// old
+	//bool out_Estr = false;
+	//bool out_Lstr = true;
+	
+	// new
+	bool out_Biot = false;
+	bool out_GrLa = true;
+	bool out_Henc = false;
 	bool out_dgrd = false;
+
+	// note - add a -Loff command line argument, and look for -L as well
+
 
 	InputRead in;
 
@@ -144,19 +153,28 @@ int main(int argc, char *argv[])
 	if (in.find_flag("-zx", argc, argv)) {		// do 2d strain calc for yz plane point cloud
 		zx_only = true;
 	}
+	// end of planar flags
+
+
 
 	// output file control
 	// the default output is Lagrangian strains
-	if (in.find_flag("-E", argc, argv)) {
-		out_Estr = true;
+	if (in.find_flag("-B", argc, argv)) {
+		out_Biot = true;
 	}
+
+	if (in.find_flag("-H", argc, argv)) {
+		out_Henc = true;
+	}
+
 
 	if (in.find_flag("-D", argc, argv)) {
 		out_dgrd = true;
 	}
 
 	if (in.find_flag("-A", argc, argv)) {
-		out_Estr = true;
+		out_Biot = true;
+		out_Henc = true;
 		out_dgrd = true;
 	}
 
@@ -293,6 +311,8 @@ int main(int argc, char *argv[])
 	if (zx_only) {std::cout << "using 2d zx coordinate plane analysis" << std::endl;}
 	if (xy_only) {std::cout << "using 2d xy coordinate plane analysis" << std::endl;}
 
+	// planar section end
+
 	// echo other run parameters and guide faulty command line arguments
 	std::cout << "using strain window: " << ndp << std::endl;
 
@@ -336,7 +356,7 @@ int main(int argc, char *argv[])
 		// scale the calculation location (x,y,z in the polyfit)
 		Point base(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
-		std::vector<Point> npos = {};
+		std::vector<Point> npos = {};	// neighbor position
 		std::vector<Point> ndis = {};
 
 		// establish neighborhoods and load neighbor position and displacement data
@@ -511,8 +531,67 @@ int main(int argc, char *argv[])
 				 hencP[0],hencP[1],hencP[2]};
 		data.Henc.push_back(str);
 
-		// ***** original Lstr, Estr, dgrd code
+	}
 
+	// output result files
+
+	// Biot strain (new)
+	if (out_Biot) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Biot.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Biot);
+	}
+
+	// Lagrangian strain (new)
+	if (out_GrLa) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".GrLa.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.GrLa);
+	}
+
+	// Hencky (ln, true) strain (new) - note, integrate into command line parse
+	if (out_Henc) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Henc.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Henc);
+	}
+
+	// displacement gradient
+	if (out_dgrd) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz";
+		strain.write_output(fname, header, data, data.DispGrd);
+	}
+
+	std::cout << std::endl;
+	return 0;
+}
+/******************************************************************************/
+void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &data, std::vector<std::vector<double>> &output)
+{
+	std::ofstream outfile;
+	outfile.open(fname);
+
+	outfile << hdr << std::endl;
+
+	for (unsigned int i=0; i<data.points.size(); i++)
+	{
+		outfile << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+		for (auto &j : data.dis_vfit[i]){outfile << "," << j;}
+		outfile << "," << data.pts_in_sw[i];
+		outfile << "," << data.sw_rad[i];
+		for (auto &j : output[i]){outfile << "," << j;}		
+		outfile << std::endl;
+	}
+
+	outfile.close();
+
+	return;
+}
+/******************************************************************************/
+// original strain calculaiton codes, superseeded by the generalized kinemtic approach
+
+		/* within point loop
 		// Engineering strain tensor
 
 		ST = 0.5*(DG + DG.transpose());
@@ -554,16 +633,9 @@ int main(int argc, char *argv[])
 		}
 		str = {ST(0,0),ST(1,1),ST(2,2),ST(0,1),ST(1,2),ST(0,2),lam[0],lam[1],lam[2]};
 		data.Lstrain.push_back(str);
-	}
+		*/
 
-	// output result files
-
-	// Biot strain (new)
-	if (out_Estr) {
-		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Biot.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
-		strain.write_output(fname, header, data, data.Biot);
-	}
+	/* after point loop
 
 	// Engineering strain (old)
 	if (out_Estr) {
@@ -572,62 +644,17 @@ int main(int argc, char *argv[])
 		strain.write_output(fname, header, data, data.Estrain);
 	}
 
-	// Lagrangian strain (new)
-	if (out_Lstr) {
-		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".GrLa.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
-		strain.write_output(fname, header, data, data.GrLa);
-	}
-
 	// Lagrangian strain (old)
 	if (out_Lstr) {
 		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
 		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
 		strain.write_output(fname, header, data, data.Lstrain);
 	}
-
-	// Hencky (ln, true) strain (new) - note, integrate into command line parse
-	if (out_Lstr) {
-		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Henc.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
-		strain.write_output(fname, header, data, data.Henc);
-	}
+	*/
 
 
-	// displacement gradient
-	if (out_dgrd) {
-		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
-		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz";
-		strain.write_output(fname, header, data, data.DispGrd);
-	}
-
-	std::cout << std::endl;
-	return 0;
-}
 /******************************************************************************/
-void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &data, std::vector<std::vector<double>> &output)
-{
-	std::ofstream outfile;
-	outfile.open(fname);
-
-	outfile << hdr << std::endl;
-
-	for (unsigned int i=0; i<data.points.size(); i++)
-	{
-		outfile << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-		for (auto &j : data.dis_vfit[i]){outfile << "," << j;}
-		outfile << "," << data.pts_in_sw[i];
-		outfile << "," << data.sw_rad[i];
-		for (auto &j : output[i]){outfile << "," << j;}		
-		outfile << std::endl;
-	}
-
-	outfile.close();
-
-	return;
-}
-/******************************************************************************/
-// old command line parsed, not used
+// old command line parsing, not used
 /*
 int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
 {

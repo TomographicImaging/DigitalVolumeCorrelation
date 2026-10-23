@@ -42,7 +42,136 @@ Author(s): Brian Bay (OSU)
 #include <queue>
 #include <random>
 #include <vector>
-//
+
+/******************************************************************************/
+struct DualSort
+{
+	int index;
+	double value;
+};
+/******************************************************************************/
+// data for a single iteration
+struct Iter_Stats
+{
+    int nits;
+
+    ConvergenceReason convg_status;  
+
+    double obj_beg;
+    double obj_end;
+};
+/******************************************************************************/
+// Information from a completed search, used for cloud point neighborhoods
+// Part of the opt starting point determination process
+struct ResultRecord
+{
+	int status;		// as defined in Utility.h
+	double obj_min;			// value at minumum
+	std::vector<double> par_min;	// parameters at min [ndof]
+    Iter_Stats iter_stats;     // iteration tracking data
+};
+/******************************************************************************/
+struct NeighborSubset
+{
+    std::vector<int> run_list;      // list of cloud points to process
+    //BoundBox                      // box enclosing all the points in run_list
+};
+/******************************************************************************/
+// instantiated in dvc.cpp, initialized and organized in DataCloud::organize_cloud, passed as a pointer into Search::process_point
+class CCPI_EXPORT DataCloud
+{
+public:
+	DataCloud();
+	
+	void organize_cloud(RunControl *run);
+
+	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
+	// needs points and labels already available, generates order and neigh
+	void sort_order_neighbors(Point start_position);
+
+	// new version base don kd tree, much, much faster
+	void sort_neighbors_kdtree(Point start_position);
+
+    // support for neighbor_subset processing
+    // runs after initial sorting, uses the result stored in order
+    void sort_neighbor_subsets();
+	
+	int nbr_num_save() const {return nbr_num_save_default;}
+
+	// write out neighbors as a .sort file
+	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh);
+	
+	// in order of appearance in the point cloud input file, [npts]
+	std::vector<Point> points;
+	
+	// in order of appearance in the point cloud input file, [npts]
+	std::vector<int> labels;
+	
+	// indices of points in search order, eg start by distance from [npts]
+	std::vector<int> order;
+	
+	// indices of neighbors of a search point
+	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
+
+    // list of neighbor_subsets to process
+    std::vector<NeighborSubset> neighbor_subsets;
+
+    // added columns and labels if detected during point cloud parsing (read_point_cloud_tsc)
+
+    std::vector<std::vector<double> > added_columns;      // [search_num_pts][n_added]
+	std::vector<std::string>          added_column_names; // [n_added]
+
+    // this is set-up for potentially multiple targets (correlate volumes) with updating in mind
+    // ntrg is 1 for standard single correlate volume searches
+	// vector of result records for a point
+	std::vector< std::vector<ResultRecord> > results;	// [ntrg][npts]
+
+    // storage for iteration summary data 
+	//std::vector<std::vector<Iteration_Specs>> iter_track;
+
+	//
+	// results from the STRAIN calculation executable
+	//
+
+    // *** new variables for the generalized kinematics code, will ultimately replace the legacy ones
+
+	// Biot strain components and principals, rotation invariant engineering strain
+	std::vector< std::vector<double> > Biot;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+
+    // Green-Lagrange strain components and principals
+	std::vector< std::vector<double> > GrLa;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+
+    // Hencky strain components and principals
+	std::vector< std::vector<double> > Henc;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+
+    // ***
+
+    // Displacement gradient tensor values
+	std::vector< std::vector<double> > DispGrd;	// ux,uy,uz,vx,vy,vz,wx,wy,wz
+
+	// Engineering strain components and principals
+	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
+	
+	// Lagrangian strain components and principals
+	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
+
+	// displacement components computed at cloud locations from the volume fitting process
+	std::vector< std::vector<double> > dis_vfit;	// u,v,w
+
+	// strain window radius (without half the subvol size) computed at cloud locations
+	std::vector<double> sw_rad;
+
+	// for variable neighborhood approaches, num of pts in the strain window
+	std::vector<int> pts_in_sw;
+
+private:
+	
+//	int start_point_label;		// label of first point to process
+	int start_point_index;		// index corresponding to label
+
+	int nbr_num_save_default;	// default number used for .sort file, set in constructor
+	
+};
 /******************************************************************************/
 
 // kdtree code
@@ -345,144 +474,6 @@ public:
         return result;
     }
 };
-
-
-/******************************************************************************/
-struct DualSort
-{
-	int index;
-	double value;
-};
-/******************************************************************************/
-// data for a single iteration
-struct Iter_Stats
-{
-    int nits;
-
-    ConvergenceReason convg_status;  
-
-    double obj_beg;
-    double obj_end;
-};
-/******************************************************************************/
-// Information from a completed search, used for cloud point neighborhoods
-// Part of the opt starting point determination process
-struct ResultRecord
-{
-	int status;		// as defined in Utility.h
-	double obj_min;			// value at minumum
-	std::vector<double> par_min;	// parameters at min [ndof]
-    Iter_Stats iter_stats;     // iteration tracking data
-};
-/******************************************************************************/
-struct NeighborSubset
-{
-    std::vector<int> run_list;      // list of cloud points to process
-    //BoundBox                      // box enclosing all the points in run_list
-};
-/******************************************************************************/
-// instantiated in dvc.cpp, initialized and organized in DataCloud::organize_cloud, passed as a pointer into Search::process_point
-class CCPI_EXPORT DataCloud
-{
-public:
-	DataCloud();
-	
-	void organize_cloud(RunControl *run);
-
-	// sort cloud to establish point run order and neighbors (for starting points and strain calc)
-	// needs points and labels already available, generates order and neigh
-	void sort_order_neighbors(Point start_position);
-
-	// new version base don kd tree, much, much faster
-	void sort_neighbors_kdtree(Point start_position);
-
-    // support for neighbor_subset processing
-    // runs after initial sorting, uses the result stored in order
-    void sort_neighbor_subsets();
-	
-	int nbr_num_save() const {return nbr_num_save_default;}
-
-	// write out neighbors as a .sort file
-	void write_sort_file(std::string fname, std::vector<std::vector<int>> &save_neigh);
-	
-	// in order of appearance in the point cloud input file, [npts]
-	std::vector<Point> points;
-	
-	// in order of appearance in the point cloud input file, [npts]
-	std::vector<int> labels;
-	
-	// indices of points in search order, eg start by distance from [npts]
-	std::vector<int> order;
-	
-	// indices of neighbors of a search point
-	std::vector< std::vector<int> > neigh;	// [npts][nnbr], includes self
-
-    // list of neighbor_subsets to process
-    std::vector<NeighborSubset> neighbor_subsets;
-
-    // added columns and labels if detected during point cloud parsing (read_point_cloud_tsc)
-
-    std::vector<std::vector<double> > added_columns;      // [search_num_pts][n_added]
-	std::vector<std::string>          added_column_names; // [n_added]
-
-    // this is set-up for potentially multiple targets (correlate volumes) with updating in mind
-    // ntrg is 1 for standard single correlate volume searches
-	// vector of result records for a point
-	std::vector< std::vector<ResultRecord> > results;	// [ntrg][npts]
-
-    // storage for iteration summary data 
-	//std::vector<std::vector<Iteration_Specs>> iter_track;
-
-	//
-	// results from the STRAIN calculation executable
-	//
-
-    // *** new variables for the generalized kinematics code, will ultimately replace the legacy ones
-
-	// Biot strain components and principals, rotation invariant engineering strain
-	std::vector< std::vector<double> > Biot;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
-
-    // Green-Lagrange strain components and principals
-	std::vector< std::vector<double> > GrLa;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
-
-    // Hencky strain components and principals
-	std::vector< std::vector<double> > Henc;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
-
-    // ***
-
-    // Displacement gradient tensor values
-	std::vector< std::vector<double> > DispGrd;	// ux,uy,uz,vx,vy,vz,wx,wy,wz
-
-	// Engineering strain components and principals
-	std::vector< std::vector<double> > Estrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3
-	
-	// Lagrangian strain components and principals
-	std::vector< std::vector<double> > Lstrain;	// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3	
-
-	// displacement components computed at cloud locations from the volume fitting process
-	std::vector< std::vector<double> > dis_vfit;	// u,v,w
-
-	// strain window radius (without half the subvol size) computed at cloud locations
-	std::vector<double> sw_rad;
-
-	// for variable neighborhood approaches, num of pts in the strain window
-	std::vector<int> pts_in_sw;
-
-private:
-	
-//	int start_point_label;		// label of first point to process
-	int start_point_index;		// index corresponding to label
-
-	int nbr_num_save_default;	// default number used for .sort file, set in constructor
-	
-};
-/******************************************************************************/
-
-
-
-
-
-
 
 /******************************************************************************/
 
