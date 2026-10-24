@@ -148,7 +148,7 @@ public:
 	std::vector< std::vector<double> > DispGrd;	// ux,uy,uz,vx,vy,vz,wx,wy,wz
 
     // Generalized rotation (screw axis) of the material region, direction x magnitude (radians)
-    std::vector< std::vector<double> > RotAxis;	// rx,ry,rz
+    std::vector< std::vector<double> > RotAxis;	// rx,ry,rz,nx,ny,nz,deg
 
 	// displacement components computed at cloud locations from the volume fitting process
 	std::vector< std::vector<double> > dis_vfit;	// u,v,w

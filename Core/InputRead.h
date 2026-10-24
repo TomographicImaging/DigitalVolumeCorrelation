@@ -132,9 +132,6 @@ public:
 
 	int input_file_accessible(std::string fname);
 
-
-	
-
 	BoundBox *search_box;
 	int search_num_pts;
 
@@ -221,17 +218,17 @@ public:
 	const int step_max_max = 15;
 	const int step_max_def = 5;
 
-	const double cost_tol_min = 1e-10;
+	const double cost_tol_min = 1e-8;
 	const double cost_tol_max = 1e-2;
-	const double cost_tol_def = 1e-6;
+	const double cost_tol_def = 1e-5;
 
-	const double step_tol_min = 1e-10;
+	const double step_tol_min = 1e-6;
 	const double step_tol_max = 1e-2;
-	const double step_tol_def = 1e-4;
+	const double step_tol_def = 1e-3;
 
-	const double grad_tol_min = 1e-10;
+	const double grad_tol_min = 1e-8;
 	const double grad_tol_max = 1e-2;
-	const double grad_tol_def = 1e-8;
+	const double grad_tol_def = 1e-5;
 
 	const int max_iter_min = 1;
 	const int max_iter_max = 100;

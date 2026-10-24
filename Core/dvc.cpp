@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 		// this is the index of the point being processed
 		int n = data.order[i];
 
-		std::cout << i << "/" << N << "  " ;
+		std::cout << i+1 << "/" << N << "  " ;
 		std::cout << data.labels[n] << "  ";
 		std::cout << std::setprecision(2) << std::fixed;
 		std::cout << "x= " << data.points[n].x() << " ";

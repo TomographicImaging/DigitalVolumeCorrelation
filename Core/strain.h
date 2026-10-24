@@ -140,7 +140,7 @@ struct PointResultBasic {
     double J, volumetric, equivalent;
     Eigen::Vector3d principalStrain;     // Biot principal values, lambda_i - 1
     Eigen::Matrix3d biot, henc, grla;
-    Eigen::Vector3d rotationVector;      // theta * axis, radians
+    Eigen::Vector3d rvec;                // theta * axis, radians
 };
 
 struct PointResultFull {
@@ -148,7 +148,7 @@ struct PointResultFull {
     double J, volumetric, equivalent;
     Eigen::Vector3d principalStrain;     // Biot principal values, lambda_i - 1
     Eigen::Matrix3d biot, henc, grla;
-    Eigen::Vector3d rotationVector;      // theta * axis, radians
+    Eigen::Vector3d rvec;                // theta * axis, radians
     Eigen::Vector3d fiberRigid;          // (a) R N0
     Eigen::Vector3d fiberDeformed;       // (b) F N0 / |F N0|
     double fiberStretch, fiberTurn;      // |F N0|, angle N0 -> (b)

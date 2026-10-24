@@ -2237,9 +2237,10 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 			"<table class=\"grid\">\n<tr><th>Argument</th><th>Output File</th></tr>\n"
 	        	"<tr><td><code>-B</code></td><td>.Biot.csv - rotation invariant engineering strain tensor</td></tr>\n"
-	        	"<tr><td><code>-L</code></td><td>.GrLa.csv - Green-Lagrange finite strain tensor (default output)</td></tr>\n"
+	        	"<tr><td><code>-L</code></td><td>.GrLa.csv - Green-Lagrange finite strain tensor (default output, suppress with -Loff)</td></tr>\n"
 	        	"<tr><td><code>-H</code></td><td>.Henc.csv - Hencky  logarithmic (true) strain tensor</td></tr>\n"
-	        	"<tr><td><code>-D</code></td><td>.dgrd.csv - displacement gradient tensor</td></tr>\n"
+	        	"<tr><td><code>-D</code></td><td>.Dgrd.csv - displacement gradient tensor</td></tr>\n"
+				"<tr><td><code>-R</code></td><td>.Rvec.csv - local material rotation axis and magnitude</td></tr>\n"
 	        	"<tr><td><code>-A</code></td><td> output all available kinematic quantities</td></tr>\n"
 			"</table>\n"
 
@@ -2247,6 +2248,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 				"Each output request creates a seperate file with the extension shown. Data is generated for each point in the cloud. "
 				"Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. "
 				"The displacement gradient is not symmetric and all nine components are listed. "
+				"Local material rotation is documented as components of orientation vectors scaled in radians and unit vectors with angle in degrees. "
 	        "</p>";
 
 	file << "</main>\n</div>\n</body>\n</html>\n";
