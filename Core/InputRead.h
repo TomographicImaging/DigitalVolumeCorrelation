@@ -39,7 +39,6 @@ Author(s): Brian Bay (OSU)
 #include <utility>
 
 // for generalized point could read code
-
 #include <cstddef>
 #include <iosfwd>
 #include <istream>
@@ -48,7 +47,6 @@ Author(s): Brian Bay (OSU)
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
-//
 
 #include "CCPiDefines.h"
 
@@ -110,7 +108,7 @@ public:
 												std::vector<std::vector<double>> &added_columns,
 													std::vector<std::string> &added_column_names);
 
-	// for generalized point could read code
+	// generalized point cloud and .disp read functions
 	int read_point_cloud_generalized(RunControl *run,
                         std::vector<int>& search_labels,
                         std::vector<Point>& search_points,
@@ -135,6 +133,8 @@ public:
 	BoundBox *search_box;
 	int search_num_pts;
 
+	// *** keyword list, grouped by pool
+
 	// keywords in pool fio_name
 	key_word_help kwh_ref_fname;
 	key_word_help kwh_cor_fname;
@@ -144,7 +144,7 @@ public:
 
 	// keywords in pool vox_data
 	key_word_help kwh_vol_bit_depth;
-	key_word_help kwh_vol_endian;
+	key_word_help kwh_vol_endian;		// conditional, only for bit depth = 16
 	key_word_help kwh_vol_hdr_lngth;
 	key_word_help kwh_vol_wide;
 	key_word_help kwh_vol_high;
@@ -167,23 +167,30 @@ public:
 	// keywords in pool opt_tune
 	key_word_help kwh_cost_tol;		// optional
 	key_word_help kwh_step_tol;		// optional
-	// key_word_help kwh_grad_tol;	// optional
+	// key_word_help kwh_grad_tol;	// optional, not currently used
 	key_word_help kwh_max_iter;		// optional
 
 	// organized for creation of a manual
 	std::vector<key_word_help> manual;
 
-	// data used for value checking
+	// *** data used for value checking
 
-//	std::vector<int> ok_vol_bit_depth;
+	// these are defined in Utility.h as enum's with names stored in a single std::string
+	// translated into a vector of individual std::string's in the InputRead constructor
 	std::vector<std::string> ok_vol_endian;
-//	int vol_dim_min, vol_dim_max;
-//	int vol_hdr_min, vol_hdr_max;
+	std::vector<std::string> ok_subvol_geom;
+	std::vector<std::string> ok_obj_function;
+	std::vector<std::string> ok_interp_type;
+
+	// default values are set as the enum integer value, see Utility.h
+	const int vol_endian_def = 0;		// array/enum value of little
+	const int subvol_geom_def = 0;		// array/enum value of grid
+	const int obj_function_def = 3;		// array/enum value of znssd
+	const int interp_type_def = 2;		// array/enum value of tri_bspline_3
+
 	unsigned long ref_file_length;
 	unsigned long cor_file_length;
 	unsigned long pts_file_length;
-
-	std::vector<std::string> ok_subvol_geom;
 
 	const int num_points_to_process_def = 0;	// process all points
 
@@ -211,9 +218,6 @@ public:
 	const std::vector<int> ok_srch_dof = {3, 6, 12};
 	const int srch_dof_def = 12;
 
-	const int obj_function_def = 3;		// array/enum value of znssd
-	const int interp_type_def = 2;		// array/enum value of tri_bspline_3
-
 	const int step_max_min = 1;
 	const int step_max_max = 15;
 	const int step_max_def = 5;
@@ -234,10 +238,7 @@ public:
 	const int max_iter_max = 100;
 	const int max_iter_def = 20;
 
-	std::vector<int> ok_num_srch_dof;
-	std::vector<std::string> ok_obj_function;
-	std::vector<std::string> ok_interp_type;
-	std::vector<std::string> ok_fine_srch;
+	// *** functions
 
 	// transfer enum list strings into a vector of strings
 	std::vector<std::string> line_to_vect(std::string line);
@@ -274,10 +275,7 @@ public:
 	char inp_eol;		// input file eol and line termination
 	std::string inp_term;
 
-	// output functions (old txt version)
-	int print_manual_intro(std::ofstream &file);
-	int print_manual_section(std::ofstream &file, std::string pool);
-	int print_manual_output(std::ofstream &file);
+	// output functions
 	int print_input_example(std::ofstream &file, std::string pool);
 
 	// HTML manual (single self-contained file; print to PDF from a browser)
@@ -328,7 +326,9 @@ private:
 };
 /******************************************************************************/
 
-// for generalized point could read code
+// for generalized row/column data file reading
+// specific functions (e.g. read_point_cloud_generalized) are built to purpose
+// headers and column data types are configured using the ReadOptions struct
 
 namespace tbl {
 

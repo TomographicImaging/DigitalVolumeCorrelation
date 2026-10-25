@@ -56,7 +56,13 @@ InputRead::InputRead()
 	// this section is documentation
 	// range default values, enum contents, etc are translated from Utility.h and InputRead.h to str::string values
 	// these are introduced along with directly written material into the kwh structure
-	// this in turn is parsed, originally in the simple txt file manual (not written currently), now into the html manual
+	// this in turn is parsed into an html manual (DVC_manual.html, generated with 'dvc manual')
+	// changes to keywords are automatically introduced into the manual by parsing of 'manual', a vector of key_word_help types 
+	// the manual also contains longer descriptive text written as html code further down in InputRead.cpp
+
+	// the key_word_help structure also forms the basis of an input file form (DVC_input_builder.html, generated with dvc form)
+	// this allows users to develop input files by selecting from and entering values into an interactive html dialog
+
 
 	// fio_name
 
@@ -166,7 +172,8 @@ InputRead::InputRead()
 	kwh_vol_endian.pool = "vox_data";
 	kwh_vol_endian.hint = "### little or big, ignored if vol_bit_depth is 8";
 	kwh_vol_endian.good = limits_to_string(ok_vol_endian);
-	kwh_vol_endian.dflt = ok_vol_endian[0];
+	//kwh_vol_endian.dflt = ok_vol_endian[0];
+	kwh_vol_endian.dflt = ok_vol_endian[vol_endian_def];
 	kwh_vol_endian.help.assign("   Defines the byte organization for 16-bit image volumes.\n");
 	kwh_vol_endian.help.append("   Find the appropriate setting using ImageJ (or similar) after cross-platform image transfers.\n");
 	kwh_vol_endian.help.append("   Big generates a byte swap: Little preserves the byte order.\n");
@@ -235,7 +242,7 @@ InputRead::InputRead()
 	kwh_subvol_geom.pool = "sub_vols";
 	kwh_subvol_geom.hint = "### grid, sphere: geometry of the subvolumes";
 	kwh_subvol_geom.good = limits_to_string(ok_subvol_geom);
-	kwh_subvol_geom.dflt = ok_subvol_geom[0];
+	kwh_subvol_geom.dflt = ok_subvol_geom[subvol_geom_def];
 	kwh_subvol_geom.help.assign("Defines geometry of the subvolumes created around each search point.\n");
 	kwh_subvol_geom.help.append("Grids are the classic, but essentially arbitrary, subvolume geometry.\n");
 	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based point cloud geometries.\n");
@@ -772,6 +779,10 @@ static bool read_line(std::istream& is, std::string& line)
     }
 }
 /******************************************************************************/
+// The generalized readers manage row/column data files and are robust with respect to eol, deliminators etc.
+// fname is passed in, with column data specific to the file added to the argument list
+// Configuration is primarily established with the ReadOptions struct, including column header text and data types
+// Note also the "Copy into the structure ..." block that provides internal variables to load into the output arguments
 
 int InputRead::read_disp_file_generalized(std::string fname, 
 						std::vector<int> &search_labels, 
@@ -781,8 +792,10 @@ int InputRead::read_disp_file_generalized(std::string fname,
 						std::vector<Point> &dis)
 {
 
+	// function baseline
 	using namespace tbl;
 
+	// added as a check on file accessibility
 	std::ifstream ifs(fname.c_str(), std::ifstream::in);
 	if (!ifs) { 
 		std::cout << ".disp file not found" << std::endl << std::endl;
@@ -790,6 +803,7 @@ int InputRead::read_disp_file_generalized(std::string fname,
 	}
 	ifs.close(); // remaining code does not directly use ifs, just used for file access check
 
+	// function baseline
     ReadOptions opt;
     opt.columns.push_back(ColumnSpec("id", ColType::Int));
     opt.columns.push_back(ColumnSpec("x",  ColType::Double));
@@ -802,6 +816,8 @@ int InputRead::read_disp_file_generalized(std::string fname,
     opt.columns.push_back(ColumnSpec("w",  ColType::Double));
     opt.read_extra = false;
 
+	// function baseline
+	// file data is read into a table structure
     Table t;
     std::string err;
     if (!read_table(fname, opt, t, err)) {
@@ -809,6 +825,7 @@ int InputRead::read_disp_file_generalized(std::string fname,
         return 0;
     }
 
+	// function baseline
     // Copy into the structures the core code already uses
     const std::vector<int>&    id = t.columns[0].ints;
     const std::vector<double>& x  = t.columns[1].doubles;
@@ -820,6 +837,7 @@ int InputRead::read_disp_file_generalized(std::string fname,
     const std::vector<double>& v  = t.columns[7].doubles;
     const std::vector<double>& w  = t.columns[8].doubles;
 
+	// move data from internal Table to function arguments
 	search_labels = id;
 	status = stat;
 	objmin = objm;
@@ -833,6 +851,7 @@ int InputRead::read_disp_file_generalized(std::string fname,
 		dis.push_back(Point(u[r], v[r], w[r]));
 	}
 
+	// function baseline
     if (t.skipped_rows || t.bad_values || t.padded_rows)
         std::cerr << fname << ": " << t.skipped_rows << " rows skipped, "
                   << t.bad_values << " bad values, " << t.padded_rows << " rows padded\n";
@@ -841,7 +860,9 @@ int InputRead::read_disp_file_generalized(std::string fname,
 }
 
 /******************************************************************************/
-
+// The generalized readers manage row/column data files and are robust with respect to eol, deliminators etc.
+// Configureation is primarily established with the ReadOptions struct, including colums header text and data types
+// see read_disp_file_generalized for a "clean" version with limited dvc-specific code
 int InputRead::read_point_cloud_generalized(RunControl *run,
                         std::vector<int>& search_labels,
                         std::vector<Point>& search_points,
@@ -933,7 +954,7 @@ int InputRead::read_point_cloud_generalized(RunControl *run,
 }
 
 /******************************************************************************/
-
+// an older version point cloud reader
 int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels, 
 	std::vector<std::vector<double>> &added_columns, std::vector<std::string> &added_column_names)
 {
@@ -1056,6 +1077,7 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
     return 1;
 }
 /******************************************************************************/
+// the legacy point cloud reader, not very robust
 int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels)
 {
 	// add check for point outside of voxel volume
@@ -1546,166 +1568,17 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	return 1;
 }
-/******************************************************************************/
-int InputRead::print_manual_intro(std::ofstream &file)
-{
-	file << "#####################################################################\n";
-	file << "###                                                               ###\n";
-	file << "###   A brief manual for the iDVC code      ###\n";
-	file << "###                                                               ###\n";
-	file << "#####################################################################\n";
-	file << "\n";
-	file << "(Best viewed in a simple text editor with a fixed-width font and no line wrapping.)\n";
-	file << "\n";
-
-	file << "Copyright 2014 Brian K. Bay (computer code and all documentation)\n";
-	file << "\n";
-
-	file << "Created:  1 Jan 2014\n";
-	file << "Revised:  " << REV_DATE << std::endl;
-	file << "version:  " << VERSION << "\n";
-	file << "\n";
-
-	file << "The dvc code is written in c++ with portability and simple compilation in mind.\n";
-	file << "At present only a single external library (eigen) is used for sparse matrix interpolation calculations.\n";
-	file << "Compilation is Makefile controlled. To do a complete rebuild:\n";
-	file << "\n";
-	file << "   Delete all object (.o) files in /include/objects\n";
-	file << "   Enter make from a terminal window in the main distribution directory.\n";
-	file << "\n";
-	file << "The dvc code executes with the following command line options:\n";
-	file << "\n";
-	file << "   dvc \t\t\t   // list command line options in the terminal window\n";
-	file << "   dvc help\t\t   // send a brief help message to the terminal window\n";
-	file << "   dvc example\t\t   // print an example dvc_input file\n";
-	file << "   dvc manual\t\t   // print this manual\n";
-	file << "   dvc dvc_input\t   // normal code execution\n";
-	file << "\n";
-
-	file << "The file dvc_input is the key to running a digital volume correlation analysis.\n";
-	file << "It is a simple text file that contains REQUIRED KEYWORDS and PARAMETERS.\n";
-	file << "The code parses this file looking for required keywords and appropriate parameter values.\n";
-	file << "Feel free to place comments within your input files.\n";
-	file << "Any line in a dvc_input file beginning with a # character is ignored.\n";
-	file << "The portion of any line following a # character is ignored.\n";
-	file << "Some keywords are only required if other keywords have particular values.\n";
-	file << "These CONDITIONAL KEYWORDS are ignored if they are left within an input file but are not needed.\n";
-	file << "\n";
-	file << "The keywords are organized into five groups:\n";
-	file << "\n";
-	file << "   fio_name \t\t   // names of existing files and files created during a run\n";
-	file << "   vox_data \t\t   // description of the voxel data files that are targeted for analysis\n";
-	file << "   sub_vols \t\t   // description of the subvolumes created for the template matching process\n";
-	file << "   opt_mthd \t\t   // REQUIRED parameters for the default optimization (template matching) process\n";
-	file << "   opt_tune \t\t   // OPTIONAL parameters for tuning and refining the template matching process\n";
-	file << "\n";
-
-	file << "The keywords are described below, with information organized as:\n";
-	file << "\n";
-	file << "key_word \t\t   // the keyword exactly as it appears in the input file\n\n";
-	file << "      exemplar: \t\t   // a typical dvc_input line for the keyword\n";
-	file << "      required: \t\t   // always required (yes), or the conditions when it is required\n";
-	file << "      suitable: \t\t   // valid input description, list of suitable values, range and type information\n\n";
-	file << "   Further details concerning functionality associated with the keyword and setting of parameters.\n";
-	file << "\n";
-	file << "\n";
-
-
-	return 1;
-}
-/******************************************************************************/
-int InputRead::print_manual_section(std::ofstream &file, std::string pool)
-{
-	file << "#####################################################################\n";
-	file << "###                                                               ###\n";
-	file << "###   Keywords in group " << pool << "                                  ###\n";
-	file << "###                                                               ###\n";
-	file << "#####################################################################\n";
-	file << "\n";
-
-	for (int i=0; i<manual.size(); i++)
-	{
-		if (manual[i].pool == pool)
-		{
-			file << manual[i].word << "\n\n";
-			file << "\texample:\t" << manual[i].word << "\t" << manual[i].exam << "\n";
-			file << "\trequired:\t" << manual[i].reqd << "\n";
-			file << "\tsuitable:\t" << manual[i].good << "\n";
-			file << "\n";
-			file << manual[i].help;
-		}
-	}
-
-	return 1;
-}
-/******************************************************************************/
-int InputRead::print_manual_output(std::ofstream &file)
-{
-	file << "#####################################################################\n";
-	file << "###                                                               ###\n";
-	file << "###   Output Generated                                            ###\n";
-	file << "###                                                               ###\n";
-	file << "#####################################################################\n";
-	file << "\n";
-
-	file << "During program execution:\n\n";
-	file << "   - Information about each point processed is echoed to the command window.\n";
-	file << "   - The point identifier appears first, followed by the [x,y,z] location.\n";
-	file << "   - The search status appears next.\n";
-	file << "      - Point_Good = successful search convergence within the max displacement.\n";
-	file << "      - Range_Fail = max displacement exceeded; consider increasing the step_max parameter.\n";
-	file << "      - Convg_Fail = maximum iterations exceeded; consider increasing subvol_size &/or npts.\n";
-	file << "\n";
-	file << "   - The magnitude of the objective function value at the end of the search is listed as obj=.\n";
-	file << "      - For obj_function = ssd and zssd the value is relative, depending on subvol_npts and voxel values.\n";
-	file << "      - For obj_function = nssd and znssd the value is scaled between 0 and 1, with zero a perfect match.\n";
-
-	file << "   - The point [x,y,z] displacement is listed next for successful searches.\n";
-	file << "\n";
-	file << "Following program execution:\n\n";
-	file << "   - The STATUS file (.stat) contains: \n";
-	file << "      - An echo of the input file used to control program execution.\n";
-	file << "      - Information about the point cloud, dvc program version, and run date/time.\n";
-	file << "      - Search statistics and timing.\n";
-	file << "\n";
-	file << "   - The DISPLACEMENT file (.disp) contains: \n";
-	file << "      - A tab-delimited text file of the dvc results.\n";
-	file << "      - A header line appears first identifying columns:\n\n";
-	file << "        n x y z status objmin u v w\n\n";
-	file << "      - n = point label\n";
-	file << "      - x y z = point location within the reference volume\n";
-	file << "      - status = search outcome: 0 = successful (no error), -1 = Range_Fail, -2 = Convg_Fail\n";
-	file << "      - objmin = residual objective function magnitude at the end of the search\n";
-	file << "      - u v w = point displacement: [location in target volume] - [location in reference volume]\n";
-	file << "\n";
-	file << "   - In general DVC is run with 6 or 12 search degrees of freedom.\n";
-	file << "      - These settings utilize subvolume rotation and strain information, but values are not included in .disp.\n";
-	file << "      - More reliable strain and rotation values reguire evaluation of point neighborhoods.\n";
-	file << "      - This allows adjustment of neighborhood size and generates more accurate displacement gradient information.\n";
-	file << "\n";
-	file << "   - The companion 'strain' program manages post-processing of 'dvc' .disp output files. \n";
-	file << "      - The basis of analysis is fitting 3D polynomial functions to point neighborhoods.\n";
-	file << "      - Gradients of the best-fit polynomials are used to form displacement gradient tensors.\n";
-	file << "      - Engineering and Lagrangian strain tensors and displacement gradient tensors are avaialble for output.\n";
-	file << "      - The analysis approach is useful for typical 'compact' point clouds with good connectivity.\n";
-	file << "      - Point clouds based on complex microstructures or fibre arrangements may need other post-processing methods.\n";
-	file << "\n";
-
-
-	return 1;
-}
-/******************************************************************************/
-/******************************************************************************/
-/*  HTML manual                                                               */
-/*                                                                            */
-/*  print_manual_html() writes the complete manual as a single, self-contained */
-/*  HTML file (no external CSS/JS). It uses the same key_word_help data in    */
-/*  the manual vector as the text manual, so keywords only need to be          */
-/*  maintained in one place (the InputRead constructor).                      */
-/*                                                                            */
-/*  For a PDF: open the .html file in a browser and Print -> Save as PDF.      */
-/*  Print styling hides the navigation sidebar and avoids splitting keywords. */
-/******************************************************************************/
+/**********************************************************************************/
+/**********************************************************************************/
+/*  HTML manual                                                                   */
+/*                                                                                */
+/*  print_manual_html() writes the complete manual as a single, self-contained    */
+/*  HTML file (no external CSS/JS). It uses the a key_word_help vector so         */    
+/*  keywords only need to be maintained in one place (the InputRead constructor). */
+/*                                                                                */
+/*  For a PDF: open the .html file in a browser and Print -> Save as PDF.         */
+/*  Print styling hides the navigation sidebar and avoids splitting keywords.     */
+/**********************************************************************************/
 namespace {
 
 struct ManualPool {
@@ -2703,31 +2576,15 @@ int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
 /******************************************************************************/
 int InputRead::result_header(std::string fname, int num_params)
 {
-	//(u,v,w,phi,the,psi,exx,eyy,ezz,exy,eyz,exz), angles in rad, nondim strain
+	//(n,x,y,z,status,objmin,u,v,w)
 
 	std::ofstream res_file(fname.c_str(), std::ios_base::out);
 
 	res_file << "n";
-
 	res_file << "," << "x" << "," << "y" << "," << "z";
-
 	res_file << "," << "status";
-
 	res_file << "," << "objmin";
-
 	res_file << "," << "u" << "," << "v" << "," << "w";
-
-	// changed .disp output to just include displacements
-	/*
-	if (num_params > 3) res_file << "," << "phi" << "," << "the" << "," << "psi";
-
-	if (num_params > 6)
-	{
-		res_file << "," << "exx" << "," << "eyy" << "," << "ezz";
-		res_file << "," << "exy" << "," << "eyz" << "," << "exz";
-	}
-	*/
-
 	res_file << "\n";
 
 	return 1;
@@ -2750,18 +2607,9 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 	res_file << "," << obj_min;
 
 	res_file << std::fixed << std::setprecision(6);
-	// this prints just the displacements
 	for (int i=0; i<3; i++) {
 		res_file << "," << result[i];
 	} 
-	
-	// this prints full search params, disp, rotation, strain if used
-	/*
-	for (int i=0; i<result.size(); i++)
-	{
-		res_file << "," << result[i];
-	} 
-	*/
 
 	res_file << "\n";
 

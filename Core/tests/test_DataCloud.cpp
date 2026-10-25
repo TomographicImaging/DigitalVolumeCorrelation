@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
 	}
 
 	// trap manual on the command line
+	/*
 	if (argv[1] == manual)
 	{
 		std::cout << "\ndvc_manual printed in the current working directory" << endl << endl;
@@ -100,6 +101,7 @@ int main(int argc, char *argv[])
 		dvc_man.close();
 		return 0;
 	}
+	*/
 
 	// check to see if the command line argument is an accessible file
 
