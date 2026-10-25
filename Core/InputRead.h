@@ -204,8 +204,8 @@ public:
 	const int subvol_npts_max = 50000;
 	const int subvol_npts_def = 5000;
 
-	const double subvol_aspect_min = 0.5;
-	const double subvol_aspect_max = 2.0;
+	const double subvol_aspect_min = 0.25;
+	const double subvol_aspect_max = 4.0;
 	const double subvol_aspect_def = 1.0;
 
 	const std::vector<int> ok_srch_dof = {3, 6, 12};

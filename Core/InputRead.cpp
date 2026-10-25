@@ -98,11 +98,13 @@ InputRead::InputRead()
 	kwh_pts_fname.good = "name of file with point cloud labels and locations (in working directory) or a full path";
 	kwh_pts_fname.dflt = "none";
 	kwh_pts_fname.help.assign("   Specify the file containing locations of all measurement points - the point cloud.\n");
-	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n");
+	kwh_pts_fname.help.append("   Each point is defined as a line in the input file with an integer point label followed by the x,y,z point location.\n");
+	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, if all points fall within the image volumes ");
+	kwh_pts_fname.help.append("   padded by a border of (1/2)subvol_size + step_max. This allows room for the search optimization process.\n");
 	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry, microstructure, and measurement objectives yield the best results.\n");
 	kwh_pts_fname.help.append("   Point clouds that are connected, without isolated regions, process with the highest reliability.\n");
 	kwh_pts_fname.help.append("   Finite element meshing or other geometry discretization software is very useful for creating point clouds.\n");
-	kwh_pts_fname.help.append("   Each point is defined as a line in the input file with an integer point label followed by the x,y,z point location.\n");
+
 	kwh_pts_fname.help.append("      # add any number of comment and blank rows  \n");
 	kwh_pts_fname.help.append("      # tab, space, or comma delimited (csv) files  \n");
 	kwh_pts_fname.help.append("      # optional: label columns  \n");
@@ -237,15 +239,15 @@ InputRead::InputRead()
 	kwh_subvol_geom.help.assign("Defines geometry of the subvolumes created around each search point.\n");
 	kwh_subvol_geom.help.append("Grids are the classic, but essentially arbitrary, subvolume geometry.\n");
 	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based point cloud geometries.\n");
-	kwh_subvol_geom.help.append("Fundamentally a subvolume is a set of image intensity values retreived from the reference volume.\n");
+	kwh_subvol_geom.help.append("Fundamentally a subvolume is a set of image intensity values retrieved from the reference volume.\n");
 	kwh_subvol_geom.help.append("In this DVC code points within subvolumes are not limited to discrete voxel values.\n");
 	kwh_subvol_geom.help.append("They are treated as sampling points, retrieved from the reference volume through interpolation.\n");
 	kwh_subvol_geom.help.append("Note that spheres, with random sampling point distributions, return slightly different results on repeat runs.\n");
 	kwh_subvol_geom.help.append("This is a useful aspect of spheres.\n");
 	kwh_subvol_geom.help.append("Subvolumes generally overlap and spheres increase sampling density. Grids do not as the overlap points are identical.\n");
 	kwh_subvol_geom.help.append("But sampling stability can be useful when comparing other run parameter settings. Use grids in those cases.\n");
-	kwh_subvol_geom.help.append("   grid\t\tsampling points distributed uniformly accross a 3D grid\n");
-	kwh_subvol_geom.help.append("   sphere\t\tsampling points distributed randomly throughout a sphere\n");
+	kwh_subvol_geom.help.append("   grid\t\tsampling points distributed uniformly across a 3D grid\n");
+	kwh_subvol_geom.help.append("   sphere\tsampling points distributed randomly throughout a sphere\n");
 	kwh_subvol_geom.set_form_choice(ok_subvol_geom);	// input form
 	manual.push_back(kwh_subvol_geom);
 
@@ -269,7 +271,7 @@ InputRead::InputRead()
 	kwh_subvol_npts.exam = set_num_str(subvol_npts_def);
 	kwh_subvol_npts.reqd = "yes";
 	kwh_subvol_npts.pool = "sub_vols";
-	kwh_subvol_npts.hint = "### number of points to distribute within the subvol";
+	kwh_subvol_npts.hint = "### number of points to distribute within the subvolume";
 	kwh_subvol_npts.good = set_stream_str(subvol_npts_min, subvol_npts_max);
 	kwh_subvol_npts.dflt = set_num_str(subvol_npts_def);
 	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume.\n");
@@ -291,7 +293,7 @@ InputRead::InputRead()
 	kwh_subvol_aspect.dflt = set_num_str(subvol_aspect_def, fixed, 1);
 	kwh_subvol_aspect.help.assign("   A standard subvolume is isotropic, with equivalent size in each coordinate direction.\n");
 	kwh_subvol_aspect.help.append("   This parameter describes a change in shape of the subvolume to accommodate elongated texture.\n");
-	kwh_subvol_aspect.help.append("   It is only useful if the texture direction is consistent, and aligned with a coordinate direction.\n");
+	kwh_subvol_aspect.help.append("   It is only useful if the texture direction is consistent and aligned with a coordinate direction.\n");
 	kwh_subvol_aspect.help.append("   The aspect change is specified as three doubles, indicating stretch/contract in the coordinate directions.\n");
 	kwh_subvol_aspect.set_form_real(subvol_aspect_min, subvol_aspect_max, 3);	// input form
 	manual.push_back(kwh_subvol_aspect);
@@ -325,7 +327,7 @@ InputRead::InputRead()
 	kwh_obj_function.dflt = ok_obj_function[obj_function_def];
 	kwh_obj_function.help.assign("Optimization is based on standard objective functions of sum-of-squared differences (SSD) form.\n");
 	kwh_obj_function.help.append("Minimizing squared-differences and maximizing cross-correlation are functionally equivalent.\n");
-	kwh_obj_function.help.append("Normalizations reduce the influence of overall brigntness/contrast differences between image volumes.\n");
+	kwh_obj_function.help.append("Normalizations reduce the influence of overall brightness/contrast differences between image volumes.\n");
 	kwh_obj_function.help.append("Functions nssd and znssd are preferred as quality of match can be quantified and compared.\n");
 	kwh_obj_function.help.append("Both are scaled for output into the [0.0 to 1.0] range, with 0.0 a perfect match and 1.0 a match of randomized subvolumes.\n");
 	kwh_obj_function.help.append("The ssd and zssd functions run marginally faster.\n");
@@ -349,7 +351,7 @@ InputRead::InputRead()
 	kwh_interp_type.help.append("Choosing methods of interpolation for DVC is complicated by image texture variability and code run times.\n");
 	kwh_interp_type.help.append("Digital image correlation (DIC) has largely settled on wavenumber optimized bsplines.\n");
 	kwh_interp_type.help.append("But the applied speckle of DIC is more consistent and lends itself to generalization of the optimization process.\n");
-	kwh_interp_type.help.append("And despite large numbers of images in some DIC processes, the overall compuational burden is much less than DVC.\n");
+	kwh_interp_type.help.append("And despite large numbers of images in some DIC processes, the overall computational burden is much less than DVC.\n");
 	kwh_interp_type.help.append("Computational time is particularly relevant now with 3D point clouds reaching into the millions.\n");
 	kwh_interp_type.help.append("The best speed/precision tradeoff also depends on the application. The current recommendation is tricubic or tri_bspline_3.\n");
 	kwh_interp_type.help.append("The trilinear option is intended for testing input parameters and early trial runs.\n");
@@ -371,7 +373,7 @@ InputRead::InputRead()
 	kwh_start_position.good.assign("limited to the dimensions of the voxel space");
 	kwh_start_position.help.assign("This is a very important parameter, and proper setting requires an understanding of the overall DVC process.\n");
 	kwh_start_position.help.append("Point cloud processing begins at a single defined point then progresses in order by distance from that point.\n");
-	kwh_start_position.help.append("This wavefront approach facilitates the determination of an accurate parameter estimate to initiate each optimizion step.\n");
+	kwh_start_position.help.append("This wavefront approach facilitates the determination of an accurate parameter estimate to initiate each optimization step.\n");
 	kwh_start_position.help.append("But the first point needs its own parameter estimate. That information is provided under the start_estimate keyword.\n");
 	kwh_start_position.help.append("Choose a start_position at a location within or in contact with the point cloud.\n");
 	kwh_start_position.help.append("Select a position where image data and sample texture are good, and displacement between reference and correlate volumes is small.\n");
@@ -388,7 +390,7 @@ InputRead::InputRead()
 	kwh_start_estimate.dflt = "none";
 	kwh_start_estimate.good.assign("each component typically a few voxels, limited to the dimensions of the voxel space");
 	kwh_start_estimate.help.assign("This parameter coordinates closely with the start_position specification.\n");
-	kwh_start_estimate.help.append("All cloud points need a good initial estimate at the beginning of the optimization proccess that determines point displacement.\n");
+	kwh_start_estimate.help.append("All cloud points need a good initial estimate at the beginning of the optimization process that determines point displacement.\n");
 	kwh_start_estimate.help.append("This parameter defines the initial estimate for the very first point in the cloud to seed the wavefront process.\n");
 	kwh_start_estimate.help.append("The companion iDVC graphical interface provides automated and manual visualization-guided means of determining the start_estimate.\n");
 	kwh_start_estimate.help.append("But the process can be done manually with clever use of software such as ImageJ.\n");
@@ -428,9 +430,11 @@ InputRead::InputRead()
 	kwh_cost_tol.good = set_stream_str(cost_tol_min, cost_tol_max, scientific, 0);
 	kwh_cost_tol.dflt = set_num_str(cost_tol_def, scientific, 0);
 	kwh_cost_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
-	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol.\n");
-	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
-	kwh_cost_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
+	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol ");
+	kwh_cost_tol.help.append("or if the final parameter vector (step) change is below step_tol.\n");
+	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision; larger values tune toward execution speed.\n");
+	kwh_cost_tol.help.append("However, suitable tolerance values depend on many factors such as image quality and material texture scale.\n");
+	kwh_cost_tol.help.append("Monitor during-run output. If convergence is consistently failing adjust cost_tol in conjunction with step_tol for balanced performance.\n");
 	kwh_cost_tol.set_form_real(cost_tol_min, cost_tol_max);	// input form
 	manual.push_back(kwh_cost_tol);
 
@@ -442,10 +446,11 @@ InputRead::InputRead()
 	kwh_step_tol.good = set_stream_str(step_tol_min, step_tol_max, scientific, 0);
 	kwh_step_tol.dflt = set_num_str(step_tol_def, scientific, 0);
 	kwh_step_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
-	kwh_step_tol.help.append("A cloud point search is considered converged if the final parameter vector (step) change is below step_tol.\n");
-	kwh_step_tol.help.append("A second control on optimization is step_max which defines the largest overall step allowed during iteration.\n");
+	kwh_step_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol ");
+	kwh_step_tol.help.append("or if the final parameter vector (step) change is below step_tol.\n");
 	kwh_step_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
-	kwh_step_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
+	kwh_step_tol.help.append("However, suitable tolerance values depend on many factors such as image quality and material texture scale.\n");
+	kwh_step_tol.help.append("Monitor during-run output. If convergence is consistently failing adjust cost_tol in conjunction with step_tol for balanced performance.\n");
 	kwh_step_tol.set_form_real(step_tol_min, step_tol_max);	// input form
 	manual.push_back(kwh_step_tol);
 	
@@ -457,7 +462,7 @@ InputRead::InputRead()
 	kwh_max_iter.good = set_stream_str(max_iter_min, max_iter_max);
 	kwh_max_iter.dflt = set_num_str(max_iter_def);
 	kwh_max_iter.help.assign("Optimization is limited to a set number of iterations to manage cases of unreasonably slow convergence.\n");
-	kwh_max_iter.help.append("In general a well-posed DVC problem with a good starting point will converge in a few iterations.\n");
+	kwh_max_iter.help.append("In general, a well-posed DVC problem with a good starting point and appropriate convergence tolerances will converge in a few iterations.\n");
 	kwh_max_iter.help.append("There is no performance benefit from reducing max_iter as convergence checks break early from the update loop.\n");
 	kwh_max_iter.help.append("In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help.\n");
 	kwh_max_iter.set_form_int(max_iter_min, max_iter_max);	// input form
@@ -2165,13 +2170,13 @@ int InputRead::print_manual_html(std::ofstream &file)
 			"The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) "
 	        "Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. "
 	        "The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) "
-			"Further processing of the basic data can be very project-specific and is therefore encapsulated into a seperate analysis stage. "
+			"Further processing of the basic data can be very project-specific and is therefore encapsulated into a separate analysis stage. "
 			"</p>"
 
 			"<h3>The <i>strain</i> executable</h3>"
 
 	        "<p>"
-			"The most commmon post-processing step is strain calculation, and an executable is provided along with <i>dvc</i> for that purpose. " 
+			"The most common post-processing step is strain calculation, and an executable is provided along with <i>dvc</i> for that purpose. " 
 			"The strain program is driven by command-line arguments as explained below, but the basic run process is very simple. "
 			"From the same terminal window as the <i>dvc</i> run just follow the word <i>strain</i> with the name of a standard <i>dvc</i> output file: "
 			"</p>"
@@ -2188,7 +2193,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 				"</li>"
 				"<li>"
 					"Spatial gradients of displacement vector components form the basis of strain calculations. "
-					"With displacements only avaialble at discrete cloud points, local point neighborhoods are required for determing gradients."
+					"With displacements only available at discrete cloud points, local point neighborhoods are required for determing gradients."
 				"</li>"
 				"<li>"
 					"A neighborhood is formed around each point in the cloud by sorting and selecting the <i>n</i> nearest points. "
@@ -2200,7 +2205,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 				"</li>"
 				"<li>"
 					"An added benefit of the polynomial fitting process is the ability to sample the polynomial for displacement components. "
-					"This generates a smoothed representaiton of the original data. "
+					"This generates a smoothed representation of the original data. "
 				"</li>"
 			"</ul>"
 	        
@@ -2245,9 +2250,9 @@ int InputRead::print_manual_html(std::ofstream &file)
 			"</table>\n"
 
 	        "<p>"
-				"Each output request creates a seperate file with the extension shown. Data is generated for each point in the cloud. "
+				"Each output request creates a separate file with the extension shown. Data is generated for each point in the cloud. "
 				"Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. "
-				"The displacement gradient is not symmetric and all nine components are listed. "
+				"The displacement gradient is not symmetric, and all nine components are listed. "
 				"Local material rotation is documented as components of orientation vectors scaled in radians and unit vectors with angle in degrees. "
 	        "</p>";
 

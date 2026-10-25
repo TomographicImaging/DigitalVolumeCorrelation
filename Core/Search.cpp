@@ -1081,7 +1081,8 @@ void Search::random_global(double displ_max, double basin_radius)
 }
 
 /******************************************************************************/
-
+// operator << for Search type object defined in Search.h/.cpp
+// returns std::ostream summary of the run parameters
 std::ostream& operator<<(std::ostream &strm, const Search &a) {
 	RunControl * run = a.rc;
 
@@ -1131,7 +1132,7 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 			break;
 	}
 
-	return strm << "Search settings: (" << std::endl <<
+	return strm << "Search settings: {" << std::endl <<
 		"bytes_per " << a.bytes_per << std::endl <<
 		"image volume size " << run->vol_wide << " " << run->vol_high << " " << run->vol_tall << std::endl <<
 		"subvol_geom " << geotyp << std::endl <<
@@ -1144,6 +1145,6 @@ std::ostream& operator<<(std::ostream &strm, const Search &a) {
 		"cost_tol (obj) " << std::scientific << std::setprecision(1) << a.rc->cost_tol << std::endl <<
 		"step_tol (par) " << std::scientific << std::setprecision(1) << a.rc->step_tol << std::endl <<
 		"max_iter " << std::fixed << std::setprecision(0) << a.rc->max_iter << std::endl <<
-		")";
+		"}";
 }
-
+/******************************************************************************/

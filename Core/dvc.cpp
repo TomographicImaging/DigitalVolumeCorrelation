@@ -47,12 +47,11 @@ int main(int argc, char *argv[])
 	{
 		if (omp_get_thread_num() == 0)
 		{
-			cout << "Running with threads = " << omp_get_num_threads() << endl;
+			cout << endl << "Running with threads = " << omp_get_num_threads() << endl;
 		}
 	}
 
-	std::cout << "Running dvc built from core_updates branch" << std::endl;
-
+	std::cout << "Running dvc built from bspline_interp_merge_master branch" << std::endl;
 
 	InputRead in;
 
@@ -62,26 +61,28 @@ int main(int argc, char *argv[])
 	std::string form("form");
 	std::string pversion("version");
 
-	bool first_point = true;
-
 	// command entered with no arguments
-	if (argc == 1)
-	{
+	if (argc == 1) {
 		std::cout << endl;
 		std::cout << "Options:" << endl;
 		std::cout << "dvc \t\t\t// write this list to the terminal window" << endl;
 		std::cout << "dvc dvc_in\t\t// execute dvc code with dvc_in controlling the run" << endl;
+		std::cout << "dvc version\t\t// print dvc code version to the terminal" << endl;
 		std::cout << "dvc help\t\t// provide additional detail about running the dvc code" << endl;
 		std::cout << "dvc example\t\t// write dvc_in_example.txt, with brief keyword descriptions, in the working directory" << endl;
 		std::cout << "dvc manual\t\t// write DVC_manual.html, with more detailed information, in the working directory" << endl;
-		std::cout << "dvc form\t\t// write an HTML form (DVC_input_builder.html) for creting a dvc_input file, in the working directory" << endl;
+		std::cout << "dvc form\t\t// write DVC_input_builder.html, a tool for creating a dvc_input file, in the working directory" << endl;
 		std::cout << endl;
 		return 0;
 	}
 
+	// trap dvc version on the command line, prints and returns
+	if (argv[1] == pversion){
+		return in.print_current_version();
+	}
+
 	// trap help on the command line
-	if (argv[1] == help)
-	{
+	if (argv[1] == help) {
 		std::cout << endl;
 		std::cout << "Program execution is controlled by a key_word based input file." << endl;
 		std::cout << "Please refer to an example input file (enter 'dvc example') for content and format." << endl;
@@ -98,8 +99,7 @@ int main(int argc, char *argv[])
 	}
 
 	// trap example on the command line
-	if (argv[1] == example)
-	{
+	if (argv[1] == example) {
 		std::cout << "\ndvc_in_example.txt printed in the current working directory" << endl << endl;
 		std::ofstream dvc_inp("dvc_in_example.txt");
 		in.print_input_example(dvc_inp, "fio_name");
@@ -113,28 +113,11 @@ int main(int argc, char *argv[])
 	}
 
 	// trap manual on the command line
-	if (argv[1] == manual)
-	{
-		// this is the old text manual, not currently used
-		/*
-		std::cout << "\ndvc_manual printed in the current working directory" << endl << endl;
-		std::ofstream dvc_man("dvc_manual");
-		in.print_manual_intro(dvc_man);
-		in.print_manual_section(dvc_man, "fio_name");
-		in.print_manual_section(dvc_man, "vox_data");
-		in.print_manual_section(dvc_man, "sub_vols");
-		in.print_manual_section(dvc_man, "opt_mthd");
-		in.print_manual_section(dvc_man, "opt_tune");
-		in.print_manual_output(dvc_man);
-		dvc_man.seekp(0, dvc_man.beg);
-		dvc_man.close();
-		*/
-
+	if (argv[1] == manual) {
 		// this is the new and improved html manual
 		std::cout << "\nDVC_manual.html written to the current working directory" << endl << endl;
     	std::ofstream html("DVC_manual.html");
     	in.print_manual_html(html);
-
 		return 0;
 	}
 
@@ -146,93 +129,46 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	// check this ...
-	if (argv[1] == pversion){
-		return in.print_current_version();
-	}
-
-	// check to see if the command line argument is an accessible file
-	// check and process command line flags
-	
+	// check and process command line flags that proceed to run
 	int map_label;
 	bool map_on = false;
 	if (in.find_flag("-map", argc, argv, map_label)) {	
 		map_on = true;
-		std:;cout << std::endl << "** mapping point with label " << map_label << std::endl;
+		std::cout << std::endl << "** mapping point with label " << map_label << std::endl;
 	}
 
+	// check to see if the command line contains an accessible file
 	std::string fname(argv[1]);
 	if(!in.input_file_accessible(fname)) return 0;
 
 	// instantiate storage for run control parameters within Utility
 	RunControl run;
-
-	// parse and check the input file
+	// parse and check the input file, fill RunControl
 	if(!in.input_file_read(&run)) return 0;
 
-	// instantiate a DataCloud and read point cloud file
+	// instantiate a DataCloud
 	DataCloud data;
-	//if(!in.read_point_cloud(&run, data.points, data.labels)) return 0;		// original point read function, updated in _tsc
-	//if(!in.read_point_cloud_tsc(&run, data.points, data.labels, data.added_columns, data.added_column_names)) return 0;
-
-	// for generalized point could read code
+	// read point could file
 	if(!in.read_point_cloud_generalized(&run, data.labels, data.points, data.added_columns, data.added_column_names)) return 0;
-
-
 	std::cout << std::endl << "cloud contains " << data.points.size() << " points" << std::endl;
-	data.organize_cloud(&run);		// sort overall by distance from global starting_point and establish heighbors
+	// sort overall by distance from global starting_point and establish heighbors
+	data.organize_cloud(&run);		
 
 	// *** begin run
-
 	auto start_time_test = std::chrono::system_clock::now();
-
 	auto dts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	in.echo_input(&run);
 	in.append_time_date(run.sta_fname, "Run start: ", dts);
 
 	// create optimizer from the input parameters
-
 	Search optimize = Search(&run);
 
-	// *** print configuration to screen
-	//std::cout << optimize << std::endl;
-	std::string objfun;
-	if (run.obj_fcn == SSD) {
-		//obj_fcn = &obj_SSD;
-		objfun = std::string("objective function SSD");
-	}
-	if (run.obj_fcn == ZSSD) {
-		//obj_fcn = &obj_ZSSD;
-		objfun = std::string("objective function ZSSD");
-	}
-	if (run.obj_fcn == NSSD) {
-		//obj_fcn = &obj_NSSD;
-		objfun = std::string("objective function NSSD");
-	}
-	if (run.obj_fcn == ZNSSD) {
-		//obj_fcn = &obj_ZNSSD;
-		objfun = std::string("objective function ZNSSD");
-	}
-	/*
-	std::cout << "Search(" << std::endl <<
-		"bytes_per " << optimize.bytes_per << std::endl <<
-		"subv_rad " << optimize.subv_rad << std::endl <<
-		"subv_num " << optimize.subv_num << std::endl <<
-		"obj_fun " << objfun << std::endl <<
-		"input shape " << run.vol_wide << " " <<
-		run.vol_high << " " <<
-		run.vol_tall << std::endl <<
-		"subvol aspect " << run.subvol_aspect[0] << " " <<
-		run.subvol_aspect[1] << " " <<
-		run.subvol_aspect[2] << std::endl <<
-		"numr_search_dof " << run.num_srch_dof << std::endl <<
-		"disp max " << run.step_max << std::endl <<
-		")";
-		*/
-	std::cout << std::endl << "*************************" << std::endl;
-	std::cout << std::endl << optimize << std::endl << std::endl;
+	// print configuration to screen
+	// operator << for Search type object defined in Search.h/.cpp
+	// returns std::ostream summary of the run parameters for output to terminal
+	std::cout << optimize << std::endl << std::endl;
 
-	// main search loop
+	// ***** main search loop *****
 
 	// establish results file for output while running, in case of interupt
 	in.result_header(run.res_fname, optimize.par_min.size());
@@ -254,6 +190,7 @@ int main(int argc, char *argv[])
 	if ((run.num_points_to_process > 1) && (run.num_points_to_process < N)) {
 		N = run.num_points_to_process;
 	}
+
 	for (unsigned int i=0; i<N; i++) {
 
 		// this is the index of the point being processed
@@ -303,7 +240,6 @@ int main(int argc, char *argv[])
 			count_range += 1;
 			in.append_result(run.res_fname, data.labels[n], data.points[n], range_fail, optimize.obj_min, blank_par_min);
 			std::cout << "Range_Fail";
-
 			data.results[trg][n].status = range_fail;
 		}
 		catch (Convg_Fail)
@@ -311,29 +247,25 @@ int main(int argc, char *argv[])
 			count_convg += 1;
 			in.append_result(run.res_fname, data.labels[n], data.points[n], convg_fail, optimize.obj_min, blank_par_min);
 			std::cout << "Convg_Fail";
-
 			data.results[trg][n].status = convg_fail;
 		}
 
 		std::cout << endl;
 
 		count += 1;
-		first_point = false;
 
 		if (count % 10 == 0)
 		{
 			std::ofstream sta_file(run.sta_fname.c_str(), std::ofstream::app);
-
 			auto point_time_status = std::chrono::steady_clock::now();
 			std::chrono::duration<double, std::milli> status = point_time_status - point_time_start;
 			double status_sec = status.count() / 1000.0;
-
 			sta_file << count << " points of " << data.points.size() << " at " << count / status_sec << " pt/sec" << std::endl;
 		}
 
 	}
 
-	// *** all points processed, clean-up
+	// ***** all points processed, clean-up *****
 		// stop point processing timer
 	auto point_time_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> elapsed_milliseconds = point_time_end - point_time_start;
@@ -367,14 +299,6 @@ int main(int argc, char *argv[])
 	sta_file << "number range fail = " << count_range << "\t(" << 100*((double)count_range/(double)count) << "%)" << endl;
 	sta_file << "number convg fail = " << count_convg << "\t(" << 100*((double)count_convg/(double)count) << "%)" << endl;
 	sta_file << std::endl;
-
-
-/*
-	// run strain calculation
-	std::cout << endl << endl << "strain calculation" << endl;
-
-	StrainCalc strain;
-*/
 
 	return 0;
 }
