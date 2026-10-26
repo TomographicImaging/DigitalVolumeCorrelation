@@ -68,6 +68,7 @@ struct ResultRecord
 	int status;		// as defined in Utility.h
 	double obj_min;			// value at minumum
 	std::vector<double> par_min;	// parameters at min [ndof]
+
     Iter_Stats iter_stats;     // iteration tracking data
 };
 /******************************************************************************/

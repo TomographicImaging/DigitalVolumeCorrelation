@@ -232,8 +232,9 @@ int main(int argc, char *argv[])
 			for (int j=0; j<run.num_srch_dof; j++) {
 				data.results[trg][n].par_min[j] = optimize.par_min[j];
 			}
+
+			data.results[trg][n].iter_stats.convg_status = optimize.iter_stats.convg_status;
 			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
-			data.results[trg][n].iter_stats.nits = optimize.iter_stats.convg_status;
 		}
 		catch (Range_Fail)
 		{
@@ -266,21 +267,16 @@ int main(int argc, char *argv[])
 	}
 
 	// ***** all points processed, clean-up *****
-		// stop point processing timer
+
+	// stop point processing timer
 	auto point_time_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> elapsed_milliseconds = point_time_end - point_time_start;
 	double elapsed_seconds = elapsed_milliseconds.count() / 1000.0;
 	std::cout << count / elapsed_seconds << " pt/sec average" << std::endl;
-
 	auto dtf = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-	// re-write output in point cloud order, from stored results
-	in.result_header(run.res_fname, optimize.par_min.size());
-	for (unsigned int i = 0; i < N; i++) {
-		// this is the index of the point being processed
-		int n = data.order[i];
-		in.append_result(run.res_fname, data.labels[n], data.points[n], data.results[trg][n].status, data.results[trg][n].obj_min, data.results[trg][n].par_min);
-	}
+	// write new output file with compiled results
+	write_result(run.res_fname, trg, count, data);
 
 	in.echo_input(&run);
 	in.append_time_date(run.sta_fname, "Run start:\t", dts);
@@ -302,4 +298,51 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+/******************************************************************************/
+
+int write_result(std::string fname, int trg, int count, DataCloud &data)
+{
+	//std::ofstream res_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
+	std::ofstream res_file(fname.c_str(), std::ios_base::out);
+
+	// write header
+	res_file << "," << "x" << "," << "y" << "," << "z";
+	res_file << "," << "status";
+	res_file << "," << "convg";
+	res_file << "," << "niter";
+	res_file << "," << "objmin";
+	res_file << "," << "u" << "," << "v" << "," << "w";
+	res_file << std::endl;
+
+	for (unsigned int i = 0; i<count; i++) {
+		int n = data.order[i];
+
+		res_file << std::fixed << std::setprecision(0);
+		res_file << data.labels[n];
+
+		res_file << std::fixed << std::setprecision(3);
+		res_file << "," << data.points[n].x() << "," << data.points[n].y() << "," << data.points[n].z();
+
+		res_file << std::fixed << std::setprecision(0); 
+		res_file << "," << data.results[trg][n].status;
+
+		res_file << "," << CR_str_vec[data.results[trg][n].iter_stats.convg_status];
+
+		res_file << std::fixed << std::setprecision(0);
+		res_file << "," << data.results[trg][n].iter_stats.nits;
+
+		res_file << std::fixed << std::setprecision(6);
+		res_file << "," << data.results[trg][n].obj_min;
+
+		res_file << std::fixed << std::setprecision(6);
+		for (int j=0; j<3; j++) {
+			res_file << "," << data.results[trg][n].par_min[j];
+		}
+
+		res_file << std::endl;
+	}
+
+    return 1;
+}
+/******************************************************************************/
 /******************************************************************************/

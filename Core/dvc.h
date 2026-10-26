@@ -44,6 +44,13 @@ Author(s): Brian Bay (OSU)
 #include "Search.h"
 #include "Utility.h"
 
+/******************************************************************************/
+
+// after full run data is avaialble, not working due to circular declaration
+
+int write_result(std::string fname, int trg, int count, DataCloud &data);
+
+/******************************************************************************/
 
 #endif
 

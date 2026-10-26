@@ -804,13 +804,29 @@ int InputRead::read_disp_file_generalized(std::string fname,
 	ifs.close(); // remaining code does not directly use ifs, just used for file access check
 
 	// function baseline
+	/*
     ReadOptions opt;
-    opt.columns.push_back(ColumnSpec("id", ColType::Int));
+    opt.columns.push_back(ColumnSpec("n", ColType::Int));
     opt.columns.push_back(ColumnSpec("x",  ColType::Double));
     opt.columns.push_back(ColumnSpec("y",  ColType::Double));
     opt.columns.push_back(ColumnSpec("z",  ColType::Double));
 	opt.columns.push_back(ColumnSpec("status",  ColType::Int));
 	opt.columns.push_back(ColumnSpec("objmin",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("u",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("v",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("w",  ColType::Double));
+    opt.read_extra = false;
+	*/
+
+	ReadOptions opt;
+    opt.columns.push_back(ColumnSpec("n", ColType::Int));
+    opt.columns.push_back(ColumnSpec("x",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("y",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("z",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("status", ColType::Int));
+    opt.columns.push_back(ColumnSpec("convg",  ColType::Text, false));	// not required
+    opt.columns.push_back(ColumnSpec("niter", ColType::Int, false));	// not required
+    opt.columns.push_back(ColumnSpec("objmin", ColType::Double));
     opt.columns.push_back(ColumnSpec("u",  ColType::Double));
     opt.columns.push_back(ColumnSpec("v",  ColType::Double));
     opt.columns.push_back(ColumnSpec("w",  ColType::Double));
@@ -827,21 +843,37 @@ int InputRead::read_disp_file_generalized(std::string fname,
 
 	// function baseline
     // Copy into the structures the core code already uses
-    const std::vector<int>&    id = t.columns[0].ints;
+	/*
+    const std::vector<int>&    n = t.columns[0].ints;
     const std::vector<double>& x  = t.columns[1].doubles;
     const std::vector<double>& y  = t.columns[2].doubles;
     const std::vector<double>& z  = t.columns[3].doubles;
-	const std::vector<int>&    stat = t.columns[4].ints;
-    const std::vector<double>& objm = t.columns[5].doubles;
+	const std::vector<int>&    status = t.columns[4].ints;
+    const std::vector<double>& objmin = t.columns[5].doubles;
 	const std::vector<double>& u  = t.columns[6].doubles;
     const std::vector<double>& v  = t.columns[7].doubles;
     const std::vector<double>& w  = t.columns[8].doubles;
+	*/
 
-	// move data from internal Table to function arguments
-	search_labels = id;
-	status = stat;
-	objmin = objm;
+	// Look up by name, so the order of the list above doesn't matter
 
+	// For an optional column, e.g. "cong", t.find("convg")->in_file is false when the file’s header doesn’t list that column, 
+	// and true when it does
+
+	// these are the vectors that need individual component hdnaling
+    const std::vector<double>& x = t.find("x")->doubles;
+    const std::vector<double>& y = t.find("y")->doubles;
+    const std::vector<double>& z = t.find("z")->doubles;
+    const std::vector<double>& u = t.find("u")->doubles;
+    const std::vector<double>& v = t.find("v")->doubles;
+    const std::vector<double>& w = t.find("w")->doubles;
+
+	// move single value results directly into arguments
+	search_labels = t.find("n")->ints;
+	status = t.find("status")->ints;
+	objmin = t.find("objmin")->doubles;
+
+	// loop to load vector quantities as Point types
 	search_points.clear();
     search_points.reserve(t.rows);
 	dis.clear();
@@ -862,7 +894,6 @@ int InputRead::read_disp_file_generalized(std::string fname,
 /******************************************************************************/
 // The generalized readers manage row/column data files and are robust with respect to eol, deliminators etc.
 // Configureation is primarily established with the ReadOptions struct, including colums header text and data types
-// see read_disp_file_generalized for a "clean" version with limited dvc-specific code
 int InputRead::read_point_cloud_generalized(RunControl *run,
                         std::vector<int>& search_labels,
                         std::vector<Point>& search_points,
@@ -2025,13 +2056,15 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 	        "<p>The <strong>displacement file</strong> (<code>.disp.csv</code>) is a comma seperated variable file of the dvc results.</p><ul>"
 	        "<li>A header line appears first followed by data for each cloud point.</li></ul>"
-	        "<pre><code>n x y z status objmin u v w </code></pre>\n"
+	        "<pre><code>n x y z status convg niter objmin u v w </code></pre>\n"
 	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
-	        "<tr><td><code>n</code></td><td>the point identifier</td></tr>\n"
-	        "<tr><td><code>x y z</code></td><td>the point location within the reference volume</td></tr>\n"
-	        "<tr><td><code>status</code></td><td>the search outcome: 0 = Point_Good (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
-	        "<tr><td><code>objmin</code></td><td>the objective function magnitude at the end of the search</td></tr>\n"
-	        "<tr><td><code>u v w</code></td><td>the point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
+	        "<tr><td><code>n</code></td><td>point label</td></tr>\n"
+	        "<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>\n"
+	        "<tr><td><code>status</code></td><td>search outcome: 0 = Point_Good (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
+			"<tr><td><code>convg</code></td><td>metric that determined convergence: cost (cost_tol), step (step_tol)</td></tr>\n"
+			"<tr><td><code>niter</code></td><td>number of iterations required for convergence</td></tr>\n"
+	        "<tr><td><code>objmin</code></td><td>objective function magnitude at the end of the search</td></tr>\n"
+	        "<tr><td><code>u v w</code></td><td>point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
 	        "</table>\n"
 
 			"<p>The dvc executable does not calculate strain or other kinematic quantities. That is managed as post-processing.</p>\n";

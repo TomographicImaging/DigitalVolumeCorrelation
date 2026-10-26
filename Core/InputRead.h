@@ -46,6 +46,7 @@ Author(s): Brian Bay (OSU)
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
+//#include "DataCloud.h"
 #include "Utility.h"
 
 #include "CCPiDefines.h"
@@ -53,6 +54,8 @@ Author(s): Brian Bay (OSU)
 extern const int input_line_ok;
 extern const int keywd_missing;
 extern const int param_invalid;
+
+struct ResultRecord;
 
 /******************************************************************************/
 class CCPI_EXPORT key_word_help
