@@ -2591,8 +2591,12 @@ int InputRead::append_time_date(std::string fname, std::string label, char* dt)
 
 	return 1;
 }
+/******************************************************************************/
 int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
 {
+
+	//std::cout << std::endl << "this one ..." << std::endl;
+
 	std::ofstream sta_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
 
 	//doesn't compile in gcc version < 5

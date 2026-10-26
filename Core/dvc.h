@@ -46,9 +46,13 @@ Author(s): Brian Bay (OSU)
 
 /******************************************************************************/
 
-// after full run data is avaialble, not working due to circular declaration
+void terminal_status(Search &opt);
 
-int write_result(std::string fname, int trg, int count, DataCloud &data);
+void write_result(std::string fname, int trg, int count, DataCloud &data);
+
+void write_status(std::string fname, InputRead &in, RunControl *run, 
+    int count, int count_good, int count_range, int count_convg, double elapsed_seconds,
+            time_t dts, time_t dtf);
 
 /******************************************************************************/
 
