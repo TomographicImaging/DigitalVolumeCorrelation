@@ -319,9 +319,9 @@ void write_result(std::string fname, int trg, int count, DataCloud &data)
 void terminal_status(Search &opt)
 {
 	std::string status_txt;
-	if (opt.iter_stats.convg_status == CostChange) {status_txt = "obj in ";}
-	if (opt.iter_stats.convg_status == ParameterChange) {status_txt = "par in ";}
-	if (opt.iter_stats.convg_status == GradientNorm) {status_txt = "grd in ";}
+	if (opt.iter_stats.convg_status == CostChange) {status_txt = "cost in ";}
+	if (opt.iter_stats.convg_status == ParameterChange) {status_txt = "step in ";}
+	if (opt.iter_stats.convg_status == GradientNorm) {status_txt = "grad in ";}
 	std::cout << "Point_Good (" << status_txt << opt.iter_stats.nits << ")";
 	if (opt.iter_stats.nits > 9) {std::cout << " ";} else {std::cout << "  ";};
 	std::cout << std::setprecision(6);

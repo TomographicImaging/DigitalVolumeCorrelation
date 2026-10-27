@@ -2016,7 +2016,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 			"<h3>During program execution</h3>"
 
 	        "<p>Information about each point processed is echoed to the command window, e.g.:</p><ul>"
-			"<li>5/10  6463  x= 283.23 y= 603.92 z= 257.31 Point_Good (par in 7)  obj= 0.063045  u= -2.25 v= 3.84 w= 4.15</li></ul>"
+			"<li>5/10  6463  x= 283.23 y= 603.92 z= 257.31 Point_Good (step in 7)  obj= 0.063045  u= -2.25 v= 3.84 w= 4.15</li></ul>"
 
 	        "<p>Point count / num_points_to_process is followed by the point identifier and [x,y,z] location.</p>"
 /*
@@ -2033,13 +2033,13 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "<li>Point_Good: successful search convergence</li>"
 	        "<li>Range_Fail: iteration reached perimeter of search range, consider increasing <a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a></li>"
 //	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
-	        "<li>Convg_Fail: maximum iterations exceeded, re-evaluate "
+	        "<li>Convg_Fail: maximum iterations exceeded, re-evaluate point cloud density, "
 	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and "
 	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></li></ul>"			
 
 			"<p>Convergence status is further clarified by listing the controlling criteria and the number of iterations, e.g.</p><ul>"
-			"<li>(obj in 6) = objective function change fell below threshold in 6 iterations</li>"
-			"<li>(par in 7) = parameter vector change fell below threshold in 7 iterations</li></ul>"
+			"<li>(cost in 6) = objective function change (<a class=\"kwref\" href=\"#kw-cost_tol\"><code>cost_tol</code></a>) fell below threshold in 6 iterations</li>"
+			"<li>(step in 7) = parameter vector change (<a class=\"kwref\" href=\"#kw-step_tol\"><code>step_tol</code></a>) fell below threshold in 7 iterations</li></ul>"
 
 	        "<p>The magnitude of the objective function value at the end of the search is displayed as obj.</p><ul>"
 	        "<li>For objective functions ssd and zssd the value is relative, depending on subvolume size and voxel values</li>"
@@ -2055,14 +2055,17 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "<li>Search statistics and timing.</li></ul>"
 
 	        "<p>The <strong>displacement file</strong> (<code>.disp.csv</code>) is a comma seperated variable file of the dvc results.</p><ul>"
+
 	        "<li>A header line appears first followed by data for each cloud point.</li></ul>"
+
 	        "<pre><code>n x y z status convg niter objmin u v w </code></pre>\n"
+
 	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
 	        "<tr><td><code>n</code></td><td>point label</td></tr>\n"
 	        "<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>\n"
 	        "<tr><td><code>status</code></td><td>search outcome: 0 = Point_Good (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
-			"<tr><td><code>convg</code></td><td>metric that determined convergence: cost (cost_tol), step (step_tol)</td></tr>\n"
-			"<tr><td><code>niter</code></td><td>number of iterations required for convergence</td></tr>\n"
+			"<tr><td><code>convg</code></td><td>metric that determined convergence: cost (<a class=\"kwref\" href=\"#kw-cost_tol\"><code>cost_tol</code></a>) or step (<a class=\"kwref\" href=\"#kw-step_tol\"><code>step_tol</code></a>)</td></tr>\n"
+			"<tr><td><code>niter</code></td><td>number of iterations required for convergence, max is set by <a class=\"kwref\" href=\"#kw-max_iter\"><code>max_iter</code></a></td></tr>\n"
 	        "<tr><td><code>objmin</code></td><td>objective function magnitude at the end of the search</td></tr>\n"
 	        "<tr><td><code>u v w</code></td><td>point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
 	        "</table>\n"
@@ -2160,7 +2163,47 @@ int InputRead::print_manual_html(std::ofstream &file)
 				"Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. "
 				"The displacement gradient is not symmetric, and all nine components are listed. "
 				"Local material rotation is documented as components of orientation vectors scaled in radians and unit vectors with angle in degrees. "
-	        "</p>";
+	        "</p>"
+			
+			"<p>The <strong>strain output </strong> files are .csv formatted with each data row representing a cloud point.</p><ul>"
+
+	        "<li>All of the output files contain the following data columns.</li></ul>"
+
+	        "<pre><code>n x y z u_fit v_fit w_fit pts_in_sw sw_size </code></pre>\n"
+			
+	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
+	        "<tr><td><code>n</code></td><td>point label</td></tr>\n"
+	        "<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>\n"
+	        "<tr><td><code>u_fit v_fit w_fit</code></td><td>point displacement (voxels) calculated from the strain window polynomial fit</td></tr>\n"
+			"<tr><td><code>pts_in_sw</code></td><td>number of points used for the polynomial fit</td></tr>\n"
+			"<tr><td><code>sw_size</code></td><td>an estimate of the strain window size in voxels</td></tr>\n"
+	        "</table>\n"
+			
+			"<p>"
+				"Point labels and x,y,z coordinates are the same as the .disp.csv file, included here for convenience when using files for subsequent processing. "
+				"The fit displacement components provide an alternative to the direct dvc output quantities. "
+				"They are derived from the same finuctional fit as the strain and rotation variables, and therefore share a similar spatial smoothing. "
+				"Number of points in the strain window is generally the same as the <i>sw</i> setting, but can vary depending on the dvc output and <i>strain</i> settings. "
+				"Windows will contain fewer points if the are unconverged dvc points or if -t is used to exclude points with high objmin values. "
+				"The -r argument will restore the number of points back toward <i>sw</i> if possible. "
+				"Size of the strain window is important in calculating 'virtual strain gauge' size: VSG = sw_size + subvol_size. "
+				"Strain window size is estimated here as the cube root of the strain window volume. "
+	        "</p>"
+			
+			"<li>All of the output files with strain data (Biot, GrLa, Henc) contain additional data columns.</li></ul>"
+			"<li>These are the six unique strain tensor components and principal values.</li></ul>"
+			
+			"<pre><code>exx eyy ezz exy eyz exz ep1 ep2 ep3 </code></pre>\n"
+
+			"<li>The displacement gradient tensor file (Dgrd) contains all nine unique tensor component values.</li></ul>"
+			
+			"<pre><code>ux uy uz vx vy vz wx wy wz </code></pre>\n"
+
+			"<li>The local material rotation file (Rvec) contains two representations of an oriented rotation vector.</li></ul>"
+			"<li>The first (r) is x,y,z components of a rotation vector scaled to the rotation magnitude in radians.</li></ul>"
+			"<li>The second is a unit vector (n) with rotation magnitude in degrees listed as a separate column (deg).</li></ul>"
+
+			"<pre><code>rx ry rz nx ny nz deg </code></pre>\n";
 
 	file << "</main>\n</div>\n</body>\n</html>\n";
 
