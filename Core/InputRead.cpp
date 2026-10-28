@@ -1628,6 +1628,214 @@ const ManualPool manual_pools[] = {
 };
 const int num_manual_pools = sizeof(manual_pools) / sizeof(manual_pools[0]);
 
+// add sections with indents - 
+// Extra sections appended to the end of the HTML manual, independent of the
+// keyword (k.word) data.
+//   level : 2 = section (bold link in the sidebar, <h2> heading)
+//           3 = subsection of the section above it (indented gray link like
+//               the keywords, shown as a card like a keyword entry)
+//   id    : anchor name, used as href="#id" (letters, digits, - and _ only)
+//   title : text for the sidebar link and the heading
+//   body  : raw HTML for the content (may be empty)
+struct ManualExtra {
+	int level;
+	const char *id;
+	const char *title;
+	const char *body;
+};
+
+const ManualExtra manual_extras[] = {
+	{2, "post", "Post-processing", R"html(
+
+	The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) 
+	Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. 
+	The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) 
+	Further processing of the basic data can be very project-specific and is therefore encapsulated into a separate analysis stage. 
+
+	)html"},
+
+	{3, "post-strain-program", "Strain program", R"html(
+
+			The most common post-processing step is strain calculation, and an executable is provided along with <i>dvc</i> for that purpose.  
+			The <i>strain</i> program is driven by command-line arguments as explained below, but the basic run process is very simple. 
+			From the same terminal window as the <i>dvc</i> run just follow the word <i>strain</i> with the name of a standard <i>dvc</i> output file: 
+
+			<pre><code>strain my_project.disp.csv </code></pre>
+
+			This will calculate strain for each cloud point under a set of default conditions, and generate an output file. 
+			A more complex example includes both strain calculation directives and output requests:
+
+			<pre><code>strain my_project.disp.csv -sw 30 -t 0.08 -r -Loff -H -R</code></pre>
+
+			To fully understand the strain calculation and generate useful results, some background information is required. 
+
+			<ul>
+				<li>
+					Strain as used here is a 3D tensor quantity defined within the context of continuum mechanics. 
+					This has point cloud implications. A relatively dense and connected cloud works best. 
+				</li>
+				<li>
+					Spatial gradients of displacement vector components form the basis of strain calculations. 
+					With displacements only available at discrete cloud points, local point neighborhoods are required for determing gradients.
+				</li>
+				<li>
+					A neighborhood is formed around each point in the cloud by distance-based sorting and selecting nearby points. 
+					Number of points in the neighborhood, the <i>strain window</i> size <i>sw</i>, is an important user-defined variable. 
+				</li>
+				<li>
+					Displacement vector components of points within the strain window are fit to a 3D polynomial through a least-squares process. 
+					Gradients of the displacement components are defined as derivatives of the polynomial at the location of the base cloud point. 
+				</li>
+				<li>
+					An added benefit of the polynomial fitting process is the ability to sample the polynomial for displacement components. 
+					This generates a smoothed representation of the original data. 
+				</li>
+			</ul>
+	        
+			<p>
+				Two sets of command line arguments control the process: 1) management of the strain windows, and 2) selection of output data.
+			</p>
+
+	)html"},
+
+	{3, "post-strain-window", "Strain window settings", R"html(
+
+		<p>
+		</p>
+
+		<table class=\grid\><tr><th>Argument</th><th>Description</th></tr>
+			<tr><td><code>-sw 30</code></td><td>set strain window size to 30 points (default = 25, min = 10, max = 125)</td></tr>
+			<tr><td><code>-t 0.1</code></td><td>eliminate window points with objmin above 0.1 (default = 1.0, pass all converged points)</td></tr>
+			<tr><td><code>-r</code></td><td>refill strain window to sw if points were eliminated (default is no refill)</td></tr>
+		</table>
+
+		<p>
+			Strain window size shares characteristics with other neighborhood calculations. Small is noisier but with better spatial resolution. 
+			Large is smoothed but with poorer spatial resolution. Much depends on the point cloud spacing and quality of the image volumes. 
+			Strain window point number can seem large in 3D: a relatively modest 3x3x3 neighborhood is 27 points, 5x5x5 is 125. 
+			The minimum <i>sw</i> is the number of coefficients in the volumetric polynomial, which is 10, but as with all function fits more is better. 
+			The maximum value is set somewhat arbitrarily at 125 to manage the data overhead for large point clouds. 
+		</p>	
+
+		<p>
+			Filling the strain window requires some care. Any points within the local neighborhood that do not converge are eliminated. 
+			Any points with relatively high objmin values (a match quality metric) may represent outliers and are best eliminated as well. 
+			The threshold option can be used to filter out the influence of those points on the polynomial fitting process. 
+			That leaves the issue of whether to look further into the point cloud and 'refill' to the specified <i>sw</i> value. 
+			This increases the effective strain window size, but maintains data support for the fitting process.
+		</p>		
+
+	)html"},
+	
+	{3, "post-output-options", "Output options", R"html(
+
+		<p>
+		</p>
+
+		<table class=\grid\><tr><th>Argument</th><th>Output File</th></tr>
+			<tr><td><code>-B</code></td><td>.Biot.csv - rotation invariant engineering strain tensor</td></tr>
+			<tr><td><code>-L</code></td><td>.GrLa.csv - Green-Lagrange finite strain tensor (default output, suppress with -Loff)</td></tr>
+			<tr><td><code>-H</code></td><td>.Henc.csv - Hencky  logarithmic (true) strain tensor</td></tr>
+			<tr><td><code>-D</code></td><td>.Dgrd.csv - displacement gradient tensor</td></tr>
+			<tr><td><code>-R</code></td><td>.Rvec.csv - local material rotation axis and magnitude</td></tr>
+			<tr><td><code>-A</code></td><td> output all available kinematic quantities</td></tr>
+		</table>
+
+		<p>
+			Each output request creates a separate file with the extension shown. Data is generated for each point in the cloud. 
+			Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. 
+			The displacement gradient is not symmetric, and all nine components are listed. 
+			Local material rotation is documented as components of orientation vectors scaled in radians and unit vectors with angle in degrees. 
+		</p>
+		
+	)html"},
+
+	{3, "post-output-files", "Output descriptions", R"html(
+
+		<p>The <strong>strain output </strong> files are .csv formatted with each data row representing a cloud point.</p><ul>
+
+		<li>All of the output files contain the following data columns.</li></ul>
+
+		<pre><code>n x y z u_fit v_fit w_fit pts_in_sw sw_size </code></pre>
+		
+		<table class=\grid\><tr><th>Column</th><th>Meaning</th></tr>
+		<tr><td><code>n</code></td><td>point label</td></tr>
+		<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>
+		<tr><td><code>u_fit v_fit w_fit</code></td><td>point displacement (voxels) calculated from the strain window polynomial fit</td></tr>
+		<tr><td><code>pts_in_sw</code></td><td>number of points used for the polynomial fit</td></tr>
+		<tr><td><code>sw_size</code></td><td>an estimate of the strain window size in voxels</td></tr>
+		</table>
+		
+		<p>
+			Point labels and x,y,z coordinates are the same as the .disp.csv file, included here for convenience when using files for subsequent processing. 
+			The fit displacement components provide an alternative to the direct dvc output quantities. 
+			They are derived from the same functional fit as the strain and rotation variables, and therefore share a similar spatial smoothing. 
+		</p>
+		<p>
+			Number of points in the strain window is generally the same as the <i>sw</i> setting, but can vary depending on the dvc output and <i>strain</i> settings. 
+			Windows will contain fewer points if there are unconverged dvc points or if <i>-t</i> is used to exclude points with high objmin values. 
+			The <i>-r</i> argument will restore the number of points back toward <i>sw</i> if possible. 
+			Strain window size is estimated here as the cube root of the strain window point bounding box volume.
+			Size of the strain window is important in calculating virtual strain gauge (VSG) size: 	
+		</p>
+		<p>	
+			<i>VSG = sw_size + subvol_size</i>. 
+		</p>
+		
+		<li>All of the output files with strain data (Biot, GrLa, Henc) contain additional data columns.</li></ul>
+		<li>These are the six unique strain tensor components and principal values.</li></ul>
+		
+		<pre><code>exx eyy ezz exy eyz exz ep1 ep2 ep3 </code></pre>
+
+		<li>The displacement gradient tensor file (Dgrd) contains all nine unique tensor component values.</li></ul>
+		
+		<pre><code>ux uy uz vx vy vz wx wy wz </code></pre>
+
+		<li>The local material rotation file (Rvec) contains two representations of an oriented rotation vector.</li></ul>
+		<li>The first (r) is x,y,z components of a rotation vector scaled to the rotation magnitude in radians.</li></ul>
+		<li>The second is a unit vector (n) with rotation magnitude in degrees listed as a separate column (deg).</li></ul>
+
+		<pre><code>rx ry rz nx ny nz deg </code></pre>		
+
+	)html"},
+
+	{2, "references", "References", R"html(
+		<ol>
+			<li>Bay, B.K., Smith, T.S., Fyhrie, D.P., Saad, M., Digital Volume Correlation: Three-dimensional Strain Mapping Using X-ray Tomography. 
+			<em>Experimental Mechanics</em> 39 (1999) 217&ndash;226. 
+			<a href="https://doi.org/10.1007/BF02323555" target="_blank" rel="noopener">https://doi.org/10.1007/BF02323555</a></li>
+		</ol>
+		<ol>
+			<li>Bay BK, Methods and Applications of Digital Volume Correlation. 
+			<em>Journal of Strain Analysis for Engineering Design</em> 43 (2008) 745&ndash;760. 
+			<a href="https://doi.org/10.1243/03093247JSA436" target="_blank" rel="noopener">https://doi.org/10.1243/03093247JSA436</a></li>
+		</ol>
+		<ol>
+			<li>Madi, K., Staines, K.A., Bay, B.K., Javaheri, B., Geng, H., Bodey, A.J., Cartmell, S., Pitsillides, A.A., Lee, P.D., 
+			In situ Characterization of Nanoscale Strains in Loaded Whole Joints via Synchrotron X-ray Tomography. 
+			<em>Nature Biomedical Engineering</em> 4 (2019) 343&ndash;354. 
+			<a href="https://doi.org/10.1038/s41551-019-0477-1" target="_blank" rel="noopener">https://doi.org/10.1038/s41551-019-0477-1</a></li>
+		</ol>
+		<ol>
+			<li>Disney, C.M., Mo, J., Eckersley, A., Bodey, A.J., Hoyland, J.A., Sherratt, M.J., Pitsillides, A.A., Lee, P.D., Bay, B.K., 
+			Regional Variations in Discrete Collagen Fibre Mechanics Within Intact Intervertebral Disc Resolved 
+			Using Synchrotron Computed Tomography and Digital Volume Correlation. 
+			<em>Acta Biomaterialia</em> 138 (2022) 361&ndash;374. 
+			<a href="https://doi.org/10.1016/j.actbio.2021.10.012" target="_blank" rel="noopener">https://doi.org/10.1016/j.actbio.2021.10.012</a></li>
+		</ol>
+		<ol>
+			<li>Disney, C.M., Vo, N.T., Bodey, A.J., Bay, B.K., Lee, P.D., 
+			Image Quality and Scan Time Optimisation for <i>in situ</i> Phase Contrast X-Ray Tomography of the Intervertebral Disc. 
+			<em>Journal of the Mechanical Behavior of Biomedical Materials</em> 138 (2023) 105579. 
+			<a href="https://doi.org/10.1016/j.jmbbm.2022.105579" target="_blank" rel="noopener">https://doi.org/10.1016/j.jmbbm.2022.105579</a></li>
+		</ol>
+
+	)html"}
+};
+const int num_manual_extras = sizeof(manual_extras) / sizeof(manual_extras[0]);
+// - add sections with indents
+
+
 std::string html_trim(const std::string &s)
 {
 	const char *ws = " \t\r\n";
@@ -1877,21 +2085,37 @@ int InputRead::print_manual_html(std::ofstream &file)
 				     << html_escape(manual[i].word) << "</a></li>\n";
 		file << "</ul></li>\n";
 	}
+//	file << "<li><a href=\"#example\">Example input file</a></li>\n"
+//	        "<li><a href=\"#output\">Output generated</a></li>\n"
+//			"<li><a href=\"#postprocessing\">Post-processing</a></li>\n"
+//	        "</ul>\n</nav>\n<main>\n";
+
+// add sections with indents -
 	file << "<li><a href=\"#example\">Example input file</a></li>\n"
-	        "<li><a href=\"#output\">Output generated</a></li>\n"
-			"<li><a href=\"#postprocessing\">Post-processing</a></li>\n"
-	        "</ul>\n</nav>\n<main>\n";
+	        "<li><a href=\"#output\">Output generated</a></li>\n";
+
+	// extra sections: level 3 entries nest under the level 2 entry above them,
+	// so they pick up the same indented gray style as the keyword links
+	bool in_sub = false;
+	for (int x = 0; x < num_manual_extras; x++) {
+		const ManualExtra &e = manual_extras[x];
+		if (e.level == 3) {
+			if (!in_sub) { file << "<ul>\n"; in_sub = true; }
+			file << "<li><a href=\"#" << e.id << "\">" << html_escape(e.title) << "</a></li>\n";
+		} else {
+			if (x > 0) file << (in_sub ? "</ul></li>\n" : "</li>\n");
+			in_sub = false;
+			file << "<li><a href=\"#" << e.id << "\">" << html_escape(e.title) << "</a>\n";
+		}
+	}
+	if (num_manual_extras > 0) file << (in_sub ? "</ul></li>\n" : "</li>\n");
+
+	file << "</ul>\n</nav>\n<main>\n";
+// - add sections with indents
+
+
 
 	// ---------- introduction ----------
-	/*file << "<h1 id=\"intro\">A brief manual for the DVC executable</h1>\n"
-	        "<p class=\"meta\">Version " << html_escape(ver.str())
-	     << " &middot; Revised " << html_escape(rev.str())
-	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
-	        "<p>The dvc code is written in C++ with portability and simple compilation in mind. "
-	        "At present only a single external library (Eigen) is used for sparse matrix interpolation calculations.</p>\n"
-	        "<p>Compilation is Makefile controlled. To do a complete rebuild:</p>\n"
-	        "<ol><li>Delete all object (<code>.o</code>) files in <code>/include/objects</code>.</li>\n"
-	        "<li>Enter <code>make</code> from a terminal window in the main distribution directory.</li></ol>\n";*/
 
 	file << "<h1 id=\"intro\">A brief manual for the iDVC executable</h1>\n"
 	        "<p class=\"meta\">Version " << html_escape(ver.str())
@@ -2012,27 +2236,16 @@ int InputRead::print_manual_html(std::ofstream &file)
 	// ---------- output ----------
 	file << "<h2 id=\"output\">Output generated</h2>\n"
 
-//	        "<h3>During program execution</h3>\n<ul>\n"
 			"<h3>During program execution</h3>"
 
 	        "<p>Information about each point processed is echoed to the command window, e.g.:</p><ul>"
 			"<li>5/10  6463  x= 283.23 y= 603.92 z= 257.31 Point_Good (step in 7)  obj= 0.063045  u= -2.25 v= 3.84 w= 4.15</li></ul>"
 
 	        "<p>Point count / num_points_to_process is followed by the point identifier and [x,y,z] location.</p>"
-/*
-	        "<li>The search status appears next:\n<table class=\"opts\">\n"
-	        "<tr><td><code>Point_Good</code></td><td>successful search convergence within the max displacement</td></tr>\n"
-	        "<tr><td><code>Range_Fail</code></td><td>max displacement exceeded; consider increasing the "
-	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
-	        "<tr><td><code>Convg_Fail</code></td><td>maximum iterations exceeded; consider increasing "
-	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and/or "
-	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></td></tr>\n"
-	        "</table></li>\n"
-*/
+
 	        "<p>The search status appears next:</p><ul>"
 	        "<li>Point_Good: successful search convergence</li>"
 	        "<li>Range_Fail: iteration reached perimeter of search range, consider increasing <a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a></li>"
-//	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
 	        "<li>Convg_Fail: maximum iterations exceeded, re-evaluate point cloud density, "
 	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and "
 	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></li></ul>"			
@@ -2072,8 +2285,8 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 			"<p>The dvc executable does not calculate strain or other kinematic quantities. That is managed as post-processing.</p>\n";
 
-	// ---------- post-processing ----------
-
+	// ---------- post-processing ---------- (original, replaced)
+	/*
 	file << "<h2 id=\"postprocessing\">Post-processing</h2>\n"
 	        "<p>"
 			"The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) "
@@ -2204,6 +2417,19 @@ int InputRead::print_manual_html(std::ofstream &file)
 			"<li>The second is a unit vector (n) with rotation magnitude in degrees listed as a separate column (deg).</li></ul>"
 
 			"<pre><code>rx ry rz nx ny nz deg </code></pre>\n";
+	*/
+
+	// - add sections with indents
+	// ---------- extra sections ----------
+	for (int x = 0; x < num_manual_extras; x++) {
+		const ManualExtra &e = manual_extras[x];
+		if (e.level == 3)
+			file << "<section class=\"kw\" id=\"" << e.id << "\">\n<h3>"
+			     << html_escape(e.title) << "</h3>\n" << e.body << "</section>\n";
+		else
+			file << "<h2 id=\"" << e.id << "\">" << html_escape(e.title) << "</h2>\n" << e.body << "\n";
+	}
+	// add sections with indents -
 
 	file << "</main>\n</div>\n</body>\n</html>\n";
 

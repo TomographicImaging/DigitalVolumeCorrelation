@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
 		data.pts_in_sw.push_back(snpos.size());
 
 		// determine sw_size in voxels as cube root of the bounding box volume
-		// this needs adjustment for planar analysis option
+		// for planar analysis option set "thin" direction to 1.0
 		double min_x = std::numeric_limits<double>::max();
 		double max_x = std::numeric_limits<double>::min();
 		double min_y = std::numeric_limits<double>::max();
@@ -415,8 +415,25 @@ int main(int argc, char *argv[])
 			min_y = std::min(min_y, npos[j].y());  max_y = std::max(max_y, npos[j].y());
 			min_z = std::min(min_z, npos[j].z());  max_z = std::max(max_z, npos[j].z());
 		}
-		double npos_box_vol = (max_x - min_x)*(max_y - min_y)*(max_z - min_z);
+		double diff_x = (max_x - min_x);
+		double diff_y = (max_y - min_y);
+		double diff_z = (max_z - min_z);
+		double npos_box_vol = diff_x*diff_y*diff_z;
 		double box_equiv_edge = std::cbrt(npos_box_vol);
+		// planar cases
+		double npos_box_area;
+		if (yz_only) {
+			npos_box_area = diff_y*diff_z;
+			box_equiv_edge = std::sqrt(npos_box_area);
+		}
+		if (zx_only) {
+			npos_box_area = diff_z*diff_x;
+			box_equiv_edge = std::sqrt(npos_box_area);
+		}
+		if (xy_only) {
+			npos_box_area = diff_x*diff_y;
+			box_equiv_edge = std::sqrt(npos_box_area);
+		}
 
 		if (snpos.size() == 0) {
 			data.sw_size.emplace_back(0.0);
