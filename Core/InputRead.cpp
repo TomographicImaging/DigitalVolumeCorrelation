@@ -2085,10 +2085,6 @@ int InputRead::print_manual_html(std::ofstream &file)
 				     << html_escape(manual[i].word) << "</a></li>\n";
 		file << "</ul></li>\n";
 	}
-//	file << "<li><a href=\"#example\">Example input file</a></li>\n"
-//	        "<li><a href=\"#output\">Output generated</a></li>\n"
-//			"<li><a href=\"#postprocessing\">Post-processing</a></li>\n"
-//	        "</ul>\n</nav>\n<main>\n";
 
 // add sections with indents -
 	file << "<li><a href=\"#example\">Example input file</a></li>\n"
@@ -2117,50 +2113,133 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 	// ---------- introduction ----------
 
-	file << "<h1 id=\"intro\">A brief manual for the iDVC executable</h1>\n"
+	file << "<h1 id=\"intro\">A brief manual for the <i>dvc</i> executable</h1>\n"
 	        "<p class=\"meta\">Version " << html_escape(ver.str())
 	     << " &middot; Revised " << html_escape(rev.str())
 	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
-		 	"<p>"
-	        "The iDVC software was inspired by a need for research-level code with access to internal methods and settings. "
-			"Additional objectives were established to facilitate accessibility and portability among research groups: "
-			"c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. "
-	        "</p>\n"
-		 	"<p>"
-	        "An early and continuing area of focus is biological tissues evaluated through <i>in situ</i> x-ray tomography. "
-	        "Challenges within that application environment have driven development of the overall algorithmic approach and broadened its applicability. "
-			"Beginning from a highly generalized context has provided flexibility in managing a range of experimental scenarios. "
-			"</p>\n"
-			"The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. "
-			"Test samples are often geometrically complex and benefit from microstructure-based point clouds as opposed to regular grid regions of interest. "
-			"Large displacement and strain fields are frequently encountered and inspired a wavefront/neighborhood approach to point cloud processing. "
-			"These requirements translated into code that focuses on the basic DVC subvolume tracking process with limited assumptions about sample response. "
-	        "</p>\n";
-
+		 	R"html(
+			<p>
+	        The <i>dvc</i> software was inspired by a need for research-level code with access to internal methods and settings. 
+			Additional objectives were established to facilitate accessibility and portability among research groups: 
+			c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. 
+			This manual covers set-up and use of the "core" code that runs as a command line executable. 
+	        </p>
+			<p>
+			There was also a significant need among users, particularly those new to DVC, for an interactive graphical user interface. 
+			That effort, led by Edoardo Pasca (UKRI-STFC) and with contributions by many others, has evolved into the iDVC code:
+			<pre><code><a href="https://tomographicimaging.github.io/iDVC/" target="_blank" rel="noopener">https://tomographicimaging.github.io/iDVC/</a></code></pre>
+			</p>
+		 	<p>
+	        The <i>dvc</i> code structure and process is inspired by a continuing focus on biological tissues evaluated through <i>in situ</i> x-ray tomography. 
+	        Challenges within that application environment have driven development of the overall algorithmic approach and broadened its applicability. 
+			Beginning from a highly generalized context has provided flexibility in managing a range of material textures and experimental scenarios. 
+			</p>
+			The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. 
+			Test samples are often geometrically complex and benefit from microstructure-based point clouds as opposed to regular grid regions of interest. 
+			Large displacement and strain fields are frequently encountered and motivated a wavefront/neighborhood approach to point cloud processing. 
+			These requirements translated into code that focuses on the basic DVC subvolume tracking process with limited assumptions about sample response. 
+	        </p>
+			)html";
 
 	file << "<h2 id=\"running\" class=\"nobreak\">Running the code</h2>\n"
+
+		 	R"html(
+
+			<h3>Image data locality</h3>
+
+			<p>
+			Before running the <i>dvc</i> code it is important to properly manage the storage of volumetric image data.
+			Input volumes are typically much larger than the computer's memory, so they are not loaded all at once. 
+			Instead, the program reads many small pieces of each volume while it runs, from tens of thousands to millions of separate reads. 
+			Every read carries a small delay, and that delay depends on where the file is stored. 
+			On a computer's internal SSD the delay is a fraction of a millisecond. 
+			On a network drive or cloud service it can be 100 to 1,000 times longer. 
+			Multiplied over millions of reads, this can turn a run that takes minutes into one that takes many hours.
+	        </p>
+
+			<p>
+			For this reason, input data must be stored on a fast drive physically attached to the computer running the analysis, 
+			ideally the internal SSD or an external SSD connected by USB-C or Thunderbolt. 
+			Do not run analyses on data stored on network drives, shared server folders, or cloud-synced folders (iCloud Drive, Dropbox, OneDrive, Google Drive), 
+			even if they appear as normal folders on your computer. If your data lives in one of these places, copy it to a local drive before starting a run.
+			</p>
+
+			<h3>Image data format</h3>
+
+			<p>
+			The combination of large image volumes and I/O-based versus DRAM-based data access leads to preferred data storage formats. 
+			Many volumetric imaging codes generate folders of individual tif (or similar) files. These are convenient for quick access to individual 
+			slices, but are not conducive to retrieval of volume data blocks as these cross between adjacent individual files. 
+			The most efficient process is storage of image data in (headerless) raw format or single-header formats with raw data following. 
+			Both are supported via the dvc_input file. 
+			</p>
+
+			<p>
+			A common practice with individual tif files (or other formats) is importing as a stack in ImageJ/Fiji (or similar) then 
+			exporting as a raw file. Including the slice dimensions (x,y) and number of slices (z) in the raw file name is useful; these become 
+			vol_wide, vol_high, and vol_tall within the dvc_input file. We are currently working to support .npy files which will alleviate
+			the need to track image data storage details. 
+			</p>
+
+			<h3>The command line</h3>
+
+			<p>
+			To run the code open a terminal window (or similar) and navigate to a convenient directory location.
+			With an input file in the directory or with a known path the code is very simple to run, see 'Normal code execution' in the table below. 
+			There is additional help available from the command line.
+			</p>
+
+			)html"			
+
+			// table format is not as good when tucked into the R"html()html" pair, seperated out into traditional style
 	        "<table class=\"grid\">\n<tr><th>Command</th><th>Action</th></tr>\n"
 	        "<tr><td><code>dvc</code></td><td>List command line options in the terminal window</td></tr>\n"
 	        "<tr><td><code>dvc help</code></td><td>Send a brief help message to the terminal window</td></tr>\n"
 	        "<tr><td><code>dvc example</code></td><td>Print an example dvc_input file</td></tr>\n"
-	        "<tr><td><code>dvc manual</code></td><td>Print this manual</td></tr>\n"
+	        "<tr><td><code>dvc manual</code></td><td>Print this manual, double click for access in a browser</td></tr>\n"
 	        "<tr><td><code>dvc form</code></td><td>Print an HTML form (DVC_input_builder.html) for building a dvc_input file</td></tr>\n"
-	        "<tr><td><code>dvc dvc_input</code></td><td>Normal code execution</td></tr>\n"
+	        "<tr><td><code>dvc dvc_input</code></td><td>Normal code execution, use file name if in the working directory or path/dvc_input</td></tr>\n"
 	        "</table>\n";
 
 	file << "<h2 id=\"input\" class=\"nobreak\">The input file</h2>\n"
-	        "<p>The file <code>dvc_input</code> is the key to running a digital volume correlation analysis. "
-	        "It is a simple text file that contains <strong>required keywords</strong> and <strong>parameters</strong>. "
-	        "The code parses this file looking for required keywords and appropriate parameter values.</p>\n"
-	        "<p>Feel free to place comments within your input files. Any line beginning with a <code>#</code> "
-	        "character is ignored, as is the portion of any line following a <code>#</code>.</p>\n"
-	        "<p>Some keywords are only required if other keywords have particular values. "
-	        "These <strong>conditional keywords</strong> are ignored if they are left within an input file but are not needed.</p>\n"
-	        "<p>The keywords are organized into " << num_manual_pools << " groups:</p>\n"
+	
+			R"html(
+	        <p>
+			The file <code>dvc_input</code> is the key to running a digital volume correlation analysis. 
+	        It is a simple text file containing <strong>keywords</strong> and <strong>parameter values</strong>. 
+	        The code parses this file to set run control parameters and enforce input requirements. Once an input file is established 
+			use a text editor to make changes. 
+			</p>
+			<p>
+			There are options for generating an initial input file. Entering 'dvc example' on the command line will place a full
+			input file in your working directory with placeholder settings. The 
+			)html"
+			
+			"<a href=\"#example\">Example input file</a>" // put links outside of the R"html()html" pair
+			
+			R"html(
+			section of this manual also contains 
+			a file that can be copied into a text editor. Modify these to your particular needs. 
+			Or, enter 'dvc form" to generate DVC_input_builder.html, a dialog with file browse, drop-down list, and data entry options. 
+			The builder limits selections to viable options and performs range checking on entered data values. 
+			The input file is dynamically displayed and can be saved to text when complete. 
+			</p>
+	        <p>
+			Feel free to place comments within your input files. Any line beginning with #, or the portion of any line following #, is ignored.
+			Some keywords are <strong>required</strong>, some are <strong>optional</strong>, and others are <strong>conditional</strong> 
+			- required depending on other keyword settings. Details for all keywords are provided in the manual sections that follow. 
+			If keywords are missing or input values are in error a message is displayed in the terminal window.
+			</p>
+			)html";
+
+	file << "<p>The keywords are organized into " << num_manual_pools << " groups:</p>\n"
 	        "<table class=\"grid\">\n<tr><th>Group</th><th>Contents</th></tr>\n";
+
 	for (int p = 0; p < num_manual_pools; p++)
 		file << "<tr><td><a href=\"#grp-" << manual_pools[p].id << "\"><code>" << manual_pools[p].id
 		     << "</code></a></td><td>" << manual_pools[p].desc << "</td></tr>\n";
+
+
 	file << "</table>\n"
 	        "<p>Each keyword entry below lists:</p>\n"
 	        "<dl class=\"facts\">"
@@ -2172,10 +2251,17 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "</dl>\n<p>followed by further details on the functionality associated with the keyword and how to set its parameters.</p>\n";
 
 	// ---------- keyword groups ----------
+//	for (int p = 0; p < num_manual_pools; p++) {
+//		file << "<h2 id=\"grp-" << manual_pools[p].id << "\">" << manual_pools[p].title
+//		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+//		     << "<p class=\"group-desc\">" << manual_pools[p].desc << "</p>\n";
+
 	for (int p = 0; p < num_manual_pools; p++) {
 		file << "<h2 id=\"grp-" << manual_pools[p].id << "\">" << manual_pools[p].title
-		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+//		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+		     << " <small><code>" << "</code></small></h2>\n"	// keeps format in place but without writing manual_pools[p].id explicitly 
 		     << "<p class=\"group-desc\">" << manual_pools[p].desc << "</p>\n";
+
 
 		for (size_t i = 0; i < manual.size(); i++) {
 			const key_word_help &k = manual[i];
@@ -2285,141 +2371,8 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 			"<p>The dvc executable does not calculate strain or other kinematic quantities. That is managed as post-processing.</p>\n";
 
-	// ---------- post-processing ---------- (original, replaced)
-	/*
-	file << "<h2 id=\"postprocessing\">Post-processing</h2>\n"
-	        "<p>"
-			"The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) "
-	        "Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. "
-	        "The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) "
-			"Further processing of the basic data can be very project-specific and is therefore encapsulated into a separate analysis stage. "
-			"</p>"
 
-			"<h3>The <i>strain</i> executable</h3>"
-
-	        "<p>"
-			"The most common post-processing step is strain calculation, and an executable is provided along with <i>dvc</i> for that purpose. " 
-			"The strain program is driven by command-line arguments as explained below, but the basic run process is very simple. "
-			"From the same terminal window as the <i>dvc</i> run just follow the word <i>strain</i> with the name of a standard <i>dvc</i> output file: "
-			"</p>"
-
-			"<pre><code>strain my_project.disp.csv </code></pre>\n"
-
-			"This will calculate strain for each cloud point under a set of default conditions, and generate an output file. "
-			"However, to fully understand the strain calculation and generate useful results, some background information is required. "
-
-			"<ul>"
-				"<li>"
-					"Strain as used here is a 3D tensor quantity defined within the context of continuum mechanics. "
-					"This has point cloud implications. A relatively dense and connected cloud works best. "
-				"</li>"
-				"<li>"
-					"Spatial gradients of displacement vector components form the basis of strain calculations. "
-					"With displacements only available at discrete cloud points, local point neighborhoods are required for determing gradients."
-				"</li>"
-				"<li>"
-					"A neighborhood is formed around each point in the cloud by sorting and selecting the <i>n</i> nearest points. "
-					"Number of points in the neighborhood, the <i>strain window</i> size <i>sw</i>, is an important user-defined variable. "
-				"</li>"
-				"<li>"
-					"Displacement vector components of points within the strain window are fit to a 3D polynomial through a least-squares process. "
-					"Gradients of the displacement components are defined as derivatives of the polynomial at the location of the base cloud point. "
-				"</li>"
-				"<li>"
-					"An added benefit of the polynomial fitting process is the ability to sample the polynomial for displacement components. "
-					"This generates a smoothed representation of the original data. "
-				"</li>"
-			"</ul>"
-	        
-			"<p>"
-				"Two sets of command line arguments control the process: 1) management of the strain windows, and 2) selection of output"
-			"</p>"
-
-			"<h3>Strain window settings</h3>"
-
-	        "<table class=\"grid\">\n<tr><th>Argument</th><th>Description</th></tr>\n"
-	        	"<tr><td><code>-sw 30</code></td><td>set strain window size to 30 points (default = 25, min = 10, max = 125)</td></tr>\n"
-	        	"<tr><td><code>-t 0.1</code></td><td>eliminate window points with objmin above 0.1 (default = 1.0, pass all converged points)</td></tr>\n"
-	        	"<tr><td><code>-r</code></td><td>refill strain window to sw if points were eliminated (default is no refill)</td></tr>\n"
-	        "</table>\n"
-
-	        "<p>"
-				"Strain window size shares characteristics with other neighborhood calculations. Small is noisier but with better spatial resolution. "
-	        	"Large is smoothed but with poorer spatial resolution. Much depends on the point cloud spacing and quality of the image volumes. "
-				"Strain window point number can seem large in 3D: a relatively modest 3x3x3 neighborhood is 27 points, 5x5x5 is 125. "
-				"The minimum <i>sw</i> is the number of coefficients in the volumetric polynomial, which is 10, but as with all function fits more is better. "
-				"The maximum value is set somewhat arbitrarily at 125 to manage the data overhead for large point clouds. "
-			"</p>"	
-
-	        "<p>"
-				"Filling the strain window requires some care. Any points within the local neighborhood that do not converge are eliminated. "
-	        	"Any points with relatively high objmin values (a match quality metric) may represent outliers and are best eliminated as well. "
-				"The threshold option can be used to filter out the influence of those points on the polynomial fitting process. "
-				"That leaves the issue of whether to look further into the neighborhood and 'refill' to the specified <i>sw</i> value. "
-				"This increases the effective strain window size, but maintains data support for the fitting process."
-			"</p>"		
-
-
-			"<h3>Output options</h3>"
-
-			"<table class=\"grid\">\n<tr><th>Argument</th><th>Output File</th></tr>\n"
-	        	"<tr><td><code>-B</code></td><td>.Biot.csv - rotation invariant engineering strain tensor</td></tr>\n"
-	        	"<tr><td><code>-L</code></td><td>.GrLa.csv - Green-Lagrange finite strain tensor (default output, suppress with -Loff)</td></tr>\n"
-	        	"<tr><td><code>-H</code></td><td>.Henc.csv - Hencky  logarithmic (true) strain tensor</td></tr>\n"
-	        	"<tr><td><code>-D</code></td><td>.Dgrd.csv - displacement gradient tensor</td></tr>\n"
-				"<tr><td><code>-R</code></td><td>.Rvec.csv - local material rotation axis and magnitude</td></tr>\n"
-	        	"<tr><td><code>-A</code></td><td> output all available kinematic quantities</td></tr>\n"
-			"</table>\n"
-
-	        "<p>"
-				"Each output request creates a separate file with the extension shown. Data is generated for each point in the cloud. "
-				"Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. "
-				"The displacement gradient is not symmetric, and all nine components are listed. "
-				"Local material rotation is documented as components of orientation vectors scaled in radians and unit vectors with angle in degrees. "
-	        "</p>"
-			
-			"<p>The <strong>strain output </strong> files are .csv formatted with each data row representing a cloud point.</p><ul>"
-
-	        "<li>All of the output files contain the following data columns.</li></ul>"
-
-	        "<pre><code>n x y z u_fit v_fit w_fit pts_in_sw sw_size </code></pre>\n"
-			
-	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
-	        "<tr><td><code>n</code></td><td>point label</td></tr>\n"
-	        "<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>\n"
-	        "<tr><td><code>u_fit v_fit w_fit</code></td><td>point displacement (voxels) calculated from the strain window polynomial fit</td></tr>\n"
-			"<tr><td><code>pts_in_sw</code></td><td>number of points used for the polynomial fit</td></tr>\n"
-			"<tr><td><code>sw_size</code></td><td>an estimate of the strain window size in voxels</td></tr>\n"
-	        "</table>\n"
-			
-			"<p>"
-				"Point labels and x,y,z coordinates are the same as the .disp.csv file, included here for convenience when using files for subsequent processing. "
-				"The fit displacement components provide an alternative to the direct dvc output quantities. "
-				"They are derived from the same finuctional fit as the strain and rotation variables, and therefore share a similar spatial smoothing. "
-				"Number of points in the strain window is generally the same as the <i>sw</i> setting, but can vary depending on the dvc output and <i>strain</i> settings. "
-				"Windows will contain fewer points if the are unconverged dvc points or if -t is used to exclude points with high objmin values. "
-				"The -r argument will restore the number of points back toward <i>sw</i> if possible. "
-				"Size of the strain window is important in calculating 'virtual strain gauge' size: VSG = sw_size + subvol_size. "
-				"Strain window size is estimated here as the cube root of the strain window volume. "
-	        "</p>"
-			
-			"<li>All of the output files with strain data (Biot, GrLa, Henc) contain additional data columns.</li></ul>"
-			"<li>These are the six unique strain tensor components and principal values.</li></ul>"
-			
-			"<pre><code>exx eyy ezz exy eyz exz ep1 ep2 ep3 </code></pre>\n"
-
-			"<li>The displacement gradient tensor file (Dgrd) contains all nine unique tensor component values.</li></ul>"
-			
-			"<pre><code>ux uy uz vx vy vz wx wy wz </code></pre>\n"
-
-			"<li>The local material rotation file (Rvec) contains two representations of an oriented rotation vector.</li></ul>"
-			"<li>The first (r) is x,y,z components of a rotation vector scaled to the rotation magnitude in radians.</li></ul>"
-			"<li>The second is a unit vector (n) with rotation magnitude in degrees listed as a separate column (deg).</li></ul>"
-
-			"<pre><code>rx ry rz nx ny nz deg </code></pre>\n";
-	*/
-
-	// - add sections with indents
+	// - add sections with indents - post-processing is in struct ManualExtra
 	// ---------- extra sections ----------
 	for (int x = 0; x < num_manual_extras; x++) {
 		const ManualExtra &e = manual_extras[x];
