@@ -620,6 +620,20 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 	return Interpolate::kernels(voxfname, vox_box, bytes_per, endian, 0);
 }
 /******************************************************************************/
+// timer functions for code sections
+
+static TimeTotal g_t_read("read");
+static TimeTotal g_t_unpack("unpack");
+static TimeTotal g_t_derivs("derivs");
+
+void Interpolate::print_kernel_times()
+{
+	g_t_read.report();
+	g_t_unpack.report();
+	g_t_derivs.report();
+}
+
+/******************************************************************************/
 // e.g. interp->kernels(rc->ref_fname, vox_box, bytes_per, rc->vol_endian, rc->vol_hdr_lngth);
 
 void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per, std::string endian, unsigned int offset)
@@ -649,10 +663,68 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 	size_t est_box_min_y = est_box->min().iy();
 	size_t est_box_min_z = est_box->min().iz();
 
+	// *** replace start (new)
 	size_t voxls_in_row = est_box->iwide();
+	size_t bytes_in_row = bytes_per * voxls_in_row;          // bytes kept per row
+	size_t file_row_bytes = bytes_per * vox_wide;            // row stride in the file
+	size_t est_high = est_box->ihigh();
+	size_t est_tall = est_box->itall();
 
+	// Read each z-plane in one call when rows are close together in the file;
+	// fall back to per-row reads for extremely wide volumes.
+	const size_t max_merge_gap = 64 * 1024;
+	const bool slab = (file_row_bytes - bytes_in_row) <= max_merge_gap;
+
+	std::vector<char> block_buffer(est_tall * est_high * bytes_in_row);
+	std::vector<char> plane_buf;
+	if (slab) plane_buf.resize((est_high - 1) * file_row_bytes + bytes_in_row);
+
+	char *row_seg = block_buffer.data();
+
+	{ ScopedTimer t(g_t_read);
+
+	for (size_t is = 0; is < est_tall; is++)
+	{
+		size_t plane_pos = offset
+			+ bytes_per * ((is + est_box_min_z) * vox_wide * vox_high
+				+ est_box_min_y * vox_wide
+				+ est_box_min_x);
+
+		if (slab)
+		{
+			vfs.seekg(plane_pos);
+			vfs.read(plane_buf.data(), plane_buf.size());     // one read per plane
+			for (size_t ir = 0; ir < est_high; ir++)
+			{
+				std::memcpy(row_seg, plane_buf.data() + ir * file_row_bytes, bytes_in_row);
+				row_seg += bytes_in_row;
+			}
+		}
+		else
+		{
+			for (size_t ir = 0; ir < est_high; ir++)
+			{
+				vfs.seekg(plane_pos + ir * file_row_bytes);
+				vfs.read(row_seg, bytes_in_row);
+				row_seg += bytes_in_row;
+			}
+		}
+
+		if (!vfs)
+		{
+			std::cout << "\n-> Read failed in " << voxfname << "\n\n";
+			return;   // or throw Intrp_Fail, as the rest of the class does
+		}
+	}
+	vfs.close();
+	} // end ScopedTimer t(g_t_read);
+	// *** replace end (new)
+
+
+	// *** replace start (old)
+	/*
+	size_t voxls_in_row = est_box->iwide();
 	size_t bytes_in_row = bytes_per * voxls_in_row;
-	
 	size_t size = (size_t)est_box->itall() * (size_t)est_box->ihigh() * bytes_in_row;
 	char * block_buffer = new char[size];	// storage space for bytes read
 	char * row_seg = &block_buffer[0];
@@ -677,7 +749,11 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 
 	}
 	vfs.close();
+	*/
+	// *** replace end (old)
 
+
+	{ ScopedTimer t(g_t_unpack);
 #pragma omp parallel
 	{
 		//write block to container
@@ -707,7 +783,7 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 			int row_ind;
 			char swap_val[2];	// for 16 bit file reads
 			unsigned short *u_short = (unsigned short*)swap_val;
-
+#pragma omp for
 			for (int is = 0; is < est_box->itall(); is++)
 			{
 				for (int ir = 0; ir < est_box->ihigh(); ir++)
@@ -735,12 +811,16 @@ void Interpolate::kernels(std::string voxfname, BoundBox *vox_box, int bytes_per
 			}
 		}
 	}
+	} // end ScopedTimer t(g_t_unpack);
 
+	// not needed with read section (new)
+	//delete[] block_buffer;
 
-
-	delete[] block_buffer;
-
+	{ 
+	ScopedTimer t(g_t_derivs);
 	kernels_derivs();
+	} // end ScopedTimer t(g_t_derivs);
+
 }
 /******************************************************************************/
 void Interpolate::kernels_derivs()

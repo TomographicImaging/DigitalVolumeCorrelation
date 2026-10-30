@@ -269,6 +269,9 @@ int main(int argc, char *argv[])
 	// re-write status file with complete results
 	write_status(run.sta_fname, in, &run, count, count_good, count_range, count_convg, elapsed_seconds, dts, dtf);
 
+	// Interpolate::print_kernel_times();
+	// see Interpolate::kernels for setting up timer functions
+
 	return 0;
 }
 /******************************************************************************/
