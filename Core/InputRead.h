@@ -46,8 +46,8 @@ Author(s): Brian Bay (OSU)
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
-//#include "DataCloud.h"
 #include "Utility.h"
+#include "npyparse.h"
 
 #include "CCPiDefines.h"
 

@@ -210,9 +210,6 @@ int main(int argc, char *argv[])
 		{
 			count_good += 1;
 
-			// during-run output file update, this outputs in search order, may want to reshuffle at the end
-			in.append_result(run.res_fname, data.labels[n], data.points[n], point_good, optimize.obj_min, optimize.par_min);
-
 			// put point results into DataCloud
 			data.results[trg][n].status = point_good;
 			data.results[trg][n].obj_min = optimize.obj_min;
@@ -222,7 +219,10 @@ int main(int argc, char *argv[])
 			data.results[trg][n].iter_stats.convg_status = optimize.iter_stats.convg_status;
 			data.results[trg][n].iter_stats.nits = optimize.iter_stats.nits;
 
-			// terminal status update for successful search
+			// during-run output file update for successful search
+			in.append_result(run.res_fname, data.labels[n], data.points[n], point_good, optimize.obj_min, optimize.par_min);
+
+			// during-run output terminal status update for successful search
 			terminal_status(optimize);
 		}
 		catch (Range_Fail)
