@@ -657,25 +657,6 @@ int InputRead::input_file_read(RunControl *run)
 		if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
 	}
 
-
-	return 0;	// testing
-
-
-
-
-/*
-	run->vol_bit_depth = vol_bit_depth_def;
-	if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
-	if(run->vol_bit_depth == ok_bit_depth[1]) {		// check this is 16 in .h
-		if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
-	}
-
-	if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
-	if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
-*/
-
 	// sub_vols
 
 	if(parse_line_vec_val(kwh_subvol_geom, ok_subvol_geom, run->subvol_geom, true) != input_line_ok ) return 0;
@@ -750,8 +731,8 @@ int InputRead::input_file_read(RunControl *run)
 	if (ref_file_length != expected_vol_file_size)
 	{
 		std::cout << std::endl;
-		std::cout << "Reference volume file size does not match the volume description." << std::endl;
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
+		std::cout << "-> Reference volume data does not match the volume description" << std::endl;
+		std::cout << "-> use Import - Raw in Fiji (or similar) to verify voxel volume dimensions and data type" << std::endl;
 		std::cout << std::endl;
 		return 0;
 	}
@@ -759,8 +740,8 @@ int InputRead::input_file_read(RunControl *run)
 	if (cor_file_length != expected_vol_file_size)
 	{
 		std::cout << std::endl;
-		std::cout << "Correlate volume file size does not match the volume description." << std::endl;
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
+		std::cout << "-> Correlate volume data does not match the volume description" << std::endl;
+		std::cout << "-> use Import - Raw in Fiji (or similar) to verify voxel volume dimensions and data type" << std::endl;
 		std::cout << std::endl;
 		return 0;
 	}

@@ -43,6 +43,10 @@ Author(s): Brian Bay (OSU)
 #include <iosfwd>
 #include <istream>
 
+// for volume data file identification
+#pragma once
+#include <cstring>
+
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
@@ -423,5 +427,62 @@ bool field_to_double(const std::string& s, double& v); // whole field must be a 
 
 /******************************************************************************/
 
+// volume_format.h - identify a volume file from its first 8 bytes (header-only).
+//
+//   VolumeFormat fmt = detectVolumeFormat(path);
+//   switch (fmt) {
+//     case VolumeFormat::Npy:  /* parse .npy header */                    break;
+//     case VolumeFormat::Tiff: /* readTiffStackInfo(...) */               break;
+//     case VolumeFormat::Unknown: /* no signature: raw, if the keyword file says so */ break;
+//     ...
+//   }
+//
+// Raw files have no signature, so they always come back as Unknown. Use this to confirm
+// what the keyword file declares and to catch mismatches early (a .tif given as raw, etc.).
+// Only the signature is checked: a file detected as Tiff or Npy can still be one the full
+// reader refuses (compressed, 16-bit, ...).
+
+// #pragma once
+// #include <cstring>
+// #include <fstream>
+// #include <string>
+
+enum class VolumeFormat {
+    Unreadable,  // missing, unreadable, or shorter than 8 bytes
+    Unknown,     // no recognised signature (raw data, or another format)
+    Npy,         // NumPy .npy
+    Tiff,        // classic TIFF, either byte order
+    BigTiff      // BigTIFF (64-bit offsets), either byte order
+};
+
+inline VolumeFormat detectVolumeFormat(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    unsigned char b[8];
+    if (!f || !f.read(reinterpret_cast<char*>(b), 8)) return VolumeFormat::Unreadable;
+
+    if (b[0] == 0x93 && std::memcmp(b + 1, "NUMPY", 5) == 0) return VolumeFormat::Npy;
+
+    const bool ii = (b[0] == 'I' && b[1] == 'I');
+    const bool mm = (b[0] == 'M' && b[1] == 'M');
+    if (ii || mm) {
+        const unsigned version = ii ? (b[2] | (b[3] << 8)) : ((b[2] << 8) | b[3]);
+        if (version == 42) return VolumeFormat::Tiff;
+        if (version == 43) return VolumeFormat::BigTiff;
+    }
+    return VolumeFormat::Unknown;
+}
+
+inline const char* volumeFormatName(VolumeFormat fmt) {
+    switch (fmt) {
+        case VolumeFormat::Unreadable: return "unreadable";
+        case VolumeFormat::Unknown:    return "unknown (raw?)";
+        case VolumeFormat::Npy:        return "npy";
+        case VolumeFormat::Tiff:       return "tiff";
+        case VolumeFormat::BigTiff:    return "bigtiff";
+    }
+    return "?";
+}
+
+/******************************************************************************/
 
 #endif
