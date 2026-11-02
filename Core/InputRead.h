@@ -44,14 +44,15 @@ Author(s): Brian Bay (OSU)
 #include <istream>
 
 // for volume data file identification
-#pragma once
-#include <cstring>
+//#pragma once
+//#include <cstring>
 
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
 #include "npyparse.h"
+#include "tiff_stack_info.h"
 
 #include "CCPiDefines.h"
 
@@ -446,7 +447,7 @@ bool field_to_double(const std::string& s, double& v); // whole field must be a 
 // #include <cstring>
 // #include <fstream>
 // #include <string>
-
+/*
 enum class VolumeFormat {
     Unreadable,  // missing, unreadable, or shorter than 8 bytes
     Unknown,     // no recognised signature (raw data, or another format)
@@ -482,7 +483,7 @@ inline const char* volumeFormatName(VolumeFormat fmt) {
     }
     return "?";
 }
-
+*/
 /******************************************************************************/
 
 #endif

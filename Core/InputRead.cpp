@@ -591,71 +591,156 @@ int InputRead::input_file_read(RunControl *run)
 	// slices become the z-axis according to right hand rule with the first slice the origin
 	// this is not guranteed as writing options for .npy files can produce other data otganizations that will flip/mirror
 
-	// test ref for npy, read hdr for values, assume applies to cor as well
-	npy_header nh_ref, nh_cor;
-	bool both_npy = false;		// both .npy files
-	bool same_npy = false;		// both same header values
+	// test reference and correlate voxel files for type (.tif, .npy, .raw)
+	VolumeFormat ref_type = detectVolumeFormat(run->ref_fname);
+	std::cout << "ref_type = " << volumeFormatName(ref_type) << std::endl;
 
-	int npy_check_ref = parse_npy(run->ref_fname.data(), &nh_ref);
-	int npy_check_cor = parse_npy(run->cor_fname.data(), &nh_cor);
+	VolumeFormat cor_type = detectVolumeFormat(run->cor_fname);
+	std::cout << "cor_type = " << volumeFormatName(cor_type) << std::endl;
 
-	if ((npy_check_ref == 0) && !(npy_check_cor == 0) || !(npy_check_ref == 0) && (npy_check_cor == 0)) {
-		std::cout << "-> only one image volume is .npy, both must be the same format" << std::endl;
+	if (ref_type == cor_type) {
+		std::cout << "types are the same" << std::endl;
+	} else {
+		std::cout << "-> both image volumes must be the same format" << std::endl;
 		return 0;
 	}
 
-	if (npy_check_ref == 0 && npy_check_cor == 0) {
-		std::cout << "-> both ref and cor are .npy" << std::endl;
-		both_npy = true;
-		if ((nh_ref.bit == nh_cor.bit) && (nh_ref.data_offset == nh_cor.data_offset)
-			&& (nh_ref.shape0 = nh_cor.shape0) && (nh_ref.shape1 == nh_cor.shape1) && (nh_ref.shape2 == nh_cor.shape2)) {
-			std::cout << "-> with the same header values" << std::endl;
-			same_npy = true;
-		} else {
-			std::cout << "-> but with different header values, both must be the same format" << std::endl;
+	// both ref and cor are confirmed the same file type at this point
+
+	// .tif variables
+	TiffStackInfo ref_info, cor_info;
+	std::string err_msg, why;
+
+	// .npy variables
+	int npy_check_ref, npy_check_cor;
+	npy_header nh_ref, nh_cor;
+
+	// for .tif and .npy
+	std::string big = "big";
+	std::string little = "little";
+
+	// for .raw
+	uint64_t expected_vol_file_size, file_size;
+
+	switch (ref_type) {
+		case VolumeFormat::Tif:
+			// check that both files are valid and headers contain identical voxel information
+			// note that offset may differ, store seperately in Utility.h
+			if (!readTiffStackInfo(run->ref_fname, ref_info, err_msg)) {
+				std::cout << "reference file invalid: " << err_msg << std::endl;
+				return 0;
+			} else {std::cout << ".tif reference file good" << std::endl;}
+
+			if (!readTiffStackInfo(run->cor_fname, cor_info, err_msg)) {
+				std::cout << "correlate file invalid: " << err_msg << std::endl;
+				return 0;
+			} else {std::cout << ".tif correlate file good" << std::endl;}
+
+			if (!sameVoxelFormat(ref_info, cor_info, &why)) {
+				std::cout << "reference and correlate files differ: " << why << std::endl;
+				return 0;
+			} else {std::cout << "ref and cor match" << std::endl;}
+
+			// since they match load from ref_info, except for ref_hdr_lngth and cor_hdr_lngth
+			run->vol_bit_depth = 8*ref_info.bytesPerVoxel;
+			run->vol_endian = (ref_info.bigEndian) ? big : little;
+
+			run->vol_hdr_lngth = ref_info.offset;		// for now use ref, replace with ref/cor specific in vox read
+			run->ref_hdr_lngth = ref_info.offset;
+			run->cor_hdr_lngth = cor_info.offset;
+
+			run->vol_wide = ref_info.width;
+			run->vol_high = ref_info.height;
+			run->vol_tall = ref_info.nslices;
+			break;
+
+		case VolumeFormat::Npy:
+			// check that both files are valid and headers contain identical voxel information
+			// note that offset may differ, store seperately in Utility.h
+			npy_check_ref = parse_npy(run->ref_fname.data(), &nh_ref);
+			if (npy_check_ref != 0) {
+				std::cout << "reference file invalid" << std::endl;
+				return 0;
+			} else {std::cout << ".npy reference file good" << std::endl;}
+
+			npy_check_cor = parse_npy(run->cor_fname.data(), &nh_cor);
+			if (npy_check_cor != 0) {
+				std::cout << "correlate file invalid" << std::endl;
+				return 0;
+			} else {std::cout << ".npy correlate file good" << std::endl;}
+
+			if ((nh_ref.bit == nh_cor.bit) && (nh_ref.isBigEndian == nh_cor.isBigEndian) 
+				&& (nh_ref.shape0 = nh_cor.shape0) && (nh_ref.shape1 == nh_cor.shape1) && (nh_ref.shape2 == nh_cor.shape2)) {
+				std::cout << "ref and cor match" << std::endl;
+			} else {
+				std::cout << "reference and correlate voxel formats differ" << std::endl;
+				return 0;
+			}
+
+			// since they match load from ref_info, except for ref_hdr_lngth and cor_hdr_lngth
+			run->vol_bit_depth = nh_ref.bit;
+			run->vol_endian = (nh_ref.isBigEndian) ? big : little;
+
+			run->vol_hdr_lngth = nh_ref.data_offset;		// for now use ref, replace with ref/cor specific in vox read
+			run->ref_hdr_lngth = nh_ref.data_offset;
+			run->cor_hdr_lngth = nh_cor.data_offset;
+
+			// both of these options are consistent with the ImageJ/Fiji slice/stack convention
+			if (!nh_ref.isFortranOrder) {			// C-order, fortran_order False, the standard way of defining the data layout
+				run->vol_wide = nh_ref.shape2;
+				run->vol_high = nh_ref.shape1;
+				run->vol_tall = nh_ref.shape0;
+			} else {								// fortran_order True works if the .npy was written with this sequence
+				run->vol_wide = nh_ref.shape0;
+				run->vol_high = nh_ref.shape1;
+				run->vol_tall = nh_ref.shape2;
+			}
+			break;
+
+		case VolumeFormat::Unknown:
+			std::cout << "processing image volumes as .raw files" << std::endl;
+			run->vol_bit_depth = vol_bit_depth_def;
+			if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
+			if(run->vol_bit_depth == ok_bit_depth[1]) {		// [1] is 16 in .h enum, read the conditional endian keyword
+				if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
+			}
+			if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
+			if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
+			if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
+			if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
+
+			// check file lenghts
+			expected_vol_file_size = (uint64_t) run->vol_hdr_lngth 
+				+ (uint64_t) run->vol_wide * (uint64_t) run->vol_high * (uint64_t) run->vol_tall * (uint64_t) (run->vol_bit_depth / 8);
+
+			file_size = (uint64_t) ref_file_length;
+			if (file_size != expected_vol_file_size) {
+				std::cout << "-> reference file not the expected length, check file and vol_ keywords" << std::endl;
+				return 0;
+			}
+ 			file_size = (uint64_t) cor_file_length;
+			if (file_size != expected_vol_file_size) {
+				std::cout << "-> correlate file not the expected length, check file and vol_ keywords" << std::endl;
+				return 0;
+			}       	
+			break;
+
+		case VolumeFormat::BigTiff:  	// not supported
+			std::cout << "-> BigTiff not supported" << std::endl;
 			return 0;
-		}
+
+		case VolumeFormat::Unreadable:	// technical error with files
+			std::cout << "-> voxel volume files are unreadable" << std::endl;
+			return 0;
 	}
 
-	if (same_npy) {			// both are same format .npy files
-		std::string big_or_little, true_or_false; 
-		if (nh_ref.isBigEndian) {big_or_little = "big";} else {big_or_little = "little";};
-		if (nh_ref.isFortranOrder) {true_or_false = "true";} else {true_or_false = "false";};
-		std::cout << "fortran_order = " << true_or_false << std::endl;
-		std::cout << "bits per = " << nh_ref.bit << " " << "endian = "  << big_or_little << std::endl;
-		std::cout << "shape[0] shape[1] shape[2] = " << nh_ref.shape0 << " " << nh_ref.shape1 << " " << nh_ref.shape2 << std::endl;
-		std::cout << "hdr_bytes = " << nh_ref.data_offset << std::endl;
-
-		// load values into run, these do not depend on fortran_order
-		run->vol_bit_depth = nh_ref.bit;
-		run->vol_endian = big_or_little;
-		run->vol_hdr_lngth = nh_ref.data_offset;
-
-		// both of these options are consistent with the ImageJ/Fiji slice/stack convention
-		if (!nh_ref.isFortranOrder) {			// C-order, fortran_order False, the standard way of defining the data layout
-			run->vol_wide = nh_ref.shape2;
-			run->vol_high = nh_ref.shape1;
-			run->vol_tall = nh_ref.shape0;
-			std::cout << "(wide,high,tall) = " << run->vol_wide << " " << run->vol_high << " " << run->vol_tall << std::endl;
-		} else {							// fortran_order True works if the .npy was written with this sequence
-			run->vol_wide = nh_ref.shape0;
-			run->vol_high = nh_ref.shape1;
-			run->vol_tall = nh_ref.shape2;
-			std::cout << "(wide,high,tall) = " << run->vol_wide << " " << run->vol_high << " " << run->vol_tall << std::endl;
-		}
-	} else {	// read as raw file
-		std::cout << "-> processing image volumes as .raw files" << std::endl;
-		run->vol_bit_depth = vol_bit_depth_def;
-		if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
-		if(run->vol_bit_depth == ok_bit_depth[1]) {		// check this is 16 in .h
-			if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
-		}
-
-		if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
-	}
+	std::cout << std::endl;
+	std::cout << "run->vol_bit_depth = " << run->vol_bit_depth << std::endl;
+	std::cout << "run->vol_endian = " << run->vol_endian << std::endl;
+	std::cout << "run->vol_hdr_lngth = " << run->vol_hdr_lngth << std::endl;
+	std::cout << "run->vol_wide = " << run->vol_wide << std::endl;
+	std::cout << "run->vol_high = " << run->vol_high << std::endl;
+	std::cout << "run->vol_tall = " << run->vol_tall << std::endl;			
 
 	// sub_vols
 
@@ -721,31 +806,7 @@ int InputRead::input_file_read(RunControl *run)
 //	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
 	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
-	// check image volumes
-	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth 
-											+ (unsigned long) run->vol_wide *  
-											  (unsigned long) run->vol_high * 
-											  (unsigned long) run->vol_tall * 
-											  (unsigned long) (run->vol_bit_depth / 8);
-
-	if (ref_file_length != expected_vol_file_size)
-	{
-		std::cout << std::endl;
-		std::cout << "-> Reference volume data does not match the volume description" << std::endl;
-		std::cout << "-> use Import - Raw in Fiji (or similar) to verify voxel volume dimensions and data type" << std::endl;
-		std::cout << std::endl;
-		return 0;
-	}
-
-	if (cor_file_length != expected_vol_file_size)
-	{
-		std::cout << std::endl;
-		std::cout << "-> Correlate volume data does not match the volume description" << std::endl;
-		std::cout << "-> use Import - Raw in Fiji (or similar) to verify voxel volume dimensions and data type" << std::endl;
-		std::cout << std::endl;
-		return 0;
-	}
-
+	
 	// threshold inputs deactivated, option not implemented in code
 	/*
 	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;

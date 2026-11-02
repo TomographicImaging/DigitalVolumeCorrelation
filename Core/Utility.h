@@ -111,6 +111,10 @@ struct RunControl
 	int vol_high;
 	int vol_tall;
 
+	// changing to seperate hdr lengths fof ref and cor, happens with some .tif files
+	// stored for now, not yet used
+	int ref_hdr_lngth, cor_hdr_lngth;		// use uint64_t for the read offset math to support larger files
+
 	std::string subvol_geom;
 	int subvol_size;
 	int subvol_npts;
