@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	std::cout << "Running dvc built from bspline_interp_merge_master branch" << std::endl;
+//	std::cout << "Running dvc built from bspline_interp_merge_master branch" << std::endl;
 
 	InputRead in;
 

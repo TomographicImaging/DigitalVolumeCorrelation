@@ -477,63 +477,7 @@ InputRead::InputRead()
 
 	// threshold inputs deactivated, option not currently implemented in code
 
-	// keyword subvol_thresh
-	/*
-	ok_subvol_thresh = line_to_vect(ok_on_off_line);
-	kwh_subvol_thresh.good = limits_to_string(ok_subvol_thresh);
 
-	min_vol_fract_min = 0.0;
-	min_vol_fract_max = 1.0;
-	kwh_min_vol_fract.good = limits_to_string(min_vol_fract_min, min_vol_fract_max);
-
-	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
-	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
-	*/
-
-	/*
-	kwh_subvol_thresh.word.assign("subvol_thresh");
-	kwh_subvol_thresh.exam.assign("off");
-	kwh_subvol_thresh.reqd.assign("yes");
-	kwh_subvol_thresh.pool.assign("sub_vols");
-	kwh_subvol_thresh.hint.assign("### off, on: evaluate subvolumes based on threshold");
-	kwh_subvol_thresh.help.assign("   Defines the state of subvolume thresholding to active (on) or inactive (off).\n");
-	kwh_subvol_thresh.help.append("   Useful if there is a simple gray level segmentation between foreground and background.\n");
-	kwh_subvol_thresh.help.append("   Subvolumes with little foreground content are not searched and flagged on output.\n");
-	kwh_subvol_thresh.help.append("\n");
-	manual.push_back(kwh_subvol_thresh);
-
-	kwh_gray_thresh_min.word.assign("gray_thresh_min");
-	kwh_gray_thresh_min.exam.assign("25");
-	kwh_gray_thresh_min.reqd.assign("If subvol_thresh is on");
-	kwh_gray_thresh_min.pool.assign("sub_vols");
-	kwh_gray_thresh_min.hint.assign("### lower limit of a gray threshold range");
-	kwh_gray_thresh_min.help.assign("   Defines the lower limit of a gray scale threshold range.\n");
-	kwh_gray_thresh_min.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
-	kwh_gray_thresh_min.help.append("\n");
-	manual.push_back(kwh_gray_thresh_min);
-
-	kwh_gray_thresh_max.word.assign("gray_thresh_max");
-	kwh_gray_thresh_max.exam.assign("125");
-	kwh_gray_thresh_max.reqd.assign("If subvol_thresh is on");
-	kwh_gray_thresh_max.pool.assign("sub_vols");
-	kwh_gray_thresh_max.hint.assign("### upper limit of a gray threshold range");
-	kwh_gray_thresh_max.help.assign("   Defines the upper limit of a gray scale threshold range.\n");
-	kwh_gray_thresh_max.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
-	kwh_gray_thresh_max.help.append("\n");
-	manual.push_back(kwh_gray_thresh_max);
-
-	kwh_min_vol_fract.word.assign("min_vol_fract");
-	kwh_min_vol_fract.exam.assign("0.2");
-	kwh_min_vol_fract.reqd.assign("If subvol_thresh is on");
-	kwh_min_vol_fract.pool.assign("sub_vols");
-	kwh_min_vol_fract.hint.assign("### only search if subvol fraction is greater than");
-	kwh_min_vol_fract.help.assign("   Defines a parameter for pre-checking subvolumes for content.\n");
-	kwh_min_vol_fract.help.append("   The fraction of subvolume points within the gray_thresh_min/max range is determined.\n");
-	kwh_min_vol_fract.help.append("   If below min_vol_fract, the subvolume is likely in a void or in a background region.\n");
-	kwh_min_vol_fract.help.append("   A point failing the test is not searched and flagged on output.\n");
-	kwh_min_vol_fract.help.append("\n");
-	manual.push_back(kwh_min_vol_fract);
-	*/
 }
 /******************************************************************************/
 InputRead::~InputRead()
@@ -576,10 +520,55 @@ int InputRead::input_file_read(RunControl *run)
 	// optional keyword (reqd = "no"): default 0 processes the full cloud
 	run->num_points_to_process = num_points_to_process_def;
 	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, false) == param_invalid) return 0;
-	std::cout << "Number of points to process: " << run->num_points_to_process << std::endl;
+	if (run->num_points_to_process == 0) {
+		std::cout << "Process all points in cloud"  << std::endl;
+	} else {
+		std::cout << "Number of points to process: " << run->num_points_to_process << std::endl;
+	}
+	
 
 	// vox_data
 
+	/*************************/
+	// original .raw file parse code
+
+	// for .raw
+	uint64_t expected_vol_file_size, file_size;
+
+	std::cout << "processing image volumes as .raw files" << std::endl;
+	run->vol_bit_depth = vol_bit_depth_def;
+	if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
+	if(run->vol_bit_depth == ok_bit_depth[1]) {		// [1] is 16 in .h enum, read the conditional endian keyword
+		if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
+	}
+	if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
+	if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
+
+	// check file lenghts
+	expected_vol_file_size = (uint64_t) run->vol_hdr_lngth 
+		+ (uint64_t) run->vol_wide * (uint64_t) run->vol_high * (uint64_t) run->vol_tall * (uint64_t) (run->vol_bit_depth / 8);
+
+	file_size = (uint64_t) ref_file_length;
+	if (file_size != expected_vol_file_size) {
+		std::cout << "-> reference file not the expected length, check file and vol_ keywords" << std::endl;
+		return 0;
+	}
+	file_size = (uint64_t) cor_file_length;
+	if (file_size != expected_vol_file_size) {
+		std::cout << "-> correlate file not the expected length, check file and vol_ keywords" << std::endl;
+		return 0;
+	}       	
+
+	// (end) original .raw file parse code
+	/*************************/
+
+
+	/*************************/
+	// new .npy, .tif, .raw file parse code
+
+	/*
 	// processing .raw and .npy files
 	// test for .npy ref and cor files first, check that headers match, then parse header for vol_ content
 	// using the following .npy file convention:
@@ -742,6 +731,10 @@ int InputRead::input_file_read(RunControl *run)
 	std::cout << "run->vol_high = " << run->vol_high << std::endl;
 	std::cout << "run->vol_tall = " << run->vol_tall << std::endl;			
 
+	*/
+	// (end) new .npy, .tif, .raw file parse code
+	/*************************/
+
 	// sub_vols
 
 	if(parse_line_vec_val(kwh_subvol_geom, ok_subvol_geom, run->subvol_geom, true) != input_line_ok ) return 0;
@@ -806,17 +799,7 @@ int InputRead::input_file_read(RunControl *run)
 //	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
 	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
-	
 	// threshold inputs deactivated, option not implemented in code
-	/*
-	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
-	if(run->subvol_thresh == "on")
-	{
-		if(parse_line_min_max(kwh_gray_thresh_min, 0, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_min, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_gray_thresh_max, run->gray_thresh_min, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_max, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_min_vol_fract, 0.0, min_vol_fract_max, run->min_vol_fract, true) != input_line_ok ) return 0;
-	}
-	*/
 
 	return 1;
 }
@@ -906,7 +889,7 @@ static bool read_line(std::istream& is, std::string& line)
     }
 }
 /******************************************************************************/
-// The generalized readers manage row/column data files and are robust with respect to eol, deliminators etc.
+// The generalized readers manage row/column data files and are robust with respect to eol, delimiters etc.
 // fname is passed in, with column data specific to the file added to the argument list
 // Configuration is primarily established with the ReadOptions struct, including column header text and data types
 // Note also the "Copy into the structure ..." block that provides internal variables to load into the output arguments
@@ -1927,13 +1910,25 @@ const ManualExtra manual_extras[] = {
 	)html"},
 
 	{2, "references", "References", R"html(
+
+		<li>Most recent ...</li></ul>
+
+		<ol>
+			<li>Newham, E., Parmenter, A.L., Chen, J., Disney, C.M., Snow, T., Brunet, J., Vinci, V., Drnec, J., Sherratt, M.J., 
+			Hoyland, J.A., Bellier, A., Bay, B.K., Terrill, N., Lee, P.D., Gupta, H.S., Multimodal X-ray Imaging Reveals Hierarchical Fibre Mechanics. 
+			<em>Nature</em> 659 (2026) 91&ndash;99. 
+			<a href="https://doi.org/10.1038/s41586-026-11148-5" target="_blank" rel="noopener">https://doi.org/10.1038/s41586-026-11148-5</a></li>
+		</ol>		
+
+		<li>Milestone DVC articles ...</li></ul>
+
 		<ol>
 			<li>Bay, B.K., Smith, T.S., Fyhrie, D.P., Saad, M., Digital Volume Correlation: Three-dimensional Strain Mapping Using X-ray Tomography. 
 			<em>Experimental Mechanics</em> 39 (1999) 217&ndash;226. 
 			<a href="https://doi.org/10.1007/BF02323555" target="_blank" rel="noopener">https://doi.org/10.1007/BF02323555</a></li>
 		</ol>
 		<ol>
-			<li>Bay BK, Methods and Applications of Digital Volume Correlation. 
+			<li>Bay B.K., Methods and Applications of Digital Volume Correlation. 
 			<em>Journal of Strain Analysis for Engineering Design</em> 43 (2008) 745&ndash;760. 
 			<a href="https://doi.org/10.1243/03093247JSA436" target="_blank" rel="noopener">https://doi.org/10.1243/03093247JSA436</a></li>
 		</ol>
@@ -2254,7 +2249,16 @@ int InputRead::print_manual_html(std::ofstream &file)
 			<p>
 			There was also a significant need among users, particularly those new to DVC, for an interactive graphical user interface. 
 			That effort, led by Edoardo Pasca (UKRI-STFC) and with contributions by many others, has evolved into the iDVC code:
-			<pre><code><a href="https://tomographicimaging.github.io/iDVC/" target="_blank" rel="noopener">https://tomographicimaging.github.io/iDVC/</a></code></pre>
+			<code><a href="https://tomographicimaging.github.io/iDVC/" target="_blank" rel="noopener">https://tomographicimaging.github.io/iDVC/</a></code>
+			</p>
+			<p>
+			The development of the iDVC code and contributions to the dvc executable were supported by the 
+			<code><a href="https://www.ccpi.ac.uk" target="_blank" rel="noopener">CCP in Tomographic Imaging - CCPi</a></code>
+			 (ESPSRC grants
+			 <code><a href="https://gtr.ukri.org/find-research-and-innovation/project/ef967198-6db3-4432-81c1-57234269da69" target="_blank" rel="noopener">EP/T026677/1</a></code>, 
+			 <code><a href="https://gtr.ukri.org/find-research-and-innovation/project/a82b04cd-0bd4-4b4b-9d27-027470c5be7b" target="_blank" rel="noopener">EP/J010456/1</a></code>, and 
+			 <code><a href="https://gtr.ukri.org/find-research-and-innovation/project/23322ea9-2056-49f9-bfbb-917455c7960b" target="_blank" rel="noopener">EP/M022498/1</a></code>) and by the STFC through the 
+			 <code><a href="https://www.adalovelacecentre.ac.uk" target="_blank" rel="noopener">Ada Lovelace Centre</a></code>.
 			</p>
 		 	<p>
 	        The <i>dvc</i> code structure and process is inspired by a continuing focus on biological tissues evaluated through <i>in situ</i> x-ray tomography. 
@@ -2304,7 +2308,7 @@ int InputRead::print_manual_html(std::ofstream &file)
 			<p>
 			A common practice with individual tif files (or other formats) is importing as a stack in ImageJ/Fiji (or similar) then 
 			exporting as a raw file. Including the slice dimensions (x,y) and number of slices (z) in the raw file name is useful; these become 
-			vol_wide, vol_high, and vol_tall within the dvc_input file. We are currently working to support .npy files which will alleviate
+			vol_wide, vol_high, and vol_tall within the dvc_input file. We are currently working to support .npy and .tif files to alleviate
 			the need to track image data storage details. 
 			</p>
 
@@ -2919,17 +2923,6 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << "\n" << "running under dvc code version: " << VERSION << "\n\n";
 
 	return 1;
-
-	/*
-	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
-	if(run->subvol_thresh == "on")
-	{
-		sta_file << kwh_gray_thresh_min.word << "\t" << run->gray_thresh_min  << "\n";
-		sta_file << kwh_gray_thresh_max.word << "\t" << run->gray_thresh_max  << "\n";
-		sta_file << kwh_min_vol_fract.word << "\t" << run->min_vol_fract << "\n";
-	}
-	sta_file << "\n";
-	*/
 }
 /******************************************************************************/
 int InputRead::append_time_date(std::string fname, std::string label, char* dt)
@@ -3849,3 +3842,84 @@ bool read_table(const std::string& filename, const ReadOptions& opt,
 } // namespace tbl
 
 /******************************************************************************/
+
+// the threshold read and settings code, not currently used
+
+	// keyword subvol_thresh
+	/*
+	ok_subvol_thresh = line_to_vect(ok_on_off_line);
+	kwh_subvol_thresh.good = limits_to_string(ok_subvol_thresh);
+
+	min_vol_fract_min = 0.0;
+	min_vol_fract_max = 1.0;
+	kwh_min_vol_fract.good = limits_to_string(min_vol_fract_min, min_vol_fract_max);
+
+	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
+	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
+	*/
+
+	/*
+	kwh_subvol_thresh.word.assign("subvol_thresh");
+	kwh_subvol_thresh.exam.assign("off");
+	kwh_subvol_thresh.reqd.assign("yes");
+	kwh_subvol_thresh.pool.assign("sub_vols");
+	kwh_subvol_thresh.hint.assign("### off, on: evaluate subvolumes based on threshold");
+	kwh_subvol_thresh.help.assign("   Defines the state of subvolume thresholding to active (on) or inactive (off).\n");
+	kwh_subvol_thresh.help.append("   Useful if there is a simple gray level segmentation between foreground and background.\n");
+	kwh_subvol_thresh.help.append("   Subvolumes with little foreground content are not searched and flagged on output.\n");
+	kwh_subvol_thresh.help.append("\n");
+	manual.push_back(kwh_subvol_thresh);
+
+	kwh_gray_thresh_min.word.assign("gray_thresh_min");
+	kwh_gray_thresh_min.exam.assign("25");
+	kwh_gray_thresh_min.reqd.assign("If subvol_thresh is on");
+	kwh_gray_thresh_min.pool.assign("sub_vols");
+	kwh_gray_thresh_min.hint.assign("### lower limit of a gray threshold range");
+	kwh_gray_thresh_min.help.assign("   Defines the lower limit of a gray scale threshold range.\n");
+	kwh_gray_thresh_min.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
+	kwh_gray_thresh_min.help.append("\n");
+	manual.push_back(kwh_gray_thresh_min);
+
+	kwh_gray_thresh_max.word.assign("gray_thresh_max");
+	kwh_gray_thresh_max.exam.assign("125");
+	kwh_gray_thresh_max.reqd.assign("If subvol_thresh is on");
+	kwh_gray_thresh_max.pool.assign("sub_vols");
+	kwh_gray_thresh_max.hint.assign("### upper limit of a gray threshold range");
+	kwh_gray_thresh_max.help.assign("   Defines the upper limit of a gray scale threshold range.\n");
+	kwh_gray_thresh_max.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
+	kwh_gray_thresh_max.help.append("\n");
+	manual.push_back(kwh_gray_thresh_max);
+
+	kwh_min_vol_fract.word.assign("min_vol_fract");
+	kwh_min_vol_fract.exam.assign("0.2");
+	kwh_min_vol_fract.reqd.assign("If subvol_thresh is on");
+	kwh_min_vol_fract.pool.assign("sub_vols");
+	kwh_min_vol_fract.hint.assign("### only search if subvol fraction is greater than");
+	kwh_min_vol_fract.help.assign("   Defines a parameter for pre-checking subvolumes for content.\n");
+	kwh_min_vol_fract.help.append("   The fraction of subvolume points within the gray_thresh_min/max range is determined.\n");
+	kwh_min_vol_fract.help.append("   If below min_vol_fract, the subvolume is likely in a void or in a background region.\n");
+	kwh_min_vol_fract.help.append("   A point failing the test is not searched and flagged on output.\n");
+	kwh_min_vol_fract.help.append("\n");
+	manual.push_back(kwh_min_vol_fract);
+	*/
+
+	/*
+	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
+	if(run->subvol_thresh == "on")
+	{
+		if(parse_line_min_max(kwh_gray_thresh_min, 0, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_min, true) != input_line_ok ) return 0;
+		if(parse_line_min_max(kwh_gray_thresh_max, run->gray_thresh_min, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_max, true) != input_line_ok ) return 0;
+		if(parse_line_min_max(kwh_min_vol_fract, 0.0, min_vol_fract_max, run->min_vol_fract, true) != input_line_ok ) return 0;
+	}
+	*/
+
+	/*
+	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
+	if(run->subvol_thresh == "on")
+	{
+		sta_file << kwh_gray_thresh_min.word << "\t" << run->gray_thresh_min  << "\n";
+		sta_file << kwh_gray_thresh_max.word << "\t" << run->gray_thresh_max  << "\n";
+		sta_file << kwh_min_vol_fract.word << "\t" << run->min_vol_fract << "\n";
+	}
+	sta_file << "\n";
+	*/
