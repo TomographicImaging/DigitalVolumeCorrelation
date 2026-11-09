@@ -53,8 +53,6 @@ SET (DVC_SRCS ${DVC_SRCS}
 	${CMAKE_CURRENT_SOURCE_DIR}/Point.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/Search.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/SearchParams.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/npyparse.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/tiff_stack_info.cpp
 	)
 
 add_library(cildvc_static "STATIC" ${DVC_SRCS} )

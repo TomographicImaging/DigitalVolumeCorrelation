@@ -51,8 +51,6 @@ Author(s): Brian Bay (OSU)
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
-#include "npyparse.h"
-#include "tiff_stack_info.h"
 
 #include "CCPiDefines.h"
 
