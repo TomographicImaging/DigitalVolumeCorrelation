@@ -303,7 +303,8 @@ void test_append_result() {
     ASSERT_TRUE(in_file.is_open());
     int n, status;
     double x, y, z, obj_min, u, v, w;
-    in_file >> n >> x >> y >> z >> status >> obj_min >> u >> v >> w;
+    char comma;
+    in_file >> n >> comma >> x >> comma >> y >> comma >> z >> comma >> status >> comma >> obj_min >> comma >> u >> comma >> v >> comma >> w;
     ASSERT_EQ(n, 1);
     ASSERT_NEAR(x, 1.234, 1e-2);
     ASSERT_NEAR(y, 6.789, 1e-2);
