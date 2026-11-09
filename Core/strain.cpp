@@ -40,115 +40,9 @@ StrainCalc::StrainCalc ()
 	objmin_thresh_max = 1.0;		// all points used
 	objmin_thresh_def = 1.0;		// default is no thresholding
 }
-/******************************************************************************/
-/*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
-{
-	// loop through current arg list, if flag found, remove from list and return true
 
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {
-			for (unsigned int j=i; j<argc-1; j++) {
-				argv[j] = argv[j+1];
-			}
-			argc -= 1;
-			return 1;
-		}
-	}
-	return 0;
-}
-*/
 /******************************************************************************/
-/*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
-{
-	// look for command line flag followed by a single integer argument
 
-	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {			// found the flag
-			if (argc > i+1) {						// if there is a next argument try to convert
-				try {								// flag and number found
-					val = std::stoi(argv[i+1]);
-					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-						argv[j] = argv[j+2];
-					}
-					argc -= 2;
-					return 1;						// return true
-				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
-					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-						argv[j] = argv[j+1];
-					}
-					argc -= 1;
-					std::cout << "argument after " << flag << " not valid" << std::endl;
-					return 0;
-				}
-			}
-			// no next argument on command line, notify and pull flag
-			std::cout << "no argument after " << flag << " flag" << std::endl;
-			argc -= 1;
-		}
-	}
-	return 0;
-}
-*/
-/******************************************************************************/
-/*
-int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val)
-{
-	// look for command line flag followed by a single float-double argument
-
-	for (unsigned int i=0; i<argc; i++) {			// look through full argv list
-		std::string argstr(argv[i]);
-		if (argstr.compare(flag) == 0) {			// found the flag
-			if (argc > i+1) {						// if there is a next argument try to convert
-				try {								// flag and number found
-					val = std::stod(argv[i+1]);
-					for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
-						argv[j] = argv[j+2];
-					}
-					argc -= 2;
-					return 1;		// return success
-				}
-				catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
-					for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
-						argv[j] = argv[j+1];
-					}
-					argc -= 1;
-					std::cout << "argument after " << flag << " not valid" << std::endl;
-					return 0;
-				}
-			}
-			// no next argument on command line, notify and pull flag
-			std::cout << "no argument after " << flag << " flag" << std::endl;
-			argc -= 1;
-		}
-	}
-	return 0;
-}
-*/
-/******************************************************************************/
-/*
-int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[])
-{
-	// clear extraneous flags
-
-	for (unsigned int i=0; i<argc; i++) {
-		std::string argstr(argv[i]);
-		if (argstr.compare(pos, len, flag) == 0) {
-			std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
-			for (unsigned int j=i; j<argc-1; j++) {
-				argv[j] = argv[j+1];
-			}
-			argc -= 1;
-			return 1;
-		}
-	}
-	return 0;
-}
-*/
 /******************************************************************************/
 
 int main(int argc, char *argv[])
@@ -157,6 +51,7 @@ int main(int argc, char *argv[])
 
 	StrainCalc strain;		// instantiate StrainCalc object to set fixed run parameters and default values
 	DataCloud data;			// instantiate DataCloud object to access .sort file settings and set up storage
+	InputRead in;			// instantiate InputRead to access command line parsing and .disp file reader
 
 	int ndp_min = strain.ndp_min();
 	int ndp_max = data.nbr_num_save();		// this coordinates with .sort file management
@@ -177,11 +72,12 @@ int main(int argc, char *argv[])
 	bool yz_only = false;
 	bool zx_only = false;
 
-	bool out_Estr = false;
-	bool out_Lstr = true;
+	// output file options, GrLa is the default (turned off with -Loff, -L redundantly offered as well)
+	bool out_Biot = false;
+	bool out_GrLa = true;
+	bool out_Henc = false;
 	bool out_dgrd = false;
-
-	InputRead in;
+	bool out_rvec = false;
 
 	// command entered with no arguments
 	if (argc == 1)
@@ -237,7 +133,7 @@ int main(int argc, char *argv[])
 
 	// this manually sets to a 2d coordinate plane analysis
 	// code later uses an automated method based on cloud point position data
-	// leaving these flags in place but not listing in "no arg" output for now
+	// leaving these flags in place but hidden, not listed in "no arg" output or manual
 
 	if (in.find_flag("-xy", argc, argv)) {		// do 2d strain calc for xy plane point cloud
 		xy_only = true;
@@ -250,20 +146,42 @@ int main(int argc, char *argv[])
 	if (in.find_flag("-zx", argc, argv)) {		// do 2d strain calc for yz plane point cloud
 		zx_only = true;
 	}
+	// end of planar flags
 
 	// output file control
-	// the default output is Lagrangian strains
-	if (in.find_flag("-E", argc, argv)) {
-		out_Estr = true;
+	
+	// the default output is Lagrangian strains, allow users to turn off
+	if (in.find_flag("-Loff", argc, argv)) {
+		out_GrLa = false;
+	}
+
+	// doesn't hurt to add this as well, users may expect it
+	if (in.find_flag("-L", argc, argv)) {
+		out_GrLa = true;
+	}	
+
+	if (in.find_flag("-B", argc, argv)) {
+		out_Biot = true;
+	}
+
+	if (in.find_flag("-H", argc, argv)) {
+		out_Henc = true;
 	}
 
 	if (in.find_flag("-D", argc, argv)) {
 		out_dgrd = true;
 	}
 
+	if (in.find_flag("-R", argc, argv)) {
+		out_rvec = true;
+	}
+
 	if (in.find_flag("-A", argc, argv)) {
-		out_Estr = true;
+		out_Biot = true;
+		out_GrLa = true;
+		out_Henc = true;
 		out_dgrd = true;
+		out_rvec = true;
 	}
 
 	// clear any extraneous flags, find_flag writes an output message if found
@@ -276,8 +194,7 @@ int main(int argc, char *argv[])
 		fname_disp = argv[1];
 		std::ifstream input_disp;
 		input_disp.open(fname_disp.c_str());
-		if (!input_disp.good())
-		{
+		if (!input_disp.good()){
 			std::cout << "-> cannot find .disp file '" << fname_disp << std::endl;
 			return 0;
 		}
@@ -314,17 +231,21 @@ int main(int argc, char *argv[])
 		input_sort_read.close();
 	}
 
-	// prepare local vectors and instantiate a data cloud for .disp file data storage
+	// local vectors for .disp file data storage
 	std::vector<int> status;
 	std::vector<double> objmin;
-	std::vector<Point> dis;
+	std::vector<Point> dis;			// point displacements
 
 	// read .disp file and check for success
-	// read_disp_file_cst_sv checks for "n" as first character of neader line
-	// if not present prints error message and returns 0 to abort the run
 	DispRead disp;
-	if (!disp.read_disp_file_cst_sv(fname_disp,data.labels,data.points,status,objmin,dis)) return 0;
+	if (!disp.read_disp_file_generalized(fname_disp, data.labels, data.points, status, objmin, dis)) return 0;
 	int ndisp_pts = data.points.size();
+
+	// check that .disp file contains at least sw number of points
+	if (ndisp_pts < ndp) {
+		std::cout << std::endl << "-> .disp file must have at least sw number of points " << std::endl << std::endl;
+		return 0;
+	}
 
 	//
 	// now move on to the .sort file
@@ -349,7 +270,11 @@ int main(int argc, char *argv[])
 	// sort option
 	if (!do_sort_read) {
 		std::cout << "-> creating a new sort file: " << fname_base + ".sort.csv" << std::endl;
-		data.sort_order_neighbors(data.points[0]);
+		// legacy brute-force sort
+		//data.sort_order_neighbors(data.points[0]);
+
+		// kdtree sort
+		data.sort_neighbors_kdtree(data.points[0]);
 		data.write_sort_file(fname_base,data.neigh);
 	}
 
@@ -385,9 +310,11 @@ int main(int argc, char *argv[])
 	}
 
 	// output here to catch flag setting as well
-	if (yz_only) {std::cout << "using 2d yz coordinate plane analsis" << std::endl;}
-	if (zx_only) {std::cout << "using 2d zx coordinate plane analsis" << std::endl;}
-	if (xy_only) {std::cout << "using 2d xy coordinate plane analsis" << std::endl;}
+	if (yz_only) {std::cout << "using 2d yz coordinate plane analysis" << std::endl;}
+	if (zx_only) {std::cout << "using 2d zx coordinate plane analysis" << std::endl;}
+	if (xy_only) {std::cout << "using 2d xy coordinate plane analysis" << std::endl;}
+
+	// planar section end
 
 	// echo other run parameters and guide faulty command line arguments
 	std::cout << "using strain window: " << ndp << std::endl;
@@ -404,9 +331,9 @@ int main(int argc, char *argv[])
 		std::cout << "using strain window refill " << std::endl;
 	}
 
-	std::cout << "nsort_pts =" << nsort_pts << std::endl;
 	std::cout << "ndisp_pts =" << ndisp_pts << std::endl;
 
+	/******************************************************************************/
 	//
 	// strain calculation begins here
 	//
@@ -417,14 +344,12 @@ int main(int argc, char *argv[])
 	//       + c4*x^2 + c5*y^2 + c6*z^2
 	//       + c7*x*y + c8*y*z + c9*x*z
 
-	std::vector<Eigen::MatrixXd> DG_all_pts = {};	// store for possible output
-
 	for (unsigned int i=0; i<data.points.size(); i++) {
 
 		// get neighborhood indices for this point
 		std::vector<int> nbr_ind = data.neigh[i];
 
-		// find matrix scaling factor and load neighborhood vectors npos and ndis for current point
+		// find matrix scaling factor and load neighborhood vectors snpos and sndis for current point
 		// using the distance to the current point (neighborhood center) for scaling
 		Point origin(0.0, 0.0, 0.0);
 		double distance = data.points[i].pt_dist(origin);
@@ -433,22 +358,26 @@ int main(int argc, char *argv[])
 		// scale the calculation location (x,y,z in the polyfit)
 		Point base(scale*data.points[i].x(), scale*data.points[i].y(), scale*data.points[i].z());
 
-		std::vector<Point> npos = {};
-		std::vector<Point> ndis = {};
+		// note: scaling is done because positions may be large numbers and get squared in the X matrix
+		std::vector<Point> npos = {};	// neighbor positions admitted to the sw, use for evaluating sw voxel size
+		std::vector<Point> snpos = {};	// scaled neighbor positions admitted to the sw
+		std::vector<Point> sndis = {};	// scaled neighbor displacements admitted to the sw
 
 		// establish neighborhoods and load neighbor position and displacement data
-		// the for and whle loops versions are essentially identical but the while loop looks for more good points
+		// the for and while loop versions are essentially identical but the while loop looks for more good points up to sw setting
 		// ndp is the requested number of neighborhood points for the strain windows
 		// check nbr status, objmin threshold, and still within range of available nbr points
-
+		
 		if (!refill) {
 			int indx = 0;
 			for (unsigned int j=0; j<ndp; j++) {
 				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {
+					Point pos(data.points[nbr_ind[indx]].x(), data.points[nbr_ind[indx]].y(), data.points[nbr_ind[indx]].z());
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
-					npos.push_back(spos);
+					npos.push_back(pos);
+					snpos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-					ndis.push_back(sdis);
+					sndis.push_back(sdis);
 				}
 				indx += 1;	// generally would use j but the while loop version needs to count
 			}
@@ -457,10 +386,12 @@ int main(int argc, char *argv[])
 			int np = 0;
 			while ( (np < ndp) && (indx < ndp_max) ) {
 				if ( (status[nbr_ind[indx]] == 0) && (objmin[nbr_ind[indx]] <= objt) && (indx < nbr_ind.size())) {
+					Point pos(data.points[nbr_ind[indx]].x(), data.points[nbr_ind[indx]].y(), data.points[nbr_ind[indx]].z());
 					Point spos(scale*data.points[nbr_ind[indx]].x(), scale*data.points[nbr_ind[indx]].y(), scale*data.points[nbr_ind[indx]].z());
-					npos.push_back(spos);
+					npos.push_back(pos);
+					snpos.push_back(spos);
 					Point sdis(scale*dis[nbr_ind[indx]].x(), scale*dis[nbr_ind[indx]].y(), scale*dis[nbr_ind[indx]].z());
-					ndis.push_back(sdis);
+					sndis.push_back(sdis);
 					np += 1;
 				}
 				indx += 1;
@@ -468,17 +399,51 @@ int main(int argc, char *argv[])
 		}
 
 		// if no points in neigh then pts_in_sw becomes zero
-		data.pts_in_sw.push_back(npos.size());
+		data.pts_in_sw.push_back(snpos.size());
 
-		if (npos.size() == 0) {
-			data.sw_rad.emplace_back(0.0);
+		// determine sw_size in voxels as cube root of the bounding box volume
+		// for planar analysis option set "thin" direction to 1.0
+		double min_x = std::numeric_limits<double>::max();
+		double max_x = std::numeric_limits<double>::min();
+		double min_y = std::numeric_limits<double>::max();
+		double max_y = std::numeric_limits<double>::min();
+		double min_z = std::numeric_limits<double>::max();
+		double max_z = std::numeric_limits<double>::min();
 
-		} else {
-			data.sw_rad.emplace_back(distance*base.pt_dist(npos.back()));
+		for (unsigned int j=0; j<npos.size(); j++) {
+			min_x = std::min(min_x, npos[j].x());  max_x = std::max(max_x, npos[j].x());
+			min_y = std::min(min_y, npos[j].y());  max_y = std::max(max_y, npos[j].y());
+			min_z = std::min(min_z, npos[j].z());  max_z = std::max(max_z, npos[j].z());
+		}
+		double diff_x = (max_x - min_x);
+		double diff_y = (max_y - min_y);
+		double diff_z = (max_z - min_z);
+		double npos_box_vol = diff_x*diff_y*diff_z;
+		double box_equiv_edge = std::cbrt(npos_box_vol);
+		// planar cases
+		double npos_box_area;
+		if (yz_only) {
+			npos_box_area = diff_y*diff_z;
+			box_equiv_edge = std::sqrt(npos_box_area);
+		}
+		if (zx_only) {
+			npos_box_area = diff_z*diff_x;
+			box_equiv_edge = std::sqrt(npos_box_area);
+		}
+		if (xy_only) {
+			npos_box_area = diff_x*diff_y;
+			box_equiv_edge = std::sqrt(npos_box_area);
 		}
 
-		int ngp = npos.size();		// number of good points, may be zero
-		int nmp = strain.nmp();				// set by poly model choice, fixed in constructor
+		if (snpos.size() == 0) {
+			data.sw_size.emplace_back(0.0);
+
+		} else {
+			data.sw_size.emplace_back(box_equiv_edge);
+		}
+
+		int ngp = snpos.size();		// number of good points, may be zero
+		int nmp = strain.nmp();		// set by poly model choice, fixed in constructor
 		int nsd = 3;				// number of spatial dimensions for calc
 
 		// OLS variables sized to number of good points and reinitialized
@@ -488,32 +453,34 @@ int main(int argc, char *argv[])
 		Eigen::MatrixXd XtXm = Eigen::MatrixXd(nmp,nmp);
 		Eigen::VectorXd par = Eigen::VectorXd(nmp);			// the polynomial parameters, c0->9
 
-		Eigen::MatrixXd DG = Eigen::MatrixXd(nsd,nsd);		// deformation gradient
-		Eigen::MatrixXd ST = Eigen::MatrixXd(nsd,nsd);		// strain tensor storage
+		Eigen::Matrix3d DG;		// deformation gradient storage 
+		Eigen::Matrix3d ST;		// strain tensor storage 
 
 		std::vector<double> lam(nsd);			// eigenvalues for a point
-		std::vector<double> str(nsd*nsd);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for pushback to data
+		std::vector<double> str(nsd*nsd);		// exx,eyy,ezz,exy,eyz,exz,p1,p2,p3 for a point, for strain pushback to data
+		std::vector<double> dgd(nsd*nsd);		// ux,uy,uz,vx,vy,vz,wx,wy,wz for a point, for disp grad pushback to data
+		std::vector<double> rot(2*nsd+1);		// rx,ry,rz,nx,ny,nz,deg - screw axis in radians and unit vector with degrees
 		std::vector<double> displ(nsd);			// u,v,w calculated from the fit equations
 
 		for (unsigned int j=0; j<ngp; j++) {	// not simply ndp, points may have different numbers of sw points
 
 			Xm(j,0) = 1;
 
-			Xm(j,1) = npos[j].x();
-			Xm(j,2) = npos[j].y();
-			Xm(j,3) = npos[j].z();
+			Xm(j,1) = snpos[j].x();
+			Xm(j,2) = snpos[j].y();
+			Xm(j,3) = snpos[j].z();
 
-			Xm(j,4) = npos[j].x()*npos[j].x();
-			Xm(j,5) = npos[j].y()*npos[j].y();
-			Xm(j,6) = npos[j].z()*npos[j].z();
+			Xm(j,4) = snpos[j].x()*snpos[j].x();
+			Xm(j,5) = snpos[j].y()*snpos[j].y();
+			Xm(j,6) = snpos[j].z()*snpos[j].z();
 
-			Xm(j,7) = npos[j].x()*npos[j].y();
-			Xm(j,8) = npos[j].y()*npos[j].z();
-			Xm(j,9) = npos[j].x()*npos[j].z();
+			Xm(j,7) = snpos[j].x()*snpos[j].y();
+			Xm(j,8) = snpos[j].y()*snpos[j].z();
+			Xm(j,9) = snpos[j].x()*snpos[j].z();
 
-			dvs(j,0) = ndis[j].x();
-			dvs(j,1) = ndis[j].y();
-			dvs(j,2) = ndis[j].z();
+			dvs(j,0) = sndis[j].x();
+			dvs(j,1) = sndis[j].y();
+			dvs(j,2) = sndis[j].z();
 
 			// adjust for coordinate plane point clouds, auto detected or activated with -xy, -yz, -zx flags
 
@@ -558,15 +525,135 @@ int main(int argc, char *argv[])
 			DG(j,2) = par(3) + 2*par(6)*base.z() + par(8)*base.y() + par(9)*base.x();
 
 			// local volume fit displacement values
-			displ[j] = distance*( par(0) \
-								+ par(1)*base.x() + par(2)*base.y() + par(3)*base.z() \
-								+ par(4)*base.x()*base.x() + par(5)*base.y()*base.y() + par(6)*base.z()*base.z() \
+			displ[j] = distance*( par(0) 
+								+ par(1)*base.x() + par(2)*base.y() + par(3)*base.z() 
+								+ par(4)*base.x()*base.x() + par(5)*base.y()*base.y() + par(6)*base.z()*base.z() 
 								+ par(7)*base.x()*base.y() + par(8)*base.y()*base.z() + par(9)*base.x()*base.z() );
 		}
 		data.dis_vfit.push_back(displ);
+		dgd = {DG(0,0),DG(0,1),DG(0,2),DG(1,0),DG(1,1),DG(1,2),DG(2,0),DG(2,1),DG(2,2)};
+		data.DispGrd.push_back(dgd);
 
-		DG_all_pts.emplace_back(DG);
 
+		// ***** introduce unified kinematic approach here
+		// no specialized fiber/plane orientation output included yet
+
+		// instantiate the Kinematics class
+		const strain::Kinematics k(DG);
+
+		// generate derived quantities
+		PointResultBasic k_res;
+		k_res.valid = k.valid();                    // false if det F <= 0: values below are NaN
+        k_res.J = k.jacobian();
+        k_res.volumetric = k.volumetricStrain();
+        k_res.equivalent = k.equivalentStrain();
+        k_res.principalStrain = k.principalStretches().array() - 1.0;
+        k_res.biot = k.biot();
+        k_res.henc = k.hencky();
+        k_res.grla = k.greenLagrange();
+        k_res.rvec = k.rotationVector();
+
+		// these calculate the principal values for each strain tensor and return as a simple vector
+		const Eigen::Array3d lambda = k.principalStretches().array();
+		Eigen::Vector3d biotP = (lambda - 1.0).matrix();
+		Eigen::Vector3d grlaP = (0.5 * (lambda.square() - 1.0)).matrix();
+		Eigen::Vector3d hencP = lambda.log().matrix();
+
+		// load into results vectors
+		str = {k_res.biot(0,0),k_res.biot(1,1),k_res.biot(2,2),
+				k_res.biot(0,1),k_res.biot(1,2),k_res.biot(0,2),
+				 biotP[0],biotP[1],biotP[2]};
+		data.Biot.push_back(str);
+
+		str = {k_res.grla(0,0),k_res.grla(1,1),k_res.grla(2,2),
+				k_res.grla(0,1),k_res.grla(1,2),k_res.grla(0,2),
+				 grlaP[0],grlaP[1],grlaP[2]};
+		data.GrLa.push_back(str);
+
+		str = {k_res.henc(0,0),k_res.henc(1,1),k_res.henc(2,2),
+				k_res.henc(0,1),k_res.henc(1,2),k_res.henc(0,2),
+				 hencP[0],hencP[1],hencP[2]};
+		data.Henc.push_back(str);
+		
+		// add to basic k.rotationVector() output a unit vector and a magnitude in degrees
+		double rvec_mag_rad = k_res.rvec.norm();	// radians
+		double rvec_mag_deg = rvec_mag_rad*(180.0/3.14159);	// degrees
+		rot = {k_res.rvec(0),k_res.rvec(1),k_res.rvec(2),
+				k_res.rvec(0)/rvec_mag_rad,k_res.rvec(1)/rvec_mag_rad,k_res.rvec(2)/rvec_mag_rad,
+				  rvec_mag_deg};
+		data.RotAxis.push_back(rot);
+
+	}	// end data.points loop
+
+	// output result files
+
+	// Biot strain (new)
+	if (out_Biot) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Biot.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Biot);
+	}
+
+	// Lagrangian strain (new)
+	if (out_GrLa) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".GrLa.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.GrLa);
+	}
+
+	// Hencky (ln, true) strain (new) - note, integrate into command line parse
+	if (out_Henc) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Henc.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Henc);
+	}
+
+	// displacement gradient
+	if (out_dgrd) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Dgrd.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,ux,uy,uz,vx,vy,vz,wx,wy,wz";
+		strain.write_output(fname, header, data, data.DispGrd);
+	}
+
+	// screw axis
+	if (out_rvec) {
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Rvec.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,rx,ry,rz,nx,ny,nz,deg";
+		strain.write_output(fname, header, data, data.RotAxis);
+	}
+
+	std::cout << std::endl;
+	return 0;
+}
+/******************************************************************************/
+void StrainCalc::write_output(std::string fname, std::string hdr, DataCloud &data, std::vector<std::vector<double>> &output)
+{
+	std::ofstream outfile;
+	outfile.open(fname);
+
+	outfile << hdr << std::endl;
+
+	for (unsigned int i=0; i<data.points.size(); i++)
+	{
+		outfile << data.labels[i];
+		outfile << std::fixed << std::setprecision(2);
+		outfile << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
+		for (auto &j : data.dis_vfit[i]){outfile << "," << j;}
+		outfile << "," << data.pts_in_sw[i];
+		outfile << "," << std::fixed << std::setprecision(2) << data.sw_size[i];
+		outfile << std::fixed << std::setprecision(6);
+		for (auto &j : output[i]){outfile << "," << j;}		
+		outfile << std::endl;
+	}
+
+	outfile.close();
+
+	return;
+}
+/******************************************************************************/
+// original strain calculaiton codes, superseeded by the generalized kinemtic approach
+
+		/* within point loop
 		// Engineering strain tensor
 
 		ST = 0.5*(DG + DG.transpose());
@@ -608,74 +695,134 @@ int main(int argc, char *argv[])
 		}
 		str = {ST(0,0),ST(1,1),ST(2,2),ST(0,1),ST(1,2),ST(0,2),lam[0],lam[1],lam[2]};
 		data.Lstrain.push_back(str);
-	}
+		*/
 
-	// output result files
+	/* after point loop
 
-	std::string hdr = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
-	std::string of_name;
-
-	// Engineering strain
+	// Engineering strain (old)
 	if (out_Estr) {
-		std::ofstream strain_results_E;
-		of_name = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
-		std::cout << "output file: " << of_name << std::endl;
-		strain_results_E.open(of_name);
-		strain_results_E << hdr << std::endl;
-		for (unsigned int i=0; i<data.points.size(); i++)
-		{
-			strain_results_E << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-			for (auto &j : data.dis_vfit[i]){strain_results_E << "," << j;}
-			strain_results_E << "," << data.pts_in_sw[i];
-			strain_results_E << "," << data.sw_rad[i];
-			for (auto &j : data.Estrain[i]){strain_results_E << "," << j;}
-			strain_results_E << std::endl;
-		}
-		strain_results_E.close();
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Estr.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Estrain);
 	}
 
-	// Lagrangian strain
+	// Lagrangian strain (old)
 	if (out_Lstr) {
-		std::ofstream strain_results_L;
-		of_name = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
-		std::cout << "output file: " << of_name << std::endl;
-		strain_results_L.open(of_name);
-		strain_results_L << hdr << std::endl;
-		for (unsigned int i=0; i<data.points.size(); i++)
-		{
-			strain_results_L << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-			for (auto &j : data.dis_vfit[i]){strain_results_L << "," << j;}
-			strain_results_L << "," << data.pts_in_sw[i];
-			strain_results_L << "," << data.sw_rad[i];
-			for (auto &j : data.Lstrain[i]){strain_results_L << "," << j;}
-			strain_results_L << std::endl;
-		}
-		strain_results_L.close();
+		std::string fname = fname_base + "-sw" + std::to_string(ndp) + ".Lstr.csv";
+		std::string header = "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_size,exx,eyy,ezz,exy,eyz,exz,ep1,ep2,ep3";
+		strain.write_output(fname, header, data, data.Lstrain);
 	}
+	*/
 
-	// displacement gradient
-	if (out_dgrd) {
-		std::ofstream dispgrad_results;
-		of_name = fname_base + "-sw" + std::to_string(ndp) + ".dgrd.csv";
-		std::cout << "output file: " << of_name << std::endl;
-		dispgrad_results.open(of_name);
-		dispgrad_results << "n,x,y,z,u_fit,v_fit,w_fit,pts_in_sw,sw_radius,ux,uy,uz,vx,vy,vz,wx,wy,wz" << std::endl;
-		for (unsigned int i=0; i<data.points.size(); i++) {
-			dispgrad_results << data.labels[i] << "," << data.points[i].x() << "," << data.points[i].y() << "," << data.points[i].z();
-			for (auto &j : data.dis_vfit[i]){dispgrad_results << "," << j;}
-			dispgrad_results << "," << data.pts_in_sw[i];
-			dispgrad_results << "," << data.sw_rad[i];
 
-			for (unsigned int j=0; j<3; j++)
-				for (unsigned int k=0; k<3; k++)
-					dispgrad_results << "," << DG_all_pts[i](j,k);
+/******************************************************************************/
+// old command line parsing, not used
+/*
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[])
+{
+    // loop through current arg list, if flag found, remove from list and return true
 
-			dispgrad_results << std::endl;
-		}
-		dispgrad_results.close();
-	}
-
-	std::cout << std::endl;
-	return 0;
+    for (unsigned int i=0; i<argc; i++) {
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {
+            for (unsigned int j=i; j<argc-1; j++) {
+                argv[j] = argv[j+1];
+            }
+            argc -= 1;
+            return 1;
+        }
+    }
+    return 0;
 }
+*/
+/******************************************************************************/
+/*
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], int &val)
+{
+    // look for command line flag followed by a single integer argument
+
+    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {			// found the flag
+            if (argc > i+1) {						// if there is a next argument try to convert
+                try {								// flag and number found
+                    val = std::stoi(argv[i+1]);
+                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+                        argv[j] = argv[j+2];
+                    }
+                    argc -= 2;
+                    return 1;						// return true
+                }
+                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
+                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+                        argv[j] = argv[j+1];
+                    }
+                    argc -= 1;
+                    std::cout << "argument after " << flag << " not valid" << std::endl;
+                    return 0;
+                }
+            }
+            // no next argument on command line, notify and pull flag
+            std::cout << "no argument after " << flag << " flag" << std::endl;
+            argc -= 1;
+        }
+    }
+    return 0;
+}
+*/
+/******************************************************************************/
+/*
+int StrainCalc::find_flag(std::string flag, int &argc, char *argv[], double &val)
+{
+    // look for command line flag followed by a single float-double argument
+
+    for (unsigned int i=0; i<argc; i++) {			// look through full argv list
+        std::string argstr(argv[i]);
+        if (argstr.compare(flag) == 0) {			// found the flag
+            if (argc > i+1) {						// if there is a next argument try to convert
+                try {								// flag and number found
+                    val = std::stod(argv[i+1]);
+                    for (unsigned int j=i; j<argc-1; j++) { // pull both flag and number out of arg list
+                        argv[j] = argv[j+2];
+                    }
+                    argc -= 2;
+                    return 1;		// return success
+                }
+                catch (const std::invalid_argument& ia) {	// flag found but next arg not convertable
+                    for (unsigned int j=i; j<argc-1; j++) { // pull flag but not the next argument
+                        argv[j] = argv[j+1];
+                    }
+                    argc -= 1;
+                    std::cout << "argument after " << flag << " not valid" << std::endl;
+                    return 0;
+                }
+            }
+            // no next argument on command line, notify and pull flag
+            std::cout << "no argument after " << flag << " flag" << std::endl;
+            argc -= 1;
+        }
+    }
+    return 0;
+}
+*/
+/******************************************************************************/
+/*
+int StrainCalc::find_flag(size_t pos, size_t len, std::string flag, int &argc, char *argv[])
+{
+    // clear extraneous flags
+
+    for (unsigned int i=0; i<argc; i++) {
+        std::string argstr(argv[i]);
+        if (argstr.compare(pos, len, flag) == 0) {
+            std::cout << "-> unused flag " << argv[i] << " found, ignored" << std::endl;
+            for (unsigned int j=i; j<argc-1; j++) {
+                argv[j] = argv[j+1];
+            }
+            argc -= 1;
+            return 1;
+        }
+    }
+    return 0;
+}
+*/
 /******************************************************************************/

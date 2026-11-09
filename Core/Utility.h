@@ -52,9 +52,9 @@ enum Endian_Type {
 	little, big
 };
 /******************************************************************************/
-const std::string ok_subvol_geom_line = "cube sphere";
+const std::string ok_subvol_geom_line = "grid sphere";
 enum Subvol_Type {
-	cube, sphere
+	grid, sphere
 };
 /******************************************************************************/
 const std::string ok_obj_fcn_line = "ssd zssd nssd znssd";
@@ -68,7 +68,7 @@ enum Interp_Type {
 };
 /******************************************************************************/
 
-// used in throw-catch during minimization
+// used in throw-catch during optimization
 class Point_Good {};	// search point located with normal return
 class Range_Fail {};	// optimization displaceced to a boundary
 class Convg_Fail {};	// max it exceeded in an optimization routine
@@ -82,7 +82,7 @@ class Input_Fail {};	// Reguired input file missing or unreadable
 
 /******************************************************************************/
 
-const std::vector<std::string> CR_str_vec = {"Converged", "Maxit", "NotConverged", "CostChange", "ParameterChange", "GradientNorm"};
+const std::vector<std::string> CR_str_vec = {"Converged", "Maxit", "NotConverged", "cost", "step", "GradientNorm"};
 enum ConvergenceReason {
 	Converged,
 	Maxit,
@@ -110,6 +110,10 @@ struct RunControl
 	int vol_wide;
 	int vol_high;
 	int vol_tall;
+
+	// changing to seperate hdr lengths fof ref and cor, happens with some .tif files
+	// stored for now, not yet used
+	int ref_hdr_lngth, cor_hdr_lngth;		// use uint64_t for the read offset math to support larger files
 
 	std::string subvol_geom;
 	int subvol_size;

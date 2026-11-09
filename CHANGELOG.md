@@ -1,6 +1,17 @@
 # Changelog
 ## v26.0.0
 
+
+- Update Eigen to version 3.4.0
+- Read CSV files for point cloud input
+- Reader for displacement `.disp` file (for strain calculation)
+- Updated default values for optimiser
+- Added OMP parallelisation in `Interpolate::kernels`
+- Renamed subvolume shape from `cube` to `grid`, allows for non cubic voxels
+- DVC executable:
+  - generates HTML manual
+  - `.disp` files are standard CSV files that can be easily imported in spreadsheets
+- Strain calculation from `.disp` file
 - NEW: Faster KD Tree point cloud sorting
 - NEW: tri bspline interpolation for subvolume
 - Backward incompatible changes:

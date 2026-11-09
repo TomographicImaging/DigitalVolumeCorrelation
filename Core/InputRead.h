@@ -31,6 +31,7 @@ Author(s): Brian Bay (OSU)
 #include <limits>
 #include <cstdlib>
 #include <ctime>
+#include <cstdint>
 
 // for new point cloud read code
 #include <cerrno>
@@ -38,17 +39,27 @@ Author(s): Brian Bay (OSU)
 #include <algorithm>
 #include <utility>
 
+// for generalized point could read code
+#include <cstddef>
+#include <iosfwd>
+#include <istream>
+
+// for volume data file identification
+//#pragma once
+//#include <cstring>
+
 // adjust Makefile if changes made here
 #include "Point.h"
 #include "BoundBox.h"
 #include "Utility.h"
-//
 
 #include "CCPiDefines.h"
 
 extern const int input_line_ok;
 extern const int keywd_missing;
 extern const int param_invalid;
+
+struct ResultRecord;
 
 /******************************************************************************/
 class CCPI_EXPORT key_word_help
@@ -95,12 +106,29 @@ public:
 	std::ifstream input_file;
 
 	int input_file_read(RunControl *run);
+
+	// legacy version of point cloud read
 	int read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels);	
 
 	// tab/space/comma version, with capacity for added column and a column header row, and # comment lines
 	int read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels,
 												std::vector<std::vector<double>> &added_columns,
 													std::vector<std::string> &added_column_names);
+
+	// generalized point cloud and .disp read functions
+	int read_point_cloud_generalized(RunControl *run,
+                        std::vector<int>& search_labels,
+                        std::vector<Point>& search_points,
+                        std::vector<std::vector<double> >& added_columns,
+                        std::vector<std::string>& added_column_names);
+
+	int read_disp_file_generalized(std::string fname,
+                        std::vector<int>& search_labels,
+                        std::vector<Point>& search_points,
+                        std::vector<int> &status, 
+						std::vector<double> &objmin, 
+						std::vector<Point> &dis);					
+
 
 	int find_flag(std::string flag, int &argc, char *argv[]);
 	int find_flag(std::string flag, int &argc, char *argv[], int &val);
@@ -109,11 +137,10 @@ public:
 
 	int input_file_accessible(std::string fname);
 
-
-	
-
 	BoundBox *search_box;
 	int search_num_pts;
+
+	// *** keyword list, grouped by pool
 
 	// keywords in pool fio_name
 	key_word_help kwh_ref_fname;
@@ -124,7 +151,7 @@ public:
 
 	// keywords in pool vox_data
 	key_word_help kwh_vol_bit_depth;
-	key_word_help kwh_vol_endian;
+	key_word_help kwh_vol_endian;		// conditional, only for bit depth = 16
 	key_word_help kwh_vol_hdr_lngth;
 	key_word_help kwh_vol_wide;
 	key_word_help kwh_vol_high;
@@ -147,23 +174,30 @@ public:
 	// keywords in pool opt_tune
 	key_word_help kwh_cost_tol;		// optional
 	key_word_help kwh_step_tol;		// optional
-	// key_word_help kwh_grad_tol;	// optional
+	// key_word_help kwh_grad_tol;	// optional, not currently used
 	key_word_help kwh_max_iter;		// optional
 
 	// organized for creation of a manual
 	std::vector<key_word_help> manual;
 
-	// data used for value checking
+	// *** data used for value checking
 
-//	std::vector<int> ok_vol_bit_depth;
+	// these are defined in Utility.h as enum's with names stored in a single std::string
+	// translated into a vector of individual std::string's in the InputRead constructor
 	std::vector<std::string> ok_vol_endian;
-//	int vol_dim_min, vol_dim_max;
-//	int vol_hdr_min, vol_hdr_max;
+	std::vector<std::string> ok_subvol_geom;
+	std::vector<std::string> ok_obj_function;
+	std::vector<std::string> ok_interp_type;
+
+	// default values are set as the enum integer value, see Utility.h
+	const int vol_endian_def = 0;		// array/enum value of little
+	const int subvol_geom_def = 0;		// array/enum value of grid
+	const int obj_function_def = 3;		// array/enum value of znssd
+	const int interp_type_def = 2;		// array/enum value of tri_bspline_3
+
 	unsigned long ref_file_length;
 	unsigned long cor_file_length;
 	unsigned long pts_file_length;
-
-	std::vector<std::string> ok_subvol_geom;
 
 	const int num_points_to_process_def = 0;	// process all points
 
@@ -184,40 +218,34 @@ public:
 	const int subvol_npts_max = 50000;
 	const int subvol_npts_def = 5000;
 
-	const double subvol_aspect_min = 0.5;
-	const double subvol_aspect_max = 2.0;
+	const double subvol_aspect_min = 0.25;
+	const double subvol_aspect_max = 4.0;
 	const double subvol_aspect_def = 1.0;
 
 	const std::vector<int> ok_srch_dof = {3, 6, 12};
 	const int srch_dof_def = 12;
 
-	const int obj_function_def = 3;		// array/enum value of znssd
-	const int interp_type_def = 2;		// array/enum value of tri_bspline_3
-
 	const int step_max_min = 1;
 	const int step_max_max = 15;
 	const int step_max_def = 5;
 
-	const double cost_tol_min = 1e-10;
+	const double cost_tol_min = 1e-8;
 	const double cost_tol_max = 1e-2;
-	const double cost_tol_def = 1e-6;
+	const double cost_tol_def = 1e-5;
 
-	const double step_tol_min = 1e-10;
+	const double step_tol_min = 1e-6;
 	const double step_tol_max = 1e-2;
-	const double step_tol_def = 1e-4;
+	const double step_tol_def = 1e-3;
 
-	const double grad_tol_min = 1e-10;
+	const double grad_tol_min = 1e-8;
 	const double grad_tol_max = 1e-2;
-	const double grad_tol_def = 1e-8;
+	const double grad_tol_def = 1e-5;
 
 	const int max_iter_min = 1;
 	const int max_iter_max = 100;
 	const int max_iter_def = 20;
 
-	std::vector<int> ok_num_srch_dof;
-	std::vector<std::string> ok_obj_function;
-	std::vector<std::string> ok_interp_type;
-	std::vector<std::string> ok_fine_srch;
+	// *** functions
 
 	// transfer enum list strings into a vector of strings
 	std::vector<std::string> line_to_vect(std::string line);
@@ -254,10 +282,7 @@ public:
 	char inp_eol;		// input file eol and line termination
 	std::string inp_term;
 
-	// output functions (old txt version)
-	int print_manual_intro(std::ofstream &file);
-	int print_manual_section(std::ofstream &file, std::string pool);
-	int print_manual_output(std::ofstream &file);
+	// output functions
 	int print_input_example(std::ofstream &file, std::string pool);
 
 	// HTML manual (single self-contained file; print to PDF from a browser)
@@ -306,6 +331,158 @@ public:
 private:
 
 };
+/******************************************************************************/
+
+// for generalized row/column data file reading
+// specific functions (e.g. read_point_cloud_generalized) are built to purpose
+// headers and column data types are configured using the ReadOptions struct
+
+namespace tbl {
+
+enum class ColType { Int, Double, Text };
+
+// One column the caller expects in the file.
+struct ColumnSpec
+{
+    std::string name;      // matched against the header (case-insensitive); also the default name
+    ColType     type;
+    bool        required;  // rows where this value is missing or invalid are skipped
+
+    ColumnSpec(const std::string& n, ColType t, bool req = true)
+        : name(n), type(t), required(req) {}
+};
+
+enum class HeaderMode
+{
+    Auto,     // header = last non-data line before the first data row (if any)
+    Present,  // first non-comment, non-blank line is always the header
+    Absent    // never treat a line as a header
+};
+
+struct ReadOptions
+{
+    std::vector<ColumnSpec> columns;  // the columns you expect, in their usual file order
+    bool       read_extra;            // keep columns beyond 'columns' (variable count)
+    ColType    extra_type;            // type used for those extra columns
+    HeaderMode header;
+    bool       match_by_name;         // if a header names every required spec column, locate columns
+                                      // by name; optional columns the header lacks are stored as missing
+    char       comment;               // lines starting with this char are skipped ('\0' = none)
+
+    ReadOptions()
+        : read_extra(false), extra_type(ColType::Double), header(HeaderMode::Auto),
+          match_by_name(true), comment('#') {}
+};
+
+// Values stored when an optional value is missing or invalid. Text uses "".
+const int    kMissingInt    = INT_MIN;
+const double kMissingDouble = std::numeric_limits<double>::quiet_NaN();
+
+// One column of data. Only the vector matching 'type' is filled.
+struct Column
+{
+    std::string              name;
+    ColType                  type;
+    bool                     in_file;  // false if an optional column wasn't in this file's header
+    std::vector<int>         ints;
+    std::vector<double>      doubles;
+    std::vector<std::string> texts;
+};
+
+struct Table
+{
+    std::vector<Column> columns;  // spec columns first (in spec order), then extra columns
+    std::size_t rows;
+    std::size_t n_spec;           // number of spec columns at the front of 'columns'
+    bool        has_header;
+    bool        matched_by_name;  // true if columns were located by header name
+    int         skipped_rows;     // data-area rows dropped for a missing/invalid required value
+    int         bad_values;       // invalid optional values stored as missing
+    int         padded_rows;      // rows with fewer extra columns than the widest row
+
+    Table() : rows(0), n_spec(0), has_header(false), matched_by_name(false),
+              skipped_rows(0), bad_values(0), padded_rows(0) {}
+
+    std::size_t n_extra() const { return columns.size() - n_spec; }
+
+    // Case-insensitive lookup by name; returns nullptr if there is no such column.
+    const Column* find(const std::string& name) const;
+};
+
+// Reads 'filename' according to 'opt'. Returns false (with 'error' set) only if
+// the file cannot be opened. Check the counters in 'out' for data problems.
+bool read_table(const std::string& filename, const ReadOptions& opt,
+                Table& out, std::string& error);
+
+// Same, from an already-open stream.
+bool read_table(std::istream& is, const ReadOptions& opt, Table& out);
+
+// Lower-level helpers, usable on their own.
+bool read_line(std::istream& is, std::string& line);   // accepts \n, \r\n, \r
+void split_fields(const std::string& line, std::vector<std::string>& fields);
+bool field_to_int(const std::string& s, int& v);       // whole field must be an int
+bool field_to_double(const std::string& s, double& v); // whole field must be a finite number
+
+} // namespace tbl
+
+/******************************************************************************/
+
+// volume_format.h - identify a volume file from its first 8 bytes (header-only).
+//
+//   VolumeFormat fmt = detectVolumeFormat(path);
+//   switch (fmt) {
+//     case VolumeFormat::Npy:  /* parse .npy header */                    break;
+//     case VolumeFormat::Tiff: /* readTiffStackInfo(...) */               break;
+//     case VolumeFormat::Unknown: /* no signature: raw, if the keyword file says so */ break;
+//     ...
+//   }
+//
+// Raw files have no signature, so they always come back as Unknown. Use this to confirm
+// what the keyword file declares and to catch mismatches early (a .tif given as raw, etc.).
+// Only the signature is checked: a file detected as Tiff or Npy can still be one the full
+// reader refuses (compressed, 16-bit, ...).
+
+// #pragma once
+// #include <cstring>
+// #include <fstream>
+// #include <string>
+/*
+enum class VolumeFormat {
+    Unreadable,  // missing, unreadable, or shorter than 8 bytes
+    Unknown,     // no recognised signature (raw data, or another format)
+    Npy,         // NumPy .npy
+    Tiff,        // classic TIFF, either byte order
+    BigTiff      // BigTIFF (64-bit offsets), either byte order
+};
+
+inline VolumeFormat detectVolumeFormat(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    unsigned char b[8];
+    if (!f || !f.read(reinterpret_cast<char*>(b), 8)) return VolumeFormat::Unreadable;
+
+    if (b[0] == 0x93 && std::memcmp(b + 1, "NUMPY", 5) == 0) return VolumeFormat::Npy;
+
+    const bool ii = (b[0] == 'I' && b[1] == 'I');
+    const bool mm = (b[0] == 'M' && b[1] == 'M');
+    if (ii || mm) {
+        const unsigned version = ii ? (b[2] | (b[3] << 8)) : ((b[2] << 8) | b[3]);
+        if (version == 42) return VolumeFormat::Tiff;
+        if (version == 43) return VolumeFormat::BigTiff;
+    }
+    return VolumeFormat::Unknown;
+}
+
+inline const char* volumeFormatName(VolumeFormat fmt) {
+    switch (fmt) {
+        case VolumeFormat::Unreadable: return "unreadable";
+        case VolumeFormat::Unknown:    return "unknown (raw?)";
+        case VolumeFormat::Npy:        return "npy";
+        case VolumeFormat::Tiff:       return "tiff";
+        case VolumeFormat::BigTiff:    return "bigtiff";
+    }
+    return "?";
+}
+*/
 /******************************************************************************/
 
 #endif

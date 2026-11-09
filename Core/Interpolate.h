@@ -22,6 +22,7 @@ Author(s): Brian Bay (OSU)
 #define INTERPOLATE_H
 
 #include <string>
+#include <cstring>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -124,6 +125,8 @@ public:
 	void est_box_dims(int &wide, int &high, int &tall) const;
 	void act_box_dims(int &wide, int &high, int &tall) const;
 
+	static void print_kernel_times();
+
 private:
 //
 // Element [0][0][0] is located at the min corner of the interp_region.
@@ -191,5 +194,48 @@ private:
 	}
 };
 /******************************************************************************/
+
+#endif
+
+#ifndef SECTION_TIMER_H
+#define SECTION_TIMER_H
+
+#include <atomic>
+#include <chrono>
+#include <cstdio>
+
+// Accumulates total time and call count for one named section of code.
+struct TimeTotal
+{
+	const char *name;
+	std::atomic<long long> ns{0};      // atomic: safe if called from several threads
+	std::atomic<long long> calls{0};
+
+	explicit TimeTotal(const char *n) : name(n) {}
+
+	void report() const
+	{
+		std::printf("%-10s %9.3f s  %10lld calls\n", name, ns.load() * 1e-9, calls.load());
+	}
+};
+
+// Starts timing when created, adds the elapsed time to a TimeTotal when it
+// goes out of scope -- including on an early return or exception.
+class ScopedTimer
+{
+public:
+	explicit ScopedTimer(TimeTotal &t) : total(t), start(std::chrono::steady_clock::now()) {}
+
+	~ScopedTimer()
+	{
+		auto elapsed = std::chrono::steady_clock::now() - start;
+		total.ns += std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
+		total.calls++;
+	}
+
+private:
+	TimeTotal &total;
+	std::chrono::steady_clock::time_point start;
+};
 
 #endif

@@ -56,7 +56,13 @@ InputRead::InputRead()
 	// this section is documentation
 	// range default values, enum contents, etc are translated from Utility.h and InputRead.h to str::string values
 	// these are introduced along with directly written material into the kwh structure
-	// this in turn is parsed, originally in the simple txt file manual (not written currently), now into the html manual
+	// this in turn is parsed into an html manual (DVC_manual.html, generated with 'dvc manual')
+	// changes to keywords are automatically introduced into the manual by parsing of 'manual', a vector of key_word_help types 
+	// the manual also contains longer descriptive text written as html code further down in InputRead.cpp
+
+	// the key_word_help structure also forms the basis of an input file form (DVC_input_builder.html, generated with dvc form)
+	// this allows users to develop input files by selecting from and entering values into an interactive html dialog
+
 
 	// fio_name
 
@@ -98,11 +104,13 @@ InputRead::InputRead()
 	kwh_pts_fname.good = "name of file with point cloud labels and locations (in working directory) or a full path";
 	kwh_pts_fname.dflt = "none";
 	kwh_pts_fname.help.assign("   Specify the file containing locations of all measurement points - the point cloud.\n");
-	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, as long as all points fall within the image volumes.\n");
+	kwh_pts_fname.help.append("   Each point is defined as a line in the input file with an integer point label followed by the x,y,z point location.\n");
+	kwh_pts_fname.help.append("   Point cloud size, shape, and density are completely flexible, if all points fall within the image volumes ");
+	kwh_pts_fname.help.append("   padded by a border of (1/2)subvol_size + step_max. This allows room for the search optimization process.\n");
 	kwh_pts_fname.help.append("   Dense point clouds that accurately reflect sample geometry, microstructure, and measurement objectives yield the best results.\n");
 	kwh_pts_fname.help.append("   Point clouds that are connected, without isolated regions, process with the highest reliability.\n");
 	kwh_pts_fname.help.append("   Finite element meshing or other geometry discretization software is very useful for creating point clouds.\n");
-	kwh_pts_fname.help.append("   Each point is defined as a line in the input file with an integer point label followed by the x,y,z point location.\n");
+
 	kwh_pts_fname.help.append("      # add any number of comment and blank rows  \n");
 	kwh_pts_fname.help.append("      # tab, space, or comma delimited (csv) files  \n");
 	kwh_pts_fname.help.append("      # optional: label columns  \n");
@@ -164,7 +172,8 @@ InputRead::InputRead()
 	kwh_vol_endian.pool = "vox_data";
 	kwh_vol_endian.hint = "### little or big, ignored if vol_bit_depth is 8";
 	kwh_vol_endian.good = limits_to_string(ok_vol_endian);
-	kwh_vol_endian.dflt = ok_vol_endian[0];
+	//kwh_vol_endian.dflt = ok_vol_endian[0];
+	kwh_vol_endian.dflt = ok_vol_endian[vol_endian_def];
 	kwh_vol_endian.help.assign("   Defines the byte organization for 16-bit image volumes.\n");
 	kwh_vol_endian.help.append("   Find the appropriate setting using ImageJ (or similar) after cross-platform image transfers.\n");
 	kwh_vol_endian.help.append("   Big generates a byte swap: Little preserves the byte order.\n");
@@ -228,24 +237,24 @@ InputRead::InputRead()
 	// sub_vols
 
 	kwh_subvol_geom.word = "subvol_geom";
-	kwh_subvol_geom.exam = "cube";
+	kwh_subvol_geom.exam = "grid";
 	kwh_subvol_geom.reqd = "yes";
 	kwh_subvol_geom.pool = "sub_vols";
-	kwh_subvol_geom.hint = "### cube, sphere: geometry of the subvolumes";
+	kwh_subvol_geom.hint = "### grid, sphere: geometry of the subvolumes";
 	kwh_subvol_geom.good = limits_to_string(ok_subvol_geom);
-	kwh_subvol_geom.dflt = ok_subvol_geom[0];
+	kwh_subvol_geom.dflt = ok_subvol_geom[subvol_geom_def];
 	kwh_subvol_geom.help.assign("Defines geometry of the subvolumes created around each search point.\n");
-	kwh_subvol_geom.help.append("Cubes are the classic, but essentially arbitrary, subvolume geometry.\n");
-	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based cloud point geometries.\n");
-	kwh_subvol_geom.help.append("Fundamentally a subvolume is a set of image intensity values retreived from the reference volume.\n");
+	kwh_subvol_geom.help.append("Grids are the classic, but essentially arbitrary, subvolume geometry.\n");
+	kwh_subvol_geom.help.append("Spheres are better suited to complex, microstructure and fibre based point cloud geometries.\n");
+	kwh_subvol_geom.help.append("Fundamentally a subvolume is a set of image intensity values retrieved from the reference volume.\n");
 	kwh_subvol_geom.help.append("In this DVC code points within subvolumes are not limited to discrete voxel values.\n");
 	kwh_subvol_geom.help.append("They are treated as sampling points, retrieved from the reference volume through interpolation.\n");
 	kwh_subvol_geom.help.append("Note that spheres, with random sampling point distributions, return slightly different results on repeat runs.\n");
 	kwh_subvol_geom.help.append("This is a useful aspect of spheres.\n");
-	kwh_subvol_geom.help.append("Subvolumes generally overlap and spheres increase sampling density. Cubes do not as the overlap points are identical.\n");
-	kwh_subvol_geom.help.append("But sampling stability can be useful when comparing other run parameter settings. Use cubes in those cases.\n");
-	kwh_subvol_geom.help.append("   cube\t\tsampling points distributed uniformly accross a 3D grid\n");
-	kwh_subvol_geom.help.append("   sphere\t\tsampling points distributed randomly throughout a sphere\n");
+	kwh_subvol_geom.help.append("Subvolumes generally overlap and spheres increase sampling density. Grids do not as the overlap points are identical.\n");
+	kwh_subvol_geom.help.append("But sampling stability can be useful when comparing other run parameter settings. Use grids in those cases.\n");
+	kwh_subvol_geom.help.append("   grid\t\tsampling points distributed uniformly across a 3D grid\n");
+	kwh_subvol_geom.help.append("   sphere\tsampling points distributed randomly throughout a sphere\n");
 	kwh_subvol_geom.set_form_choice(ok_subvol_geom);	// input form
 	manual.push_back(kwh_subvol_geom);
 
@@ -269,13 +278,13 @@ InputRead::InputRead()
 	kwh_subvol_npts.exam = set_num_str(subvol_npts_def);
 	kwh_subvol_npts.reqd = "yes";
 	kwh_subvol_npts.pool = "sub_vols";
-	kwh_subvol_npts.hint = "### number of points to distribute within the subvol";
+	kwh_subvol_npts.hint = "### number of points to distribute within the subvolume";
 	kwh_subvol_npts.good = set_stream_str(subvol_npts_min, subvol_npts_max);
 	kwh_subvol_npts.dflt = set_num_str(subvol_npts_def);
 	kwh_subvol_npts.help.assign("   Defines the number of points within each subvolume.\n");
 	kwh_subvol_npts.help.append("   In this code, subvolume point locations are NOT voxel-centered and the number is INDEPENDENT of subvolume size.\n");
 	kwh_subvol_npts.help.append("   Interpolation within the reference image volume is used to establish templates with arbitrary point locations.\n");
-	kwh_subvol_npts.help.append("   For cubes a uniform grid of approximately subvol_npts is generated.\n");
+	kwh_subvol_npts.help.append("   For grids a uniform grid of approximately subvol_npts is generated.\n");
 	kwh_subvol_npts.help.append("   For spheres subvol_npts are randomly distributed within the subvolume.\n");
 	kwh_subvol_npts.help.append("   This parameter has a strong effect on computation time, so be careful.\n");
 	kwh_subvol_npts.set_form_int(subvol_npts_min, subvol_npts_max);	// input form
@@ -291,7 +300,7 @@ InputRead::InputRead()
 	kwh_subvol_aspect.dflt = set_num_str(subvol_aspect_def, fixed, 1);
 	kwh_subvol_aspect.help.assign("   A standard subvolume is isotropic, with equivalent size in each coordinate direction.\n");
 	kwh_subvol_aspect.help.append("   This parameter describes a change in shape of the subvolume to accommodate elongated texture.\n");
-	kwh_subvol_aspect.help.append("   It is only useful if the texture direction is consistent, and aligned with a coordinate direction.\n");
+	kwh_subvol_aspect.help.append("   It is only useful if the texture direction is consistent and aligned with a coordinate direction.\n");
 	kwh_subvol_aspect.help.append("   The aspect change is specified as three doubles, indicating stretch/contract in the coordinate directions.\n");
 	kwh_subvol_aspect.set_form_real(subvol_aspect_min, subvol_aspect_max, 3);	// input form
 	manual.push_back(kwh_subvol_aspect);
@@ -325,7 +334,7 @@ InputRead::InputRead()
 	kwh_obj_function.dflt = ok_obj_function[obj_function_def];
 	kwh_obj_function.help.assign("Optimization is based on standard objective functions of sum-of-squared differences (SSD) form.\n");
 	kwh_obj_function.help.append("Minimizing squared-differences and maximizing cross-correlation are functionally equivalent.\n");
-	kwh_obj_function.help.append("Normalizations reduce the influence of overall brigntness/contrast differences between image volumes.\n");
+	kwh_obj_function.help.append("Normalizations reduce the influence of overall brightness/contrast differences between image volumes.\n");
 	kwh_obj_function.help.append("Functions nssd and znssd are preferred as quality of match can be quantified and compared.\n");
 	kwh_obj_function.help.append("Both are scaled for output into the [0.0 to 1.0] range, with 0.0 a perfect match and 1.0 a match of randomized subvolumes.\n");
 	kwh_obj_function.help.append("The ssd and zssd functions run marginally faster.\n");
@@ -349,7 +358,7 @@ InputRead::InputRead()
 	kwh_interp_type.help.append("Choosing methods of interpolation for DVC is complicated by image texture variability and code run times.\n");
 	kwh_interp_type.help.append("Digital image correlation (DIC) has largely settled on wavenumber optimized bsplines.\n");
 	kwh_interp_type.help.append("But the applied speckle of DIC is more consistent and lends itself to generalization of the optimization process.\n");
-	kwh_interp_type.help.append("And despite large numbers of images in some DIC processes, the overall compuational burden is much less than DVC.\n");
+	kwh_interp_type.help.append("And despite large numbers of images in some DIC processes, the overall computational burden is much less than DVC.\n");
 	kwh_interp_type.help.append("Computational time is particularly relevant now with 3D point clouds reaching into the millions.\n");
 	kwh_interp_type.help.append("The best speed/precision tradeoff also depends on the application. The current recommendation is tricubic or tri_bspline_3.\n");
 	kwh_interp_type.help.append("The trilinear option is intended for testing input parameters and early trial runs.\n");
@@ -371,7 +380,7 @@ InputRead::InputRead()
 	kwh_start_position.good.assign("limited to the dimensions of the voxel space");
 	kwh_start_position.help.assign("This is a very important parameter, and proper setting requires an understanding of the overall DVC process.\n");
 	kwh_start_position.help.append("Point cloud processing begins at a single defined point then progresses in order by distance from that point.\n");
-	kwh_start_position.help.append("This wavefront approach facilitates the determination of an accurate parameter estimate to initiate each optimizion step.\n");
+	kwh_start_position.help.append("This wavefront approach facilitates the determination of an accurate parameter estimate to initiate each optimization step.\n");
 	kwh_start_position.help.append("But the first point needs its own parameter estimate. That information is provided under the start_estimate keyword.\n");
 	kwh_start_position.help.append("Choose a start_position at a location within or in contact with the point cloud.\n");
 	kwh_start_position.help.append("Select a position where image data and sample texture are good, and displacement between reference and correlate volumes is small.\n");
@@ -388,7 +397,7 @@ InputRead::InputRead()
 	kwh_start_estimate.dflt = "none";
 	kwh_start_estimate.good.assign("each component typically a few voxels, limited to the dimensions of the voxel space");
 	kwh_start_estimate.help.assign("This parameter coordinates closely with the start_position specification.\n");
-	kwh_start_estimate.help.append("All cloud points need a good initial estimate at the beginning of the optimization proccess that determines point displacement.\n");
+	kwh_start_estimate.help.append("All cloud points need a good initial estimate at the beginning of the optimization process that determines point displacement.\n");
 	kwh_start_estimate.help.append("This parameter defines the initial estimate for the very first point in the cloud to seed the wavefront process.\n");
 	kwh_start_estimate.help.append("The companion iDVC graphical interface provides automated and manual visualization-guided means of determining the start_estimate.\n");
 	kwh_start_estimate.help.append("But the process can be done manually with clever use of software such as ImageJ.\n");
@@ -428,9 +437,11 @@ InputRead::InputRead()
 	kwh_cost_tol.good = set_stream_str(cost_tol_min, cost_tol_max, scientific, 0);
 	kwh_cost_tol.dflt = set_num_str(cost_tol_def, scientific, 0);
 	kwh_cost_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
-	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol.\n");
-	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
-	kwh_cost_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
+	kwh_cost_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol ");
+	kwh_cost_tol.help.append("or if the final parameter vector (step) change is below step_tol.\n");
+	kwh_cost_tol.help.append("Smaller tolerance values tune toward precision; larger values tune toward execution speed.\n");
+	kwh_cost_tol.help.append("However, suitable tolerance values depend on many factors such as image quality and material texture scale.\n");
+	kwh_cost_tol.help.append("Monitor during-run output. If convergence is consistently failing adjust cost_tol in conjunction with step_tol for balanced performance.\n");
 	kwh_cost_tol.set_form_real(cost_tol_min, cost_tol_max);	// input form
 	manual.push_back(kwh_cost_tol);
 
@@ -442,10 +453,11 @@ InputRead::InputRead()
 	kwh_step_tol.good = set_stream_str(step_tol_min, step_tol_max, scientific, 0);
 	kwh_step_tol.dflt = set_num_str(step_tol_def, scientific, 0);
 	kwh_step_tol.help.assign("Convergence checks evaluate a normalized change in optimization variables as iterations proceed.\n");
-	kwh_step_tol.help.append("A cloud point search is considered converged if the final parameter vector (step) change is below step_tol.\n");
-	kwh_step_tol.help.append("A second control on optimization is step_max which defines the largest overall step allowed during iteration.\n");
+	kwh_step_tol.help.append("A cloud point search is considered converged if the final objective function (cost) change is below cost_tol ");
+	kwh_step_tol.help.append("or if the final parameter vector (step) change is below step_tol.\n");
 	kwh_step_tol.help.append("Smaller tolerance values tune toward precision, larger values tune toward execution speed.\n");
-	kwh_step_tol.help.append("Each convergence check is independent, consider cost_tol in conjunction with step_tol for balanced performance.\n");
+	kwh_step_tol.help.append("However, suitable tolerance values depend on many factors such as image quality and material texture scale.\n");
+	kwh_step_tol.help.append("Monitor during-run output. If convergence is consistently failing adjust cost_tol in conjunction with step_tol for balanced performance.\n");
 	kwh_step_tol.set_form_real(step_tol_min, step_tol_max);	// input form
 	manual.push_back(kwh_step_tol);
 	
@@ -457,7 +469,7 @@ InputRead::InputRead()
 	kwh_max_iter.good = set_stream_str(max_iter_min, max_iter_max);
 	kwh_max_iter.dflt = set_num_str(max_iter_def);
 	kwh_max_iter.help.assign("Optimization is limited to a set number of iterations to manage cases of unreasonably slow convergence.\n");
-	kwh_max_iter.help.append("In general a well-posed DVC problem with a good starting point will converge in a few iterations.\n");
+	kwh_max_iter.help.append("In general, a well-posed DVC problem with a good starting point and appropriate convergence tolerances will converge in a few iterations.\n");
 	kwh_max_iter.help.append("There is no performance benefit from reducing max_iter as convergence checks break early from the update loop.\n");
 	kwh_max_iter.help.append("In unusual cases, if very high precision is sought, increasing max_iter while decreasing cost_tol and step_tol may help.\n");
 	kwh_max_iter.set_form_int(max_iter_min, max_iter_max);	// input form
@@ -465,63 +477,7 @@ InputRead::InputRead()
 
 	// threshold inputs deactivated, option not currently implemented in code
 
-	// keyword subvol_thresh
-	/*
-	ok_subvol_thresh = line_to_vect(ok_on_off_line);
-	kwh_subvol_thresh.good = limits_to_string(ok_subvol_thresh);
 
-	min_vol_fract_min = 0.0;
-	min_vol_fract_max = 1.0;
-	kwh_min_vol_fract.good = limits_to_string(min_vol_fract_min, min_vol_fract_max);
-
-	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
-	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
-	*/
-
-	/*
-	kwh_subvol_thresh.word.assign("subvol_thresh");
-	kwh_subvol_thresh.exam.assign("off");
-	kwh_subvol_thresh.reqd.assign("yes");
-	kwh_subvol_thresh.pool.assign("sub_vols");
-	kwh_subvol_thresh.hint.assign("### off, on: evaluate subvolumes based on threshold");
-	kwh_subvol_thresh.help.assign("   Defines the state of subvolume thresholding to active (on) or inactive (off).\n");
-	kwh_subvol_thresh.help.append("   Useful if there is a simple gray level segmentation between foreground and background.\n");
-	kwh_subvol_thresh.help.append("   Subvolumes with little foreground content are not searched and flagged on output.\n");
-	kwh_subvol_thresh.help.append("\n");
-	manual.push_back(kwh_subvol_thresh);
-
-	kwh_gray_thresh_min.word.assign("gray_thresh_min");
-	kwh_gray_thresh_min.exam.assign("25");
-	kwh_gray_thresh_min.reqd.assign("If subvol_thresh is on");
-	kwh_gray_thresh_min.pool.assign("sub_vols");
-	kwh_gray_thresh_min.hint.assign("### lower limit of a gray threshold range");
-	kwh_gray_thresh_min.help.assign("   Defines the lower limit of a gray scale threshold range.\n");
-	kwh_gray_thresh_min.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
-	kwh_gray_thresh_min.help.append("\n");
-	manual.push_back(kwh_gray_thresh_min);
-
-	kwh_gray_thresh_max.word.assign("gray_thresh_max");
-	kwh_gray_thresh_max.exam.assign("125");
-	kwh_gray_thresh_max.reqd.assign("If subvol_thresh is on");
-	kwh_gray_thresh_max.pool.assign("sub_vols");
-	kwh_gray_thresh_max.hint.assign("### upper limit of a gray threshold range");
-	kwh_gray_thresh_max.help.assign("   Defines the upper limit of a gray scale threshold range.\n");
-	kwh_gray_thresh_max.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
-	kwh_gray_thresh_max.help.append("\n");
-	manual.push_back(kwh_gray_thresh_max);
-
-	kwh_min_vol_fract.word.assign("min_vol_fract");
-	kwh_min_vol_fract.exam.assign("0.2");
-	kwh_min_vol_fract.reqd.assign("If subvol_thresh is on");
-	kwh_min_vol_fract.pool.assign("sub_vols");
-	kwh_min_vol_fract.hint.assign("### only search if subvol fraction is greater than");
-	kwh_min_vol_fract.help.assign("   Defines a parameter for pre-checking subvolumes for content.\n");
-	kwh_min_vol_fract.help.append("   The fraction of subvolume points within the gray_thresh_min/max range is determined.\n");
-	kwh_min_vol_fract.help.append("   If below min_vol_fract, the subvolume is likely in a void or in a background region.\n");
-	kwh_min_vol_fract.help.append("   A point failing the test is not searched and flagged on output.\n");
-	kwh_min_vol_fract.help.append("\n");
-	manual.push_back(kwh_min_vol_fract);
-	*/
 }
 /******************************************************************************/
 InputRead::~InputRead()
@@ -558,26 +514,226 @@ int InputRead::input_file_read(RunControl *run)
 	if(parse_line_old_file(kwh_pts_fname, run->pts_fname, pts_file_length, true) != input_line_ok ) return 0;
 	if(parse_line_new_file(kwh_out_fname, run->out_fname, true) != 1 ) return 0;
 
-	run->res_fname = run->out_fname + ".disp";
-	run->sta_fname = run->out_fname + ".stat";
+	run->res_fname = run->out_fname + ".disp.csv";
+	run->sta_fname = run->out_fname + ".stat.txt";
 
 	// optional keyword (reqd = "no"): default 0 processes the full cloud
 	run->num_points_to_process = num_points_to_process_def;
 	if (parse_line_min_max(kwh_num_points_to_process, 0, std::numeric_limits<unsigned int>::max(), run->num_points_to_process, false) == param_invalid) return 0;
-	std::cout << "Number of points to process: " << run->num_points_to_process << std::endl;
+	if (run->num_points_to_process == 0) {
+		std::cout << "Process all points in cloud"  << std::endl;
+	} else {
+		std::cout << "Number of points to process: " << run->num_points_to_process << std::endl;
+	}
+	
 
 	// vox_data
 
+	/*************************/
+	// original .raw file parse code
+
+	// for .raw
+	uint64_t expected_vol_file_size, file_size;
+
+	std::cout << "processing image volumes as .raw files" << std::endl;
 	run->vol_bit_depth = vol_bit_depth_def;
 	if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
-	if(run->vol_bit_depth == ok_bit_depth[1]) {		// check this is 16 in .h
+	if(run->vol_bit_depth == ok_bit_depth[1]) {		// [1] is 16 in .h enum, read the conditional endian keyword
 		if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
 	}
-
 	if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
 	if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
+
+	// check file lenghts
+	expected_vol_file_size = (uint64_t) run->vol_hdr_lngth 
+		+ (uint64_t) run->vol_wide * (uint64_t) run->vol_high * (uint64_t) run->vol_tall * (uint64_t) (run->vol_bit_depth / 8);
+
+	file_size = (uint64_t) ref_file_length;
+	if (file_size != expected_vol_file_size) {
+		std::cout << "-> reference file not the expected length, check file and vol_ keywords" << std::endl;
+		return 0;
+	}
+	file_size = (uint64_t) cor_file_length;
+	if (file_size != expected_vol_file_size) {
+		std::cout << "-> correlate file not the expected length, check file and vol_ keywords" << std::endl;
+		return 0;
+	}       	
+
+	// (end) original .raw file parse code
+	/*************************/
+
+
+	/*************************/
+	// new .npy, .tif, .raw file parse code
+
+	/*
+	// processing .raw and .npy files
+	// test for .npy ref and cor files first, check that headers match, then parse header for vol_ content
+	// using the following .npy file convention:
+	//		1. if fortran_order True, (x,y,z) = (wide,high,tall) = (shape[0],shape[1],shape[2])
+	//		2. if fortran_order False, (x,y,z) = (wide,high,tall) = (shape[2],shape[1],shape[0]) -> C-order
+	// this covers most cases correctly and matches ImageJ/Fiji slice stack convention
+	// it matches the ImageJ/Fiji import of raw convention of Width, Height, Number of Images ordering, expressed as (wide,high,tall)
+	// when viewing a stack, each slice has an x,y origin in upper-left corner, with x horizontal and y vertical (+ down)
+	// slices become the z-axis according to right hand rule with the first slice the origin
+	// this is not guranteed as writing options for .npy files can produce other data otganizations that will flip/mirror
+
+	// test reference and correlate voxel files for type (.tif, .npy, .raw)
+	VolumeFormat ref_type = detectVolumeFormat(run->ref_fname);
+	std::cout << "ref_type = " << volumeFormatName(ref_type) << std::endl;
+
+	VolumeFormat cor_type = detectVolumeFormat(run->cor_fname);
+	std::cout << "cor_type = " << volumeFormatName(cor_type) << std::endl;
+
+	if (ref_type == cor_type) {
+		std::cout << "types are the same" << std::endl;
+	} else {
+		std::cout << "-> both image volumes must be the same format" << std::endl;
+		return 0;
+	}
+
+	// both ref and cor are confirmed the same file type at this point
+
+	// .tif variables
+	TiffStackInfo ref_info, cor_info;
+	std::string err_msg, why;
+
+	// .npy variables
+	int npy_check_ref, npy_check_cor;
+	npy_header nh_ref, nh_cor;
+
+	// for .tif and .npy
+	std::string big = "big";
+	std::string little = "little";
+
+	// for .raw
+	uint64_t expected_vol_file_size, file_size;
+
+	switch (ref_type) {
+		case VolumeFormat::Tif:
+			// check that both files are valid and headers contain identical voxel information
+			// note that offset may differ, store seperately in Utility.h
+			if (!readTiffStackInfo(run->ref_fname, ref_info, err_msg)) {
+				std::cout << "reference file invalid: " << err_msg << std::endl;
+				return 0;
+			} else {std::cout << ".tif reference file good" << std::endl;}
+
+			if (!readTiffStackInfo(run->cor_fname, cor_info, err_msg)) {
+				std::cout << "correlate file invalid: " << err_msg << std::endl;
+				return 0;
+			} else {std::cout << ".tif correlate file good" << std::endl;}
+
+			if (!sameVoxelFormat(ref_info, cor_info, &why)) {
+				std::cout << "reference and correlate files differ: " << why << std::endl;
+				return 0;
+			} else {std::cout << "ref and cor match" << std::endl;}
+
+			// since they match load from ref_info, except for ref_hdr_lngth and cor_hdr_lngth
+			run->vol_bit_depth = 8*ref_info.bytesPerVoxel;
+			run->vol_endian = (ref_info.bigEndian) ? big : little;
+
+			run->vol_hdr_lngth = ref_info.offset;		// for now use ref, replace with ref/cor specific in vox read
+			run->ref_hdr_lngth = ref_info.offset;
+			run->cor_hdr_lngth = cor_info.offset;
+
+			run->vol_wide = ref_info.width;
+			run->vol_high = ref_info.height;
+			run->vol_tall = ref_info.nslices;
+			break;
+
+		case VolumeFormat::Npy:
+			// check that both files are valid and headers contain identical voxel information
+			// note that offset may differ, store seperately in Utility.h
+			npy_check_ref = parse_npy(run->ref_fname.data(), &nh_ref);
+			if (npy_check_ref != 0) {
+				std::cout << "reference file invalid" << std::endl;
+				return 0;
+			} else {std::cout << ".npy reference file good" << std::endl;}
+
+			npy_check_cor = parse_npy(run->cor_fname.data(), &nh_cor);
+			if (npy_check_cor != 0) {
+				std::cout << "correlate file invalid" << std::endl;
+				return 0;
+			} else {std::cout << ".npy correlate file good" << std::endl;}
+
+			if ((nh_ref.bit == nh_cor.bit) && (nh_ref.isBigEndian == nh_cor.isBigEndian) 
+				&& (nh_ref.shape0 = nh_cor.shape0) && (nh_ref.shape1 == nh_cor.shape1) && (nh_ref.shape2 == nh_cor.shape2)) {
+				std::cout << "ref and cor match" << std::endl;
+			} else {
+				std::cout << "reference and correlate voxel formats differ" << std::endl;
+				return 0;
+			}
+
+			// since they match load from ref_info, except for ref_hdr_lngth and cor_hdr_lngth
+			run->vol_bit_depth = nh_ref.bit;
+			run->vol_endian = (nh_ref.isBigEndian) ? big : little;
+
+			run->vol_hdr_lngth = nh_ref.data_offset;		// for now use ref, replace with ref/cor specific in vox read
+			run->ref_hdr_lngth = nh_ref.data_offset;
+			run->cor_hdr_lngth = nh_cor.data_offset;
+
+			// both of these options are consistent with the ImageJ/Fiji slice/stack convention
+			if (!nh_ref.isFortranOrder) {			// C-order, fortran_order False, the standard way of defining the data layout
+				run->vol_wide = nh_ref.shape2;
+				run->vol_high = nh_ref.shape1;
+				run->vol_tall = nh_ref.shape0;
+			} else {								// fortran_order True works if the .npy was written with this sequence
+				run->vol_wide = nh_ref.shape0;
+				run->vol_high = nh_ref.shape1;
+				run->vol_tall = nh_ref.shape2;
+			}
+			break;
+
+		case VolumeFormat::Unknown:
+			std::cout << "processing image volumes as .raw files" << std::endl;
+			run->vol_bit_depth = vol_bit_depth_def;
+			if(parse_line_vec_val(kwh_vol_bit_depth, ok_bit_depth, run->vol_bit_depth, true) != input_line_ok ) return 0;
+			if(run->vol_bit_depth == ok_bit_depth[1]) {		// [1] is 16 in .h enum, read the conditional endian keyword
+				if(parse_line_vec_val(kwh_vol_endian, ok_vol_endian, run->vol_endian, true) != input_line_ok ) return 0;
+			}
+			if(parse_line_min_max(kwh_vol_hdr_lngth, vol_hdr_min, vol_hdr_max, run->vol_hdr_lngth, true) != input_line_ok ) return 0;
+			if(parse_line_min_max(kwh_vol_wide, vol_dim_min, vol_dim_max, run->vol_wide, true) != input_line_ok ) return 0;
+			if(parse_line_min_max(kwh_vol_high, vol_dim_min, vol_dim_max, run->vol_high, true) != input_line_ok ) return 0;
+			if(parse_line_min_max(kwh_vol_tall, vol_dim_min, vol_dim_max, run->vol_tall, true) != input_line_ok ) return 0;
+
+			// check file lenghts
+			expected_vol_file_size = (uint64_t) run->vol_hdr_lngth 
+				+ (uint64_t) run->vol_wide * (uint64_t) run->vol_high * (uint64_t) run->vol_tall * (uint64_t) (run->vol_bit_depth / 8);
+
+			file_size = (uint64_t) ref_file_length;
+			if (file_size != expected_vol_file_size) {
+				std::cout << "-> reference file not the expected length, check file and vol_ keywords" << std::endl;
+				return 0;
+			}
+ 			file_size = (uint64_t) cor_file_length;
+			if (file_size != expected_vol_file_size) {
+				std::cout << "-> correlate file not the expected length, check file and vol_ keywords" << std::endl;
+				return 0;
+			}       	
+			break;
+
+		case VolumeFormat::BigTiff:  	// not supported
+			std::cout << "-> BigTiff not supported" << std::endl;
+			return 0;
+
+		case VolumeFormat::Unreadable:	// technical error with files
+			std::cout << "-> voxel volume files are unreadable" << std::endl;
+			return 0;
+	}
+
+	std::cout << std::endl;
+	std::cout << "run->vol_bit_depth = " << run->vol_bit_depth << std::endl;
+	std::cout << "run->vol_endian = " << run->vol_endian << std::endl;
+	std::cout << "run->vol_hdr_lngth = " << run->vol_hdr_lngth << std::endl;
+	std::cout << "run->vol_wide = " << run->vol_wide << std::endl;
+	std::cout << "run->vol_high = " << run->vol_high << std::endl;
+	std::cout << "run->vol_tall = " << run->vol_tall << std::endl;			
+
+	*/
+	// (end) new .npy, .tif, .raw file parse code
+	/*************************/
 
 	// sub_vols
 
@@ -643,41 +799,7 @@ int InputRead::input_file_read(RunControl *run)
 //	if(parse_line_min_max(kwh_grad_tol, grad_tol_min, grad_tol_max, run->grad_tol, false) == param_invalid) return 0;
 	if(parse_line_min_max(kwh_max_iter, max_iter_min, max_iter_max, run->max_iter, false) == param_invalid) return 0;
 
-	// check image volumes
-	unsigned long expected_vol_file_size = (unsigned long) run->vol_hdr_lngth 
-											+ (unsigned long) run->vol_wide *  
-											  (unsigned long) run->vol_high * 
-											  (unsigned long) run->vol_tall * 
-											  (unsigned long) (run->vol_bit_depth / 8);
-
-	if (ref_file_length != expected_vol_file_size)
-	{
-		std::cout << std::endl;
-		std::cout << "Reference volume file size does not match the volume description." << std::endl;
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
-		std::cout << std::endl;
-		return 0;
-	}
-
-	if (cor_file_length != expected_vol_file_size)
-	{
-		std::cout << std::endl;
-		std::cout << "Correlate volume file size does not match the volume description." << std::endl;
-		std::cout << "Check vol_bit_depth, vol_hdr_lngth, vol_high, vol_wide, and vol_tall." << std::endl;
-		std::cout << std::endl;
-		return 0;
-	}
-
 	// threshold inputs deactivated, option not implemented in code
-	/*
-	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
-	if(run->subvol_thresh == "on")
-	{
-		if(parse_line_min_max(kwh_gray_thresh_min, 0, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_min, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_gray_thresh_max, run->gray_thresh_min, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_max, true) != input_line_ok ) return 0;
-		if(parse_line_min_max(kwh_min_vol_fract, 0.0, min_vol_fract_max, run->min_vol_fract, true) != input_line_ok ) return 0;
-	}
-	*/
 
 	return 1;
 }
@@ -767,6 +889,213 @@ static bool read_line(std::istream& is, std::string& line)
     }
 }
 /******************************************************************************/
+// The generalized readers manage row/column data files and are robust with respect to eol, delimiters etc.
+// fname is passed in, with column data specific to the file added to the argument list
+// Configuration is primarily established with the ReadOptions struct, including column header text and data types
+// Note also the "Copy into the structure ..." block that provides internal variables to load into the output arguments
+
+int InputRead::read_disp_file_generalized(std::string fname, 
+						std::vector<int> &search_labels, 
+						std::vector<Point> &search_points, 
+						std::vector<int> &status, 
+						std::vector<double> &objmin, 
+						std::vector<Point> &dis)
+{
+
+	// function baseline
+	using namespace tbl;
+
+	// added as a check on file accessibility
+	std::ifstream ifs(fname.c_str(), std::ifstream::in);
+	if (!ifs) { 
+		std::cout << ".disp file not found" << std::endl << std::endl;
+		return 0; 
+	}
+	ifs.close(); // remaining code does not directly use ifs, just used for file access check
+
+	// function baseline
+	/*
+    ReadOptions opt;
+    opt.columns.push_back(ColumnSpec("n", ColType::Int));
+    opt.columns.push_back(ColumnSpec("x",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("y",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("z",  ColType::Double));
+	opt.columns.push_back(ColumnSpec("status",  ColType::Int));
+	opt.columns.push_back(ColumnSpec("objmin",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("u",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("v",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("w",  ColType::Double));
+    opt.read_extra = false;
+	*/
+
+	ReadOptions opt;
+    opt.columns.push_back(ColumnSpec("n", ColType::Int));
+    opt.columns.push_back(ColumnSpec("x",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("y",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("z",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("status", ColType::Int));
+    opt.columns.push_back(ColumnSpec("convg",  ColType::Text, false));	// not required
+    opt.columns.push_back(ColumnSpec("niter", ColType::Int, false));	// not required
+    opt.columns.push_back(ColumnSpec("objmin", ColType::Double));
+    opt.columns.push_back(ColumnSpec("u",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("v",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("w",  ColType::Double));
+    opt.read_extra = false;
+
+	// function baseline
+	// file data is read into a table structure
+    Table t;
+    std::string err;
+    if (!read_table(fname, opt, t, err)) {
+        std::cerr << err << "\n";
+        return 0;
+    }
+
+	// function baseline
+    // Copy into the structures the core code already uses
+	/*
+    const std::vector<int>&    n = t.columns[0].ints;
+    const std::vector<double>& x  = t.columns[1].doubles;
+    const std::vector<double>& y  = t.columns[2].doubles;
+    const std::vector<double>& z  = t.columns[3].doubles;
+	const std::vector<int>&    status = t.columns[4].ints;
+    const std::vector<double>& objmin = t.columns[5].doubles;
+	const std::vector<double>& u  = t.columns[6].doubles;
+    const std::vector<double>& v  = t.columns[7].doubles;
+    const std::vector<double>& w  = t.columns[8].doubles;
+	*/
+
+	// Look up by name, so the order of the list above doesn't matter
+
+	// For an optional column, e.g. "cong", t.find("convg")->in_file is false when the file’s header doesn’t list that column, 
+	// and true when it does
+
+	// these are the vectors that need individual component hdnaling
+    const std::vector<double>& x = t.find("x")->doubles;
+    const std::vector<double>& y = t.find("y")->doubles;
+    const std::vector<double>& z = t.find("z")->doubles;
+    const std::vector<double>& u = t.find("u")->doubles;
+    const std::vector<double>& v = t.find("v")->doubles;
+    const std::vector<double>& w = t.find("w")->doubles;
+
+	// move single value results directly into arguments
+	search_labels = t.find("n")->ints;
+	status = t.find("status")->ints;
+	objmin = t.find("objmin")->doubles;
+
+	// loop to load vector quantities as Point types
+	search_points.clear();
+    search_points.reserve(t.rows);
+	dis.clear();
+	dis.reserve(t.rows);
+    for (std::size_t r = 0; r < t.rows; ++r) {
+        search_points.push_back(Point(x[r], y[r], z[r]));
+		dis.push_back(Point(u[r], v[r], w[r]));
+	}
+
+	// function baseline
+    if (t.skipped_rows || t.bad_values || t.padded_rows)
+        std::cerr << fname << ": " << t.skipped_rows << " rows skipped, "
+                  << t.bad_values << " bad values, " << t.padded_rows << " rows padded\n";
+	
+    return 1;
+}
+
+/******************************************************************************/
+// The generalized readers manage row/column data files and are robust with respect to eol, deliminators etc.
+// Configureation is primarily established with the ReadOptions struct, including colums header text and data types
+int InputRead::read_point_cloud_generalized(RunControl *run,
+                        std::vector<int>& search_labels,
+                        std::vector<Point>& search_points,
+                        std::vector<std::vector<double> >& added_columns,
+                        std::vector<std::string>& added_column_names)
+{
+
+	using namespace tbl;
+
+	std::string fname = run->pts_fname.c_str();
+
+	std::ifstream ifs(run->pts_fname.c_str(), std::ifstream::in);
+	if (!ifs) { 
+		std::cout << "Point cloud file not found" << std::endl << std::endl;
+		return 0; 
+	}
+	ifs.close(); // remaining code does not directly use ifs, just used for file access check
+
+	double min_x = std::numeric_limits<double>::max();
+	double max_x = std::numeric_limits<double>::min();
+	double min_y = std::numeric_limits<double>::max();
+	double max_y = std::numeric_limits<double>::min();
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = std::numeric_limits<double>::min();
+
+    ReadOptions opt;
+    opt.columns.push_back(ColumnSpec("id", ColType::Int));
+    opt.columns.push_back(ColumnSpec("x",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("y",  ColType::Double));
+    opt.columns.push_back(ColumnSpec("z",  ColType::Double));
+    opt.read_extra = true;
+
+    Table t;
+    std::string err;
+    if (!read_table(fname, opt, t, err)) {
+        std::cerr << err << "\n";
+        return 0;
+    }
+
+    // Copy into the structures the core code already uses
+    const std::vector<int>&    id = t.columns[0].ints;
+    const std::vector<double>& x  = t.columns[1].doubles;
+    const std::vector<double>& y  = t.columns[2].doubles;
+    const std::vector<double>& z  = t.columns[3].doubles;
+
+    search_labels = id;
+
+    search_points.clear();
+    search_points.reserve(t.rows);
+    for (std::size_t r = 0; r < t.rows; ++r) {
+        search_points.push_back(Point(x[r], y[r], z[r]));
+
+		min_x = std::min(min_x, x[r]);  max_x = std::max(max_x, x[r]);
+		min_y = std::min(min_y, y[r]);  max_y = std::max(max_y, y[r]);
+		min_z = std::min(min_z, z[r]);  max_z = std::max(max_z, z[r]);
+	}
+
+    added_column_names.clear();
+    for (std::size_t e = 0; e < t.n_extra(); ++e)
+        added_column_names.push_back(t.columns[t.n_spec + e].name);
+
+    added_columns.assign(t.rows, std::vector<double>(t.n_extra()));
+    for (std::size_t r = 0; r < t.rows; ++r)
+        for (std::size_t e = 0; e < t.n_extra(); ++e)
+            added_columns[r][e] = t.columns[t.n_spec + e].doubles[r];
+
+    if (t.skipped_rows || t.bad_values || t.padded_rows)
+        std::cerr << fname << ": " << t.skipped_rows << " rows skipped, "
+                  << t.bad_values << " bad values, " << t.padded_rows << " rows padded\n";
+
+
+	// additional steps after file read
+
+	if (search_points.empty()) {
+		std::cout << std::endl;
+		std::cout << "No points were read, the Point Cloud file may be improperly formatted." << std::endl;
+		std::cout << "Run 'dvc manual' and check content and formatting guidelines." << std::endl;
+		std::cout << std::endl;
+		return 0;
+	}
+	
+	search_num_pts = search_points.size();
+
+	Point min_pt(min_x, min_y, min_z);
+	Point max_pt(max_x, max_y, max_z);
+	search_box->move_to(min_pt, max_pt);
+
+    return 1;
+}
+
+/******************************************************************************/
+// an older version point cloud reader
 int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels, 
 	std::vector<std::vector<double>> &added_columns, std::vector<std::string> &added_column_names)
 {
@@ -784,10 +1113,6 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
 
 	double min_z = std::numeric_limits<double>::max();
 	double max_z = std::numeric_limits<double>::min();
-	
-	
-
-	
 	
 	int count = 0;
 	size_t n_added = 0;      // number of added columns (widest row or header)
@@ -873,10 +1198,6 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
 		// optional warning: n_padded short rows padded, n_bad_values non-numeric values set to NaN
 	}
 
-
-
-
-
 	if (count == 0)
 	{
 		std::cout << std::endl;
@@ -894,13 +1215,10 @@ int InputRead::read_point_cloud_tsc(RunControl *run, std::vector<Point> &search_
 	search_box->move_to(min_pt, max_pt);
 	search_num_pts = search_points.size();
 
-
-
-
-
     return 1;
 }
 /******************************************************************************/
+// the legacy point cloud reader, not very robust
 int InputRead::read_point_cloud(RunControl *run, std::vector<Point> &search_points, std::vector<int> &search_labels)
 {
 	// add check for point outside of voxel volume
@@ -1318,7 +1636,11 @@ int DispRead::get_val(std::stringstream &ss, Point &val) {
 		return 0;
 	}
 
-}/******************************************************************************/
+}
+
+/******************************************************************************/
+
+
 int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, std::vector<Point> &pos, std::vector<int> &status, std::vector<double> &objmin, std::vector<Point> &dis) {
 
 	// .disp file is:	n	x	y	z	status	objmin	u	v	w (int, 3xdouble->point, int, double, 3xdouble->point)
@@ -1337,12 +1659,6 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	while (getline(ifs, line)) {
 		std::stringstream ss(line);
-
-
-//		std::cout << "first line = " << line << std::endl;
-//		std::cout << "ss.peek() = " << ss.peek() << std::endl;
-
-
 
 		// use header line to judge whether or not this is a .disp file
 		if (loop_count == 0) {
@@ -1393,166 +1709,17 @@ int DispRead::read_disp_file_cst_sv(std::string fname, std::vector<int> &label, 
 
 	return 1;
 }
-/******************************************************************************/
-int InputRead::print_manual_intro(std::ofstream &file)
-{
-	file << "#####################################################################\n";
-	file << "###                                                               ###\n";
-	file << "###   A brief manual for the iDVC code      ###\n";
-	file << "###                                                               ###\n";
-	file << "#####################################################################\n";
-	file << "\n";
-	file << "(Best viewed in a simple text editor with a fixed-width font and no line wrapping.)\n";
-	file << "\n";
-
-	file << "Copyright 2014 Brian K. Bay (computer code and all documentation)\n";
-	file << "\n";
-
-	file << "Created:  1 Jan 2014\n";
-	file << "Revised:  " << REV_DATE << std::endl;
-	file << "version:  " << VERSION << "\n";
-	file << "\n";
-
-	file << "The dvc code is written in c++ with portability and simple compilation in mind.\n";
-	file << "At present only a single external library (eigen) is used for sparse matrix interpolation calculations.\n";
-	file << "Compilation is Makefile controlled. To do a complete rebuild:\n";
-	file << "\n";
-	file << "   Delete all object (.o) files in /include/objects\n";
-	file << "   Enter make from a terminal window in the main distribution directory.\n";
-	file << "\n";
-	file << "The dvc code executes with the following command line options:\n";
-	file << "\n";
-	file << "   dvc \t\t\t   // list command line options in the terminal window\n";
-	file << "   dvc help\t\t   // send a brief help message to the terminal window\n";
-	file << "   dvc example\t\t   // print an example dvc_input file\n";
-	file << "   dvc manual\t\t   // print this manual\n";
-	file << "   dvc dvc_input\t   // normal code execution\n";
-	file << "\n";
-
-	file << "The file dvc_input is the key to running a digital volume correlation analysis.\n";
-	file << "It is a simple text file that contains REQUIRED KEYWORDS and PARAMETERS.\n";
-	file << "The code parses this file looking for required keywords and appropriate parameter values.\n";
-	file << "Feel free to place comments within your input files.\n";
-	file << "Any line in a dvc_input file beginning with a # character is ignored.\n";
-	file << "The portion of any line following a # character is ignored.\n";
-	file << "Some keywords are only required if other keywords have particular values.\n";
-	file << "These CONDITIONAL KEYWORDS are ignored if they are left within an input file but are not needed.\n";
-	file << "\n";
-	file << "The keywords are organized into five groups:\n";
-	file << "\n";
-	file << "   fio_name \t\t   // names of existing files and files created during a run\n";
-	file << "   vox_data \t\t   // description of the voxel data files that are targeted for analysis\n";
-	file << "   sub_vols \t\t   // description of the subvolumes created for the template matching process\n";
-	file << "   opt_mthd \t\t   // REQUIRED parameters for the default optimization (template matching) process\n";
-	file << "   opt_tune \t\t   // OPTIONAL parameters for tuning and refining the template matching process\n";
-	file << "\n";
-
-	file << "The keywords are described below, with information organized as:\n";
-	file << "\n";
-	file << "key_word \t\t   // the keyword exactly as it appears in the input file\n\n";
-	file << "      exemplar: \t\t   // a typical dvc_input line for the keyword\n";
-	file << "      required: \t\t   // always required (yes), or the conditions when it is required\n";
-	file << "      suitable: \t\t   // valid input description, list of suitable values, range and type information\n\n";
-	file << "   Further details concerning functionality associated with the keyword and setting of parameters.\n";
-	file << "\n";
-	file << "\n";
-
-
-	return 1;
-}
-/******************************************************************************/
-int InputRead::print_manual_section(std::ofstream &file, std::string pool)
-{
-	file << "#####################################################################\n";
-	file << "###                                                               ###\n";
-	file << "###   Keywords in group " << pool << "                                  ###\n";
-	file << "###                                                               ###\n";
-	file << "#####################################################################\n";
-	file << "\n";
-
-	for (int i=0; i<manual.size(); i++)
-	{
-		if (manual[i].pool == pool)
-		{
-			file << manual[i].word << "\n\n";
-			file << "\texample:\t" << manual[i].word << "\t" << manual[i].exam << "\n";
-			file << "\trequired:\t" << manual[i].reqd << "\n";
-			file << "\tsuitable:\t" << manual[i].good << "\n";
-			file << "\n";
-			file << manual[i].help;
-		}
-	}
-
-	return 1;
-}
-/******************************************************************************/
-int InputRead::print_manual_output(std::ofstream &file)
-{
-	file << "#####################################################################\n";
-	file << "###                                                               ###\n";
-	file << "###   Output Generated                                            ###\n";
-	file << "###                                                               ###\n";
-	file << "#####################################################################\n";
-	file << "\n";
-
-	file << "During program execution:\n\n";
-	file << "   - Information about each point processed is echoed to the command window.\n";
-	file << "   - The point identifier appears first, followed by the [x,y,z] location.\n";
-	file << "   - The search status appears next.\n";
-	file << "      - Point_Good = successful search convergence within the max displacement.\n";
-	file << "      - Range_Fail = max displacement exceeded; consider increasing the step_max parameter.\n";
-	file << "      - Convg_Fail = maximum iterations exceeded; consider increasing subvol_size &/or npts.\n";
-	file << "\n";
-	file << "   - The magnitude of the objective function value at the end of the search is listed as obj=.\n";
-	file << "      - For obj_function = ssd and zssd the value is relative, depending on subvol_npts and voxel values.\n";
-	file << "      - For obj_function = nssd and znssd the value is scaled between 0 and 1, with zero a perfect match.\n";
-
-	file << "   - The point [x,y,z] displacement is listed next for successful searches.\n";
-	file << "\n";
-	file << "Following program execution:\n\n";
-	file << "   - The STATUS file (.stat) contains: \n";
-	file << "      - An echo of the input file used to control program execution.\n";
-	file << "      - Information about the point cloud, dvc program version, and run date/time.\n";
-	file << "      - Search statistics and timing.\n";
-	file << "\n";
-	file << "   - The DISPLACEMENT file (.disp) contains: \n";
-	file << "      - A tab-delimited text file of the dvc results.\n";
-	file << "      - A header line appears first identifying columns:\n\n";
-	file << "        n x y z status objmin u v w\n\n";
-	file << "      - n = point label\n";
-	file << "      - x y z = point location within the reference volume\n";
-	file << "      - status = search outcome: 0 = successful (no error), -1 = Range_Fail, -2 = Convg_Fail\n";
-	file << "      - objmin = residual objective function magnitude at the end of the search\n";
-	file << "      - u v w = point displacement: [location in target volume] - [location in reference volume]\n";
-	file << "\n";
-	file << "   - In general DVC is run with 6 or 12 search degrees of freedom.\n";
-	file << "      - These settings utilize subvolume rotation and strain information, but values are not included in .disp.\n";
-	file << "      - More reliable strain and rotation values reguire evaluation of point neighborhoods.\n";
-	file << "      - This allows adjustment of neighborhood size and generates more accurate displacement gradient information.\n";
-	file << "\n";
-	file << "   - The companion 'strain' program manages post-processing of 'dvc' .disp output files. \n";
-	file << "      - The basis of analysis is fitting 3D polynomial functions to point neighborhoods.\n";
-	file << "      - Gradients of the best-fit polynomials are used to form displacement gradient tensors.\n";
-	file << "      - Engineering and Lagrangian strain tensors and displacement gradient tensors are avaialble for output.\n";
-	file << "      - The analysis approach is useful for typical 'compact' point clouds with good connectivity.\n";
-	file << "      - Point clouds based on complex microstructures or fibre arrangements may need other post-processing methods.\n";
-	file << "\n";
-
-
-	return 1;
-}
-/******************************************************************************/
-/******************************************************************************/
-/*  HTML manual                                                               */
-/*                                                                            */
-/*  print_manual_html() writes the complete manual as a single, self-contained */
-/*  HTML file (no external CSS/JS). It uses the same key_word_help data in    */
-/*  the manual vector as the text manual, so keywords only need to be          */
-/*  maintained in one place (the InputRead constructor).                      */
-/*                                                                            */
-/*  For a PDF: open the .html file in a browser and Print -> Save as PDF.      */
-/*  Print styling hides the navigation sidebar and avoids splitting keywords. */
-/******************************************************************************/
+/**********************************************************************************/
+/**********************************************************************************/
+/*  HTML manual                                                                   */
+/*                                                                                */
+/*  print_manual_html() writes the complete manual as a single, self-contained    */
+/*  HTML file (no external CSS/JS). It uses the a key_word_help vector so         */    
+/*  keywords only need to be maintained in one place (the InputRead constructor). */
+/*                                                                                */
+/*  For a PDF: open the .html file in a browser and Print -> Save as PDF.         */
+/*  Print styling hides the navigation sidebar and avoids splitting keywords.     */
+/**********************************************************************************/
 namespace {
 
 struct ManualPool {
@@ -1570,6 +1737,226 @@ const ManualPool manual_pools[] = {
 	{"opt_tune", "Optimization tuning", "OPTIONAL parameters for tuning and refining the template matching process."}
 };
 const int num_manual_pools = sizeof(manual_pools) / sizeof(manual_pools[0]);
+
+// add sections with indents - 
+// Extra sections appended to the end of the HTML manual, independent of the
+// keyword (k.word) data.
+//   level : 2 = section (bold link in the sidebar, <h2> heading)
+//           3 = subsection of the section above it (indented gray link like
+//               the keywords, shown as a card like a keyword entry)
+//   id    : anchor name, used as href="#id" (letters, digits, - and _ only)
+//   title : text for the sidebar link and the heading
+//   body  : raw HTML for the content (may be empty)
+struct ManualExtra {
+	int level;
+	const char *id;
+	const char *title;
+	const char *body;
+};
+
+const ManualExtra manual_extras[] = {
+	{2, "post", "Post-processing", R"html(
+
+	The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) 
+	Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. 
+	The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) 
+	Further processing of the basic data can be very project-specific and is therefore encapsulated into a separate analysis stage. 
+
+	)html"},
+
+	{3, "post-strain-program", "Strain program", R"html(
+
+			The most common post-processing step is strain calculation, and an executable is provided along with <i>dvc</i> for that purpose.  
+			The <i>strain</i> program is driven by command-line arguments as explained below, but the basic run process is very simple. 
+			From the same terminal window as the <i>dvc</i> run just follow the word <i>strain</i> with the name of a standard <i>dvc</i> output file: 
+
+			<pre><code>strain my_project.disp.csv </code></pre>
+
+			This will calculate strain for each cloud point under a set of default conditions, and generate an output file. 
+			A more complex example includes both strain calculation directives and output requests:
+
+			<pre><code>strain my_project.disp.csv -sw 30 -t 0.08 -r -Loff -H -R</code></pre>
+
+			To fully understand the strain calculation and generate useful results, some background information is required. 
+
+			<ul>
+				<li>
+					Strain as used here is a 3D tensor quantity defined within the context of continuum mechanics. 
+					This has point cloud implications. A relatively dense and connected cloud works best. 
+				</li>
+				<li>
+					Spatial gradients of displacement vector components form the basis of strain calculations. 
+					With displacements only available at discrete cloud points, local point neighborhoods are required for determing gradients.
+				</li>
+				<li>
+					A neighborhood is formed around each point in the cloud by distance-based sorting and selecting nearby points. 
+					Number of points in the neighborhood, the <i>strain window</i> size <i>sw</i>, is an important user-defined variable. 
+				</li>
+				<li>
+					Displacement vector components of points within the strain window are fit to a 3D polynomial through a least-squares process. 
+					Gradients of the displacement components are defined as derivatives of the polynomial at the location of the base cloud point. 
+				</li>
+				<li>
+					An added benefit of the polynomial fitting process is the ability to sample the polynomial for displacement components. 
+					This generates a smoothed representation of the original data. 
+				</li>
+			</ul>
+	        
+			<p>
+				Two sets of command line arguments control the process: 1) management of the strain windows, and 2) selection of output data.
+			</p>
+
+	)html"},
+
+	{3, "post-strain-window", "Strain window settings", R"html(
+
+		<p>
+		</p>
+
+		<table class=\grid\><tr><th>Argument</th><th>Description</th></tr>
+			<tr><td><code>-sw 30</code></td><td>set strain window size to 30 points (default = 25, min = 10, max = 125)</td></tr>
+			<tr><td><code>-t 0.1</code></td><td>eliminate window points with objmin above 0.1 (default = 1.0, pass all converged points)</td></tr>
+			<tr><td><code>-r</code></td><td>refill strain window to sw if points were eliminated (default is no refill)</td></tr>
+		</table>
+
+		<p>
+			Strain window size shares characteristics with other neighborhood calculations. Small is noisier but with better spatial resolution. 
+			Large is smoothed but with poorer spatial resolution. Much depends on the point cloud spacing and quality of the image volumes. 
+			Strain window point number can seem large in 3D: a relatively modest 3x3x3 neighborhood is 27 points, 5x5x5 is 125. 
+			The minimum <i>sw</i> is the number of coefficients in the volumetric polynomial, which is 10, but as with all function fits more is better. 
+			The maximum value is set somewhat arbitrarily at 125 to manage the data overhead for large point clouds. 
+		</p>	
+
+		<p>
+			Filling the strain window requires some care. Any points within the local neighborhood that do not converge are eliminated. 
+			Any points with relatively high objmin values (a match quality metric) may represent outliers and are best eliminated as well. 
+			The threshold option can be used to filter out the influence of those points on the polynomial fitting process. 
+			That leaves the issue of whether to look further into the point cloud and 'refill' to the specified <i>sw</i> value. 
+			This increases the effective strain window size, but maintains data support for the fitting process.
+		</p>		
+
+	)html"},
+	
+	{3, "post-output-options", "Output options", R"html(
+
+		<p>
+		</p>
+
+		<table class=\grid\><tr><th>Argument</th><th>Output File</th></tr>
+			<tr><td><code>-B</code></td><td>.Biot.csv - rotation invariant engineering strain tensor</td></tr>
+			<tr><td><code>-L</code></td><td>.GrLa.csv - Green-Lagrange finite strain tensor (default output, suppress with -Loff)</td></tr>
+			<tr><td><code>-H</code></td><td>.Henc.csv - Hencky  logarithmic (true) strain tensor</td></tr>
+			<tr><td><code>-D</code></td><td>.Dgrd.csv - displacement gradient tensor</td></tr>
+			<tr><td><code>-R</code></td><td>.Rvec.csv - local material rotation axis and magnitude</td></tr>
+			<tr><td><code>-A</code></td><td> output all available kinematic quantities</td></tr>
+		</table>
+
+		<p>
+			Each output request creates a separate file with the extension shown. Data is generated for each point in the cloud. 
+			Strain tensors are symmetric. The six unique tensor components are listed along with the three principal values. 
+			The displacement gradient is not symmetric, and all nine components are listed. 
+			Local material rotation is documented as components of orientation vectors scaled in radians and unit vectors with angle in degrees. 
+		</p>
+		
+	)html"},
+
+	{3, "post-output-files", "Output descriptions", R"html(
+
+		<p>The <strong>strain output </strong> files are .csv formatted with each data row representing a cloud point.</p><ul>
+
+		<li>All of the output files contain the following data columns.</li></ul>
+
+		<pre><code>n x y z u_fit v_fit w_fit pts_in_sw sw_size </code></pre>
+		
+		<table class=\grid\><tr><th>Column</th><th>Meaning</th></tr>
+		<tr><td><code>n</code></td><td>point label</td></tr>
+		<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>
+		<tr><td><code>u_fit v_fit w_fit</code></td><td>point displacement (voxels) calculated from the strain window polynomial fit</td></tr>
+		<tr><td><code>pts_in_sw</code></td><td>number of points used for the polynomial fit</td></tr>
+		<tr><td><code>sw_size</code></td><td>an estimate of the strain window size in voxels</td></tr>
+		</table>
+		
+		<p>
+			Point labels and x,y,z coordinates are the same as the .disp.csv file, included here for convenience when using files for subsequent processing. 
+			The fit displacement components provide an alternative to the direct dvc output quantities. 
+			They are derived from the same functional fit as the strain and rotation variables, and therefore share a similar spatial smoothing. 
+		</p>
+		<p>
+			Number of points in the strain window is generally the same as the <i>sw</i> setting, but can vary depending on the dvc output and <i>strain</i> settings. 
+			Windows will contain fewer points if there are unconverged dvc points or if <i>-t</i> is used to exclude points with high objmin values. 
+			The <i>-r</i> argument will restore the number of points back toward <i>sw</i> if possible. 
+			Strain window size is estimated here as the cube root of the strain window point bounding box volume.
+			Size of the strain window is important in calculating virtual strain gauge (VSG) size: 	
+		</p>
+		<p>	
+			<i>VSG = sw_size + subvol_size</i>. 
+		</p>
+		
+		<li>All of the output files with strain data (Biot, GrLa, Henc) contain additional data columns.</li></ul>
+		<li>These are the six unique strain tensor components and principal values.</li></ul>
+		
+		<pre><code>exx eyy ezz exy eyz exz ep1 ep2 ep3 </code></pre>
+
+		<li>The displacement gradient tensor file (Dgrd) contains all nine unique tensor component values.</li></ul>
+		
+		<pre><code>ux uy uz vx vy vz wx wy wz </code></pre>
+
+		<li>The local material rotation file (Rvec) contains two representations of an oriented rotation vector.</li></ul>
+		<li>The first (r) is x,y,z components of a rotation vector scaled to the rotation magnitude in radians.</li></ul>
+		<li>The second is a unit vector (n) with rotation magnitude in degrees listed as a separate column (deg).</li></ul>
+
+		<pre><code>rx ry rz nx ny nz deg </code></pre>		
+
+	)html"},
+
+	{2, "references", "References", R"html(
+
+		<li>Most recent ...</li></ul>
+
+		<ol>
+			<li>Newham, E., Parmenter, A.L., Chen, J., Disney, C.M., Snow, T., Brunet, J., Vinci, V., Drnec, J., Sherratt, M.J., 
+			Hoyland, J.A., Bellier, A., Bay, B.K., Terrill, N., Lee, P.D., Gupta, H.S., Multimodal X-ray Imaging Reveals Hierarchical Fibre Mechanics. 
+			<em>Nature</em> 659 (2026) 91&ndash;99. 
+			<a href="https://doi.org/10.1038/s41586-026-11148-5" target="_blank" rel="noopener">https://doi.org/10.1038/s41586-026-11148-5</a></li>
+		</ol>		
+
+		<li>Milestone DVC articles ...</li></ul>
+
+		<ol>
+			<li>Bay, B.K., Smith, T.S., Fyhrie, D.P., Saad, M., Digital Volume Correlation: Three-dimensional Strain Mapping Using X-ray Tomography. 
+			<em>Experimental Mechanics</em> 39 (1999) 217&ndash;226. 
+			<a href="https://doi.org/10.1007/BF02323555" target="_blank" rel="noopener">https://doi.org/10.1007/BF02323555</a></li>
+		</ol>
+		<ol>
+			<li>Bay B.K., Methods and Applications of Digital Volume Correlation. 
+			<em>Journal of Strain Analysis for Engineering Design</em> 43 (2008) 745&ndash;760. 
+			<a href="https://doi.org/10.1243/03093247JSA436" target="_blank" rel="noopener">https://doi.org/10.1243/03093247JSA436</a></li>
+		</ol>
+		<ol>
+			<li>Madi, K., Staines, K.A., Bay, B.K., Javaheri, B., Geng, H., Bodey, A.J., Cartmell, S., Pitsillides, A.A., Lee, P.D., 
+			In situ Characterization of Nanoscale Strains in Loaded Whole Joints via Synchrotron X-ray Tomography. 
+			<em>Nature Biomedical Engineering</em> 4 (2019) 343&ndash;354. 
+			<a href="https://doi.org/10.1038/s41551-019-0477-1" target="_blank" rel="noopener">https://doi.org/10.1038/s41551-019-0477-1</a></li>
+		</ol>
+		<ol>
+			<li>Disney, C.M., Mo, J., Eckersley, A., Bodey, A.J., Hoyland, J.A., Sherratt, M.J., Pitsillides, A.A., Lee, P.D., Bay, B.K., 
+			Regional Variations in Discrete Collagen Fibre Mechanics Within Intact Intervertebral Disc Resolved 
+			Using Synchrotron Computed Tomography and Digital Volume Correlation. 
+			<em>Acta Biomaterialia</em> 138 (2022) 361&ndash;374. 
+			<a href="https://doi.org/10.1016/j.actbio.2021.10.012" target="_blank" rel="noopener">https://doi.org/10.1016/j.actbio.2021.10.012</a></li>
+		</ol>
+		<ol>
+			<li>Disney, C.M., Vo, N.T., Bodey, A.J., Bay, B.K., Lee, P.D., 
+			Image Quality and Scan Time Optimisation for <i>in situ</i> Phase Contrast X-Ray Tomography of the Intervertebral Disc. 
+			<em>Journal of the Mechanical Behavior of Biomedical Materials</em> 138 (2023) 105579. 
+			<a href="https://doi.org/10.1016/j.jmbbm.2022.105579" target="_blank" rel="noopener">https://doi.org/10.1016/j.jmbbm.2022.105579</a></li>
+		</ol>
+
+	)html"}
+};
+const int num_manual_extras = sizeof(manual_extras) / sizeof(manual_extras[0]);
+// - add sections with indents
+
 
 std::string html_trim(const std::string &s)
 {
@@ -1820,66 +2207,170 @@ int InputRead::print_manual_html(std::ofstream &file)
 				     << html_escape(manual[i].word) << "</a></li>\n";
 		file << "</ul></li>\n";
 	}
+
+// add sections with indents -
 	file << "<li><a href=\"#example\">Example input file</a></li>\n"
-	        "<li><a href=\"#output\">Output generated</a></li>\n"
-			"<li><a href=\"#postprocessing\">Post-processing</a></li>\n"
-	        "</ul>\n</nav>\n<main>\n";
+	        "<li><a href=\"#output\">Output generated</a></li>\n";
+
+	// extra sections: level 3 entries nest under the level 2 entry above them,
+	// so they pick up the same indented gray style as the keyword links
+	bool in_sub = false;
+	for (int x = 0; x < num_manual_extras; x++) {
+		const ManualExtra &e = manual_extras[x];
+		if (e.level == 3) {
+			if (!in_sub) { file << "<ul>\n"; in_sub = true; }
+			file << "<li><a href=\"#" << e.id << "\">" << html_escape(e.title) << "</a></li>\n";
+		} else {
+			if (x > 0) file << (in_sub ? "</ul></li>\n" : "</li>\n");
+			in_sub = false;
+			file << "<li><a href=\"#" << e.id << "\">" << html_escape(e.title) << "</a>\n";
+		}
+	}
+	if (num_manual_extras > 0) file << (in_sub ? "</ul></li>\n" : "</li>\n");
+
+	file << "</ul>\n</nav>\n<main>\n";
+// - add sections with indents
+
+
 
 	// ---------- introduction ----------
-	/*file << "<h1 id=\"intro\">A brief manual for the DVC executable</h1>\n"
+
+	file << "<h1 id=\"intro\">A brief manual for the <i>dvc</i> executable</h1>\n"
 	        "<p class=\"meta\">Version " << html_escape(ver.str())
 	     << " &middot; Revised " << html_escape(rev.str())
 	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
-	        "<p>The dvc code is written in C++ with portability and simple compilation in mind. "
-	        "At present only a single external library (Eigen) is used for sparse matrix interpolation calculations.</p>\n"
-	        "<p>Compilation is Makefile controlled. To do a complete rebuild:</p>\n"
-	        "<ol><li>Delete all object (<code>.o</code>) files in <code>/include/objects</code>.</li>\n"
-	        "<li>Enter <code>make</code> from a terminal window in the main distribution directory.</li></ol>\n";*/
-
-	file << "<h1 id=\"intro\">A brief manual for the iDVC executable</h1>\n"
-	        "<p class=\"meta\">Version " << html_escape(ver.str())
-	     << " &middot; Revised " << html_escape(rev.str())
-	     << " &middot; Created 1 Jan 2014<br>Copyright 2014 Brian K. Bay (computer code and all documentation)</p>\n"
-		 	"<p>"
-	        "The iDVC software was inspired by a need for research-level code with access to internal methods and settings. "
-			"Additional objectives were established to facilitate accessibility and portability among research groups: "
-			"c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. "
-	        "</p>\n"
-		 	"<p>"
-	        "An early and continuing area of focus is biological tissues evaluated through <i>in situ</i> x-ray tomography. "
-	        "Challenges within that application environment have driven development of the overall algorithmic approach and broadened its applicability. "
-			"Beginning from a highly generalized context has provided flexibility in managing a range of experimental scenarios. "
-			"</p>\n"
-			"The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. "
-			"Test samples are often geometrically complex and benefit from microstructure-based point clouds as opposed to regular grid regions of interest. "
-			"Large displacement and strain fields are frequently encountered and inspired a wavefront/neighborhood approach to point cloud processing. "
-			"These requirements translated into code that focuses on the basic DVC subvolume tracking process with limited assumptions about sample response. "
-	        "</p>\n";
-
+		 	R"html(
+			<p>
+	        The <i>dvc</i> software was inspired by a need for research-level code with access to internal methods and settings. 
+			Additional objectives were established to facilitate accessibility and portability among research groups: 
+			c++ development environment, low memory overhead, CPU instead of GPU basis, and open-access. 
+			This manual covers set-up and use of the "core" code that runs as a command line executable. 
+	        </p>
+			<p>
+			There was also a significant need among users, particularly those new to DVC, for an interactive graphical user interface. 
+			That effort, led by Edoardo Pasca (UKRI-STFC) and with contributions by many others, has evolved into the iDVC code:
+			<code><a href="https://tomographicimaging.github.io/iDVC/" target="_blank" rel="noopener">https://tomographicimaging.github.io/iDVC/</a></code>
+			</p>
+			<p>
+			The development of the iDVC code and contributions to the dvc executable were supported by the 
+			<code><a href="https://www.ccpi.ac.uk" target="_blank" rel="noopener">CCP in Tomographic Imaging - CCPi</a></code>
+			 (ESPSRC grants
+			 <code><a href="https://gtr.ukri.org/find-research-and-innovation/project/ef967198-6db3-4432-81c1-57234269da69" target="_blank" rel="noopener">EP/T026677/1</a></code>, 
+			 <code><a href="https://gtr.ukri.org/find-research-and-innovation/project/a82b04cd-0bd4-4b4b-9d27-027470c5be7b" target="_blank" rel="noopener">EP/J010456/1</a></code>, and 
+			 <code><a href="https://gtr.ukri.org/find-research-and-innovation/project/23322ea9-2056-49f9-bfbb-917455c7960b" target="_blank" rel="noopener">EP/M022498/1</a></code>) and by the STFC through the 
+			 <code><a href="https://www.adalovelacecentre.ac.uk" target="_blank" rel="noopener">Ada Lovelace Centre</a></code>.
+			</p>
+		 	<p>
+	        The <i>dvc</i> code structure and process is inspired by a continuing focus on biological tissues evaluated through <i>in situ</i> x-ray tomography. 
+	        Challenges within that application environment have driven development of the overall algorithmic approach and broadened its applicability. 
+			Beginning from a highly generalized context has provided flexibility in managing a range of material textures and experimental scenarios. 
+			</p>
+			The code at present is strictly local DVC as global constraint models are not always clear for complex, hierarchical hybrid materials. 
+			Test samples are often geometrically complex and benefit from microstructure-based point clouds as opposed to regular grid regions of interest. 
+			Large displacement and strain fields are frequently encountered and motivated a wavefront/neighborhood approach to point cloud processing. 
+			These requirements translated into code that focuses on the basic DVC subvolume tracking process with limited assumptions about sample response. 
+	        </p>
+			)html";
 
 	file << "<h2 id=\"running\" class=\"nobreak\">Running the code</h2>\n"
+
+		 	R"html(
+
+			<h3>Image data locality</h3>
+
+			<p>
+			Before running the <i>dvc</i> code it is important to properly manage the storage of volumetric image data.
+			Input volumes are typically much larger than the computer's memory, so they are not loaded all at once. 
+			Instead, the program reads many small pieces of each volume while it runs, from tens of thousands to millions of separate reads. 
+			Every read carries a small delay, and that delay depends on where the file is stored. 
+			On a computer's internal SSD the delay is a fraction of a millisecond. 
+			On a network drive or cloud service it can be 100 to 1,000 times longer. 
+			Multiplied over millions of reads, this can turn a run that takes minutes into one that takes many hours.
+	        </p>
+
+			<p>
+			For this reason, input data must be stored on a fast drive physically attached to the computer running the analysis, 
+			ideally the internal SSD or an external SSD connected by USB-C or Thunderbolt. 
+			Do not run analyses on data stored on network drives, shared server folders, or cloud-synced folders (iCloud Drive, Dropbox, OneDrive, Google Drive), 
+			even if they appear as normal folders on your computer. If your data lives in one of these places, copy it to a local drive before starting a run.
+			</p>
+
+			<h3>Image data format</h3>
+
+			<p>
+			The combination of large image volumes and I/O-based versus DRAM-based data access leads to preferred data storage formats. 
+			Many volumetric imaging codes generate folders of individual tif (or similar) files. These are convenient for quick access to individual 
+			slices, but are not conducive to retrieval of volume data blocks as these cross between adjacent individual files. 
+			The most efficient process is storage of image data in (headerless) raw format or single-header formats with raw data following. 
+			Both are supported via the dvc_input file. 
+			</p>
+
+			<p>
+			A common practice with individual tif files (or other formats) is importing as a stack in ImageJ/Fiji (or similar) then 
+			exporting as a raw file. Including the slice dimensions (x,y) and number of slices (z) in the raw file name is useful; these become 
+			vol_wide, vol_high, and vol_tall within the dvc_input file. We are currently working to support .npy and .tif files to alleviate
+			the need to track image data storage details. 
+			</p>
+
+			<h3>The command line</h3>
+
+			<p>
+			To run the code open a terminal window (or similar) and navigate to a convenient directory location.
+			With an input file in the directory or with a known path the code is very simple to run, see 'Normal code execution' in the table below. 
+			There is additional help available from the command line.
+			</p>
+
+			)html"			
+
+			// table format is not as good when tucked into the R"html()html" pair, seperated out into traditional style
 	        "<table class=\"grid\">\n<tr><th>Command</th><th>Action</th></tr>\n"
 	        "<tr><td><code>dvc</code></td><td>List command line options in the terminal window</td></tr>\n"
 	        "<tr><td><code>dvc help</code></td><td>Send a brief help message to the terminal window</td></tr>\n"
 	        "<tr><td><code>dvc example</code></td><td>Print an example dvc_input file</td></tr>\n"
-	        "<tr><td><code>dvc manual</code></td><td>Print this manual</td></tr>\n"
+	        "<tr><td><code>dvc manual</code></td><td>Print this manual, double click for access in a browser</td></tr>\n"
 	        "<tr><td><code>dvc form</code></td><td>Print an HTML form (DVC_input_builder.html) for building a dvc_input file</td></tr>\n"
-	        "<tr><td><code>dvc dvc_input</code></td><td>Normal code execution</td></tr>\n"
+	        "<tr><td><code>dvc dvc_input</code></td><td>Normal code execution, use file name if in the working directory or path/dvc_input</td></tr>\n"
 	        "</table>\n";
 
 	file << "<h2 id=\"input\" class=\"nobreak\">The input file</h2>\n"
-	        "<p>The file <code>dvc_input</code> is the key to running a digital volume correlation analysis. "
-	        "It is a simple text file that contains <strong>required keywords</strong> and <strong>parameters</strong>. "
-	        "The code parses this file looking for required keywords and appropriate parameter values.</p>\n"
-	        "<p>Feel free to place comments within your input files. Any line beginning with a <code>#</code> "
-	        "character is ignored, as is the portion of any line following a <code>#</code>.</p>\n"
-	        "<p>Some keywords are only required if other keywords have particular values. "
-	        "These <strong>conditional keywords</strong> are ignored if they are left within an input file but are not needed.</p>\n"
-	        "<p>The keywords are organized into " << num_manual_pools << " groups:</p>\n"
+	
+			R"html(
+	        <p>
+			The file <code>dvc_input</code> is the key to running a digital volume correlation analysis. 
+	        It is a simple text file containing <strong>keywords</strong> and <strong>parameter values</strong>. 
+	        The code parses this file to set run control parameters and enforce input requirements. Once an input file is established 
+			use a text editor to make changes. 
+			</p>
+			<p>
+			There are options for generating an initial input file. Entering 'dvc example' on the command line will place a full
+			input file in your working directory with placeholder settings. The 
+			)html"
+			
+			"<a href=\"#example\">Example input file</a>" // put links outside of the R"html()html" pair
+			
+			R"html(
+			section of this manual also contains 
+			a file that can be copied into a text editor. Modify these to your particular needs. 
+			Or, enter 'dvc form" to generate DVC_input_builder.html, a dialog with file browse, drop-down list, and data entry options. 
+			The builder limits selections to viable options and performs range checking on entered data values. 
+			The input file is dynamically displayed and can be saved to text when complete. 
+			</p>
+	        <p>
+			Feel free to place comments within your input files. Any line beginning with #, or the portion of any line following #, is ignored.
+			Some keywords are <strong>required</strong>, some are <strong>optional</strong>, and others are <strong>conditional</strong> 
+			- required depending on other keyword settings. Details for all keywords are provided in the manual sections that follow. 
+			If keywords are missing or input values are in error a message is displayed in the terminal window.
+			</p>
+			)html";
+
+	file << "<p>The keywords are organized into " << num_manual_pools << " groups:</p>\n"
 	        "<table class=\"grid\">\n<tr><th>Group</th><th>Contents</th></tr>\n";
+
 	for (int p = 0; p < num_manual_pools; p++)
 		file << "<tr><td><a href=\"#grp-" << manual_pools[p].id << "\"><code>" << manual_pools[p].id
 		     << "</code></a></td><td>" << manual_pools[p].desc << "</td></tr>\n";
+
+
 	file << "</table>\n"
 	        "<p>Each keyword entry below lists:</p>\n"
 	        "<dl class=\"facts\">"
@@ -1891,10 +2382,17 @@ int InputRead::print_manual_html(std::ofstream &file)
 	        "</dl>\n<p>followed by further details on the functionality associated with the keyword and how to set its parameters.</p>\n";
 
 	// ---------- keyword groups ----------
+//	for (int p = 0; p < num_manual_pools; p++) {
+//		file << "<h2 id=\"grp-" << manual_pools[p].id << "\">" << manual_pools[p].title
+//		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+//		     << "<p class=\"group-desc\">" << manual_pools[p].desc << "</p>\n";
+
 	for (int p = 0; p < num_manual_pools; p++) {
 		file << "<h2 id=\"grp-" << manual_pools[p].id << "\">" << manual_pools[p].title
-		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+//		     << " <small><code>" << manual_pools[p].id << "</code></small></h2>\n"
+		     << " <small><code>" << "</code></small></h2>\n"	// keeps format in place but without writing manual_pools[p].id explicitly 
 		     << "<p class=\"group-desc\">" << manual_pools[p].desc << "</p>\n";
+
 
 		for (size_t i = 0; i < manual.size(); i++) {
 			const key_word_help &k = manual[i];
@@ -1955,34 +2453,23 @@ int InputRead::print_manual_html(std::ofstream &file)
 	// ---------- output ----------
 	file << "<h2 id=\"output\">Output generated</h2>\n"
 
-//	        "<h3>During program execution</h3>\n<ul>\n"
 			"<h3>During program execution</h3>"
 
 	        "<p>Information about each point processed is echoed to the command window, e.g.:</p><ul>"
-			"<li>5/10  6463  x= 283.23 y= 603.92 z= 257.31 Point_Good (par in 7)  obj= 0.063045  u= -2.25 v= 3.84 w= 4.15</li></ul>"
+			"<li>5/10  6463  x= 283.23 y= 603.92 z= 257.31 Point_Good (step in 7)  obj= 0.063045  u= -2.25 v= 3.84 w= 4.15</li></ul>"
 
 	        "<p>Point count / num_points_to_process is followed by the point identifier and [x,y,z] location.</p>"
-/*
-	        "<li>The search status appears next:\n<table class=\"opts\">\n"
-	        "<tr><td><code>Point_Good</code></td><td>successful search convergence within the max displacement</td></tr>\n"
-	        "<tr><td><code>Range_Fail</code></td><td>max displacement exceeded; consider increasing the "
-	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
-	        "<tr><td><code>Convg_Fail</code></td><td>maximum iterations exceeded; consider increasing "
-	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and/or "
-	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></td></tr>\n"
-	        "</table></li>\n"
-*/
+
 	        "<p>The search status appears next:</p><ul>"
 	        "<li>Point_Good: successful search convergence</li>"
 	        "<li>Range_Fail: iteration reached perimeter of search range, consider increasing <a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a></li>"
-//	        "<a class=\"kwref\" href=\"#kw-step_max\"><code>step_max</code></a> parameter</td></tr>\n"
-	        "<li>Convg_Fail: maximum iterations exceeded, re-evaluate "
+	        "<li>Convg_Fail: maximum iterations exceeded, re-evaluate point cloud density, "
 	        "<a class=\"kwref\" href=\"#kw-subvol_size\"><code>subvol_size</code></a> and "
 	        "<a class=\"kwref\" href=\"#kw-subvol_npts\"><code>subvol_npts</code></a></li></ul>"			
 
 			"<p>Convergence status is further clarified by listing the controlling criteria and the number of iterations, e.g.</p><ul>"
-			"<li>(obj in 6) = objective function change fell below threshold in 6 iterations</li>"
-			"<li>(par in 7) = parameter vector change fell below threshold in 7 iterations</li></ul>"
+			"<li>(cost in 6) = objective function change (<a class=\"kwref\" href=\"#kw-cost_tol\"><code>cost_tol</code></a>) fell below threshold in 6 iterations</li>"
+			"<li>(step in 7) = parameter vector change (<a class=\"kwref\" href=\"#kw-step_tol\"><code>step_tol</code></a>) fell below threshold in 7 iterations</li></ul>"
 
 	        "<p>The magnitude of the objective function value at the end of the search is displayed as obj.</p><ul>"
 	        "<li>For objective functions ssd and zssd the value is relative, depending on subvolume size and voxel values</li>"
@@ -1992,39 +2479,41 @@ int InputRead::print_manual_html(std::ofstream &file)
 
 	file << "<h3>Following program execution</h3>"
 
-	        "<p>The <strong>status file</strong> (<code>.stat</code>) contains:</p><ul>"
+	        "<p>The <strong>status file</strong> (<code>.stat.txt</code>) contains:</p><ul>"
 	        "<li>An echo of the input file used to control program execution.</li>"
 	        "<li>Information about the point cloud, dvc program version, and run date/time.</li>"
 	        "<li>Search statistics and timing.</li></ul>"
 
-	        "<p>The <strong>displacement file</strong> (<code>.disp</code>) is a tab-delimited text file of the dvc results.</p><ul>"
+	        "<p>The <strong>displacement file</strong> (<code>.disp.csv</code>) is a comma seperated variable file of the dvc results.</p><ul>"
+
 	        "<li>A header line appears first followed by data for each cloud point.</li></ul>"
-	        "<pre><code>n x y z status objmin u v w </code></pre>\n"
+
+	        "<pre><code>n x y z status convg niter objmin u v w </code></pre>\n"
+
 	        "<table class=\"grid\">\n<tr><th>Column</th><th>Meaning</th></tr>\n"
-	        "<tr><td><code>n</code></td><td>the point identifier</td></tr>\n"
-	        "<tr><td><code>x y z</code></td><td>the point location within the reference volume</td></tr>\n"
-	        "<tr><td><code>status</code></td><td>the search outcome: 0 = Point_Good (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
-	        "<tr><td><code>objmin</code></td><td>the objective function magnitude at the end of the search</td></tr>\n"
-	        "<tr><td><code>u v w</code></td><td>the point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
+	        "<tr><td><code>n</code></td><td>point label</td></tr>\n"
+	        "<tr><td><code>x y z</code></td><td>point location within the reference volume (voxels)</td></tr>\n"
+	        "<tr><td><code>status</code></td><td>search outcome: 0 = Point_Good (no error), -1 = Range_Fail, -2 = Convg_Fail</td></tr>\n"
+			"<tr><td><code>convg</code></td><td>metric that determined convergence: cost (<a class=\"kwref\" href=\"#kw-cost_tol\"><code>cost_tol</code></a>) or step (<a class=\"kwref\" href=\"#kw-step_tol\"><code>step_tol</code></a>)</td></tr>\n"
+			"<tr><td><code>niter</code></td><td>number of iterations required for convergence, max is set by <a class=\"kwref\" href=\"#kw-max_iter\"><code>max_iter</code></a></td></tr>\n"
+	        "<tr><td><code>objmin</code></td><td>objective function magnitude at the end of the search</td></tr>\n"
+	        "<tr><td><code>u v w</code></td><td>point displacement: [location in target volume] &minus; [location in reference volume]</td></tr>\n"
 	        "</table>\n"
 
 			"<p>The dvc executable does not calculate strain or other kinematic quantities. That is managed as post-processing.</p>\n";
 
-	// ---------- post-processing ----------
 
-	file << "<h2 id=\"postprocessing\">Post-processing</h2>\n"
-	        "<p>"
-			"The overall workflow implemented here is Pre - Process - Post, the familiar strategy of most analysis codes (e.g. FEA, CFD.) "
-	        "Pre-processing is creation of the dvc input file identifying input data and setting run control parameters. "
-	        "The input file is handed off to the core code that runs the dvc process and generates basic output variables (displacements) and diagnostics (status, objmin.) "
-			"Further processing of the basic data can be very project-specific and is therefore encapsulated into a seperate analysis stage. "
-			"</p>\n"
-
-	        "<p>"
-	        "</p>\n"
-
-	        "<p>"
-	        "</p>\n";
+	// - add sections with indents - post-processing is in struct ManualExtra
+	// ---------- extra sections ----------
+	for (int x = 0; x < num_manual_extras; x++) {
+		const ManualExtra &e = manual_extras[x];
+		if (e.level == 3)
+			file << "<section class=\"kw\" id=\"" << e.id << "\">\n<h3>"
+			     << html_escape(e.title) << "</h3>\n" << e.body << "</section>\n";
+		else
+			file << "<h2 id=\"" << e.id << "\">" << html_escape(e.title) << "</h2>\n" << e.body << "\n";
+	}
+	// add sections with indents -
 
 	file << "</main>\n</div>\n</body>\n</html>\n";
 
@@ -2434,17 +2923,6 @@ int InputRead::echo_input(RunControl *run)
 	sta_file << "\n" << "running under dvc code version: " << VERSION << "\n\n";
 
 	return 1;
-
-	/*
-	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
-	if(run->subvol_thresh == "on")
-	{
-		sta_file << kwh_gray_thresh_min.word << "\t" << run->gray_thresh_min  << "\n";
-		sta_file << kwh_gray_thresh_max.word << "\t" << run->gray_thresh_max  << "\n";
-		sta_file << kwh_min_vol_fract.word << "\t" << run->min_vol_fract << "\n";
-	}
-	sta_file << "\n";
-	*/
 }
 /******************************************************************************/
 int InputRead::append_time_date(std::string fname, std::string label, char* dt)
@@ -2455,8 +2933,12 @@ int InputRead::append_time_date(std::string fname, std::string label, char* dt)
 
 	return 1;
 }
+/******************************************************************************/
 int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
 {
+
+	//std::cout << std::endl << "this one ..." << std::endl;
+
 	std::ofstream sta_file(fname.c_str(), std::ios_base::out | std::ios_base::app);
 
 	//doesn't compile in gcc version < 5
@@ -2473,31 +2955,15 @@ int InputRead::append_time_date(std::string fname, std::string label, time_t dt)
 /******************************************************************************/
 int InputRead::result_header(std::string fname, int num_params)
 {
-	//(u,v,w,phi,the,psi,exx,eyy,ezz,exy,eyz,exz), angles in rad, nondim strain
+	//(n,x,y,z,status,objmin,u,v,w)
 
 	std::ofstream res_file(fname.c_str(), std::ios_base::out);
 
 	res_file << "n";
-
-	res_file << "\t" << "x" << "\t" << "y" << "\t" << "z";
-
-	res_file << "\t" << "status";
-
-	res_file << "\t" << "objmin";
-
-	res_file << "\t" << "u" << "\t" << "v" << "\t" << "w";
-
-	// changed .disp output to just include displacements
-	/*
-	if (num_params > 3) res_file << "\t" << "phi" << "\t" << "the" << "\t" << "psi";
-
-	if (num_params > 6)
-	{
-		res_file << "\t" << "exx" << "\t" << "eyy" << "\t" << "ezz";
-		res_file << "\t" << "exy" << "\t" << "eyz" << "\t" << "exz";
-	}
-	*/
-
+	res_file << "," << "x" << "," << "y" << "," << "z";
+	res_file << "," << "status";
+	res_file << "," << "objmin";
+	res_file << "," << "u" << "," << "v" << "," << "w";
 	res_file << "\n";
 
 	return 1;
@@ -2511,27 +2977,18 @@ int InputRead::append_result(std::string fname, int n, Point pt, const int statu
 	res_file << n;
 
 	res_file << std::fixed << std::setprecision(3);
-	res_file << "\t" << pt.x() << "\t" << pt.y() << "\t" << pt.z();
+	res_file << "," << pt.x() << "," << pt.y() << "," << pt.z();
 
 	res_file << std::fixed << std::setprecision(0);
-	res_file << "\t" << status;
+	res_file << "," << status;
 
 	res_file << std::fixed << std::setprecision(6);
-	res_file << "\t" << obj_min;
+	res_file << "," << obj_min;
 
 	res_file << std::fixed << std::setprecision(6);
-	// this prints just the displacements
 	for (int i=0; i<3; i++) {
-		res_file << "\t" << result[i];
+		res_file << "," << result[i];
 	} 
-	
-	// this prints full search params, disp, rotation, strain if used
-	/*
-	for (int i=0; i<result.size(); i++)
-	{
-		res_file << "\t" << result[i];
-	} 
-	*/
 
 	res_file << "\n";
 
@@ -3010,3 +3467,459 @@ int InputRead::parse_line_dvect(key_word_help kwh, double min, double max, std::
 	return 1;
 }
 /******************************************************************************/
+
+// for generalized point could read code
+
+namespace tbl {
+
+// ---------------------------------------------------------------- helpers
+
+bool read_line(std::istream& is, std::string& line)
+{
+    line.clear();
+    std::streambuf* sb = is.rdbuf();
+    for (;;) {
+        int c = sb->sbumpc();
+        if (c == std::char_traits<char>::eof()) {
+            if (line.empty()) { is.setstate(std::ios::eofbit); return false; }
+            return true;
+        }
+        if (c == '\n') return true;
+        if (c == '\r') {
+            if (sb->sgetc() == '\n') sb->sbumpc();
+            return true;
+        }
+        line += static_cast<char>(c);
+    }
+}
+
+// Removes surrounding whitespace, then one pair of surrounding double quotes.
+static void trim_field(std::string& s)
+{
+    std::size_t b = s.find_first_not_of(" \t\r\n");
+    if (b == std::string::npos) { s.clear(); return; }
+    std::size_t e = s.find_last_not_of(" \t\r\n");
+    s = s.substr(b, e - b + 1);
+    if (s.size() >= 2 && s[0] == '"' && s[s.size() - 1] == '"')
+        s = s.substr(1, s.size() - 2);
+}
+
+// Lines containing a comma (outside quotes): split on commas, empty fields kept.
+// Other lines: split on runs of spaces and tabs.
+// Quoted fields may contain the delimiter. Trailing empty fields are dropped.
+void split_fields(const std::string& line, std::vector<std::string>& f)
+{
+    f.clear();
+
+    bool comma_mode = false;
+    {
+        bool q = false;
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            if (line[i] == '"') q = !q;
+            else if (line[i] == ',' && !q) { comma_mode = true; break; }
+        }
+    }
+
+    std::string cur;
+    bool in_quotes = false;
+
+    if (comma_mode) {
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+            if (c == '"') { in_quotes = !in_quotes; cur += c; }
+            else if (c == ',' && !in_quotes) { trim_field(cur); f.push_back(cur); cur.clear(); }
+            else cur += c;
+        }
+        trim_field(cur);
+        f.push_back(cur);
+    } else {
+        bool have = false;  // a field has started (so "" counts as a field)
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            char c = line[i];
+            if (c == '"') { in_quotes = !in_quotes; cur += c; have = true; }
+            else if (!in_quotes && (c == ' ' || c == '\t' || c == '\r' || c == '\n')) {
+                if (have) { trim_field(cur); f.push_back(cur); cur.clear(); have = false; }
+            }
+            else { cur += c; have = true; }
+        }
+        if (have) { trim_field(cur); f.push_back(cur); }
+    }
+
+    while (!f.empty() && f.back().empty()) f.pop_back();
+}
+
+bool field_to_int(const std::string& s, int& v)
+{
+    if (s.empty()) return false;
+    char* end;
+    errno = 0;
+    long x = std::strtol(s.c_str(), &end, 10);
+    if (*end != '\0' || errno == ERANGE || x < INT_MIN || x > INT_MAX) return false;
+    v = static_cast<int>(x);
+    return true;
+}
+
+bool field_to_double(const std::string& s, double& v)
+{
+    if (s.empty()) return false;
+    char* end;
+    double x = std::strtod(s.c_str(), &end);
+    if (*end != '\0' || !std::isfinite(x)) return false;
+    v = x;
+    return true;
+}
+
+static bool iequals(const std::string& a, const std::string& b)
+{
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i)
+        if (std::tolower(static_cast<unsigned char>(a[i])) !=
+            std::tolower(static_cast<unsigned char>(b[i]))) return false;
+    return true;
+}
+
+const Column* Table::find(const std::string& name) const
+{
+    for (std::size_t i = 0; i < columns.size(); ++i)
+        if (iequals(columns[i].name, name)) return &columns[i];
+    return nullptr;
+}
+
+// ---------------------------------------------------------------- column storage
+
+static void push_missing(Column& c)
+{
+    switch (c.type) {
+        case ColType::Int:    c.ints.push_back(kMissingInt);       break;
+        case ColType::Double: c.doubles.push_back(kMissingDouble); break;
+        case ColType::Text:   c.texts.push_back(std::string());    break;
+    }
+}
+
+static std::size_t col_size(const Column& c)
+{
+    switch (c.type) {
+        case ColType::Int:    return c.ints.size();
+        case ColType::Double: return c.doubles.size();
+        default:              return c.texts.size();
+    }
+}
+
+// Converts a field without storing it. Text is valid if non-empty.
+static bool field_ok(const std::string& s, ColType t)
+{
+    int i; double d;
+    switch (t) {
+        case ColType::Int:    return field_to_int(s, i);
+        case ColType::Double: return field_to_double(s, d);
+        default:              return !s.empty();
+    }
+}
+
+// Stores a field; on failure stores the missing value. Returns false if the
+// field was non-empty but invalid.
+static bool push_value(Column& c, const std::string& s)
+{
+    switch (c.type) {
+        case ColType::Int: {
+            int v;
+            if (field_to_int(s, v)) { c.ints.push_back(v); return true; }
+            c.ints.push_back(kMissingInt);
+            return s.empty();
+        }
+        case ColType::Double: {
+            double v;
+            if (field_to_double(s, v)) { c.doubles.push_back(v); return true; }
+            c.doubles.push_back(kMissingDouble);
+            return s.empty();
+        }
+        default:
+            c.texts.push_back(s);
+            return true;
+    }
+}
+
+// ---------------------------------------------------------------- reader
+
+// Chooses where each spec column lives in the file. By header name if every
+// required spec name is present (and match_by_name is on); optional columns not
+// named in the header get index -1 (absent: stored as missing). Otherwise by position.
+static void build_mapping(const ReadOptions& opt, const std::vector<std::string>& header,
+                          std::vector<int>& index, bool& by_name)
+{
+    const std::size_t n = opt.columns.size();
+    index.assign(n, 0);
+    for (std::size_t i = 0; i < n; ++i) index[i] = static_cast<int>(i);
+    by_name = false;
+
+    if (!opt.match_by_name || header.empty()) return;
+
+    std::vector<int> named(n, -1);
+    for (std::size_t i = 0; i < n; ++i) {
+        for (std::size_t h = 0; h < header.size(); ++h) {
+            if (iequals(header[h], opt.columns[i].name)) { named[i] = static_cast<int>(h); break; }
+        }
+        if (named[i] < 0 && opt.columns[i].required) return;  // required name missing: stay positional
+    }
+    index = named;
+    by_name = true;
+}
+
+// Largest file field index used by a spec column (absent columns ignored).
+static std::size_t max_field_index(const std::vector<int>& index)
+{
+    std::size_t m = 0;
+    for (std::size_t i = 0; i < index.size(); ++i)
+        if (index[i] >= 0 && static_cast<std::size_t>(index[i]) > m) m = index[i];
+    return m;
+}
+
+bool read_table(std::istream& is, const ReadOptions& opt, Table& out)
+{
+    out = Table();
+    const std::size_t n_spec = opt.columns.size();
+    out.n_spec = n_spec;
+
+    for (std::size_t i = 0; i < n_spec; ++i) {
+        Column c;
+        c.name = opt.columns[i].name;
+        c.type = opt.columns[i].type;
+        c.in_file = true;
+        out.columns.push_back(c);
+    }
+
+    std::vector<int> index;               // spec column -> file field index
+    std::vector<std::string> header;      // header fields (empty if none)
+    std::vector<int> extra_file_col;      // extra column -> file column (for default names)
+    std::vector<std::size_t> row_extras;  // number of extra fields on each stored row
+    bool by_name = false;
+    build_mapping(opt, header, index, by_name);
+
+    std::size_t max_index = max_field_index(index);
+
+    std::size_t n_required = 0;
+    for (std::size_t i = 0; i < n_spec; ++i)
+        if (opt.columns[i].required) ++n_required;
+
+    std::vector<std::string> fields;
+    std::vector<bool> used;
+    std::string line;
+    bool first_line = true;
+    bool data_started = false;
+    bool header_done = (opt.header == HeaderMode::Absent);
+
+    while (read_line(is, line))
+    {
+        if (first_line) {
+            first_line = false;
+            if (line.compare(0, 3, "\xEF\xBB\xBF") == 0) line.erase(0, 3);
+        }
+
+        split_fields(line, fields);
+        if (fields.empty()) continue;
+        if (opt.comment && !fields[0].empty() && fields[0][0] == opt.comment) continue;
+
+        // Explicit header: first non-comment line, no questions asked
+        if (opt.header == HeaderMode::Present && !header_done) {
+            header = fields;
+            header_done = true;
+            build_mapping(opt, header, index, by_name);
+            max_index = max_field_index(index);
+            continue;
+        }
+
+        // Is this a data row? Every required spec column must be present and valid.
+        bool is_data = true;
+        for (std::size_t i = 0; i < n_spec && is_data; ++i) {
+            if (!opt.columns[i].required || index[i] < 0) continue;
+            std::size_t k = static_cast<std::size_t>(index[i]);
+            if (k >= fields.size() || !field_ok(fields[k], opt.columns[i].type)) is_data = false;
+        }
+
+        if (!is_data) {
+            if (opt.header == HeaderMode::Auto && !data_started && fields.size() >= n_required) {
+                // Candidate header; the last one before the data wins
+                header = fields;
+                build_mapping(opt, header, index, by_name);
+                max_index = max_field_index(index);
+            } else if (data_started) {
+                ++out.skipped_rows;
+            }
+            continue;
+        }
+        data_started = true;
+
+        // Spec columns
+        used.assign(std::max(fields.size(), max_index + 1), false);
+        for (std::size_t i = 0; i < n_spec; ++i) {
+            if (index[i] < 0) { push_missing(out.columns[i]); continue; }  // not in this file
+            std::size_t k = static_cast<std::size_t>(index[i]);
+            used[k] = true;
+            if (k < fields.size()) {
+                if (!push_value(out.columns[i], fields[k])) ++out.bad_values;
+            } else {
+                push_missing(out.columns[i]);
+            }
+        }
+
+        // Extra columns: every file field not used by a spec column, in file order
+        std::size_t n_row_extra = 0;
+        if (opt.read_extra) {
+            for (std::size_t k = 0; k < fields.size(); ++k) {
+                if (used[k]) continue;
+                std::size_t e = n_row_extra++;
+                if (e >= out.n_extra()) {
+                    Column c;
+                    c.type = opt.extra_type;
+                    c.in_file = true;
+                    for (std::size_t r = 0; r < out.rows; ++r) push_missing(c);  // backfill
+                    out.columns.push_back(c);
+                    extra_file_col.push_back(static_cast<int>(k));
+                }
+                if (!push_value(out.columns[n_spec + e], fields[k])) ++out.bad_values;
+            }
+        }
+        row_extras.push_back(n_row_extra);
+        ++out.rows;
+
+        // Pad extra columns this row didn't reach
+        for (std::size_t c = n_spec; c < out.columns.size(); ++c)
+            if (col_size(out.columns[c]) < out.rows) push_missing(out.columns[c]);
+    }
+
+    // Columns named in the header but absent from every data row
+    if (opt.read_extra && !header.empty()) {
+        std::vector<bool> hused(header.size(), false);
+        for (std::size_t i = 0; i < n_spec; ++i)
+            if (index[i] >= 0 && static_cast<std::size_t>(index[i]) < header.size()) hused[index[i]] = true;
+        std::size_t e = 0;
+        for (std::size_t k = 0; k < header.size(); ++k) {
+            if (hused[k]) continue;
+            if (e >= out.n_extra()) {
+                Column c;
+                c.type = opt.extra_type;
+                    c.in_file = true;
+                for (std::size_t r = 0; r < out.rows; ++r) push_missing(c);
+                out.columns.push_back(c);
+                extra_file_col.push_back(static_cast<int>(k));
+            }
+            ++e;
+        }
+    }
+
+    for (std::size_t r = 0; r < row_extras.size(); ++r)
+        if (row_extras[r] < out.n_extra()) ++out.padded_rows;
+
+    // Names: spec columns keep their spec names; extras use header names or "colN"
+    for (std::size_t e = 0; e < out.n_extra(); ++e) {
+        std::size_t k = static_cast<std::size_t>(extra_file_col[e]);
+        Column& c = out.columns[n_spec + e];
+        if (k < header.size() && !header[k].empty()) c.name = header[k];
+        else c.name = "col" + std::to_string(k + 1);
+    }
+
+    for (std::size_t i = 0; i < n_spec; ++i)
+        out.columns[i].in_file = (index[i] >= 0);
+
+    out.has_header = !header.empty();
+    out.matched_by_name = by_name;
+    return true;
+}
+
+bool read_table(const std::string& filename, const ReadOptions& opt,
+                Table& out, std::string& error)
+{
+    std::ifstream ifs(filename.c_str(), std::ios::in | std::ios::binary);
+    if (!ifs) {
+        error = "cannot open file: " + filename;
+        out = Table();
+        return false;
+    }
+    error.clear();
+    return read_table(ifs, opt, out);
+}
+
+} // namespace tbl
+
+/******************************************************************************/
+
+// the threshold read and settings code, not currently used
+
+	// keyword subvol_thresh
+	/*
+	ok_subvol_thresh = line_to_vect(ok_on_off_line);
+	kwh_subvol_thresh.good = limits_to_string(ok_subvol_thresh);
+
+	min_vol_fract_min = 0.0;
+	min_vol_fract_max = 1.0;
+	kwh_min_vol_fract.good = limits_to_string(min_vol_fract_min, min_vol_fract_max);
+
+	kwh_gray_thresh_min.good.assign("0 <= int <= 2^vol_bit_depth, and < gray_thresh_max");
+	kwh_gray_thresh_max.good.assign("0 <= int <= 2^vol_bit_depth, and > gray_thresh_min");
+	*/
+
+	/*
+	kwh_subvol_thresh.word.assign("subvol_thresh");
+	kwh_subvol_thresh.exam.assign("off");
+	kwh_subvol_thresh.reqd.assign("yes");
+	kwh_subvol_thresh.pool.assign("sub_vols");
+	kwh_subvol_thresh.hint.assign("### off, on: evaluate subvolumes based on threshold");
+	kwh_subvol_thresh.help.assign("   Defines the state of subvolume thresholding to active (on) or inactive (off).\n");
+	kwh_subvol_thresh.help.append("   Useful if there is a simple gray level segmentation between foreground and background.\n");
+	kwh_subvol_thresh.help.append("   Subvolumes with little foreground content are not searched and flagged on output.\n");
+	kwh_subvol_thresh.help.append("\n");
+	manual.push_back(kwh_subvol_thresh);
+
+	kwh_gray_thresh_min.word.assign("gray_thresh_min");
+	kwh_gray_thresh_min.exam.assign("25");
+	kwh_gray_thresh_min.reqd.assign("If subvol_thresh is on");
+	kwh_gray_thresh_min.pool.assign("sub_vols");
+	kwh_gray_thresh_min.hint.assign("### lower limit of a gray threshold range");
+	kwh_gray_thresh_min.help.assign("   Defines the lower limit of a gray scale threshold range.\n");
+	kwh_gray_thresh_min.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
+	kwh_gray_thresh_min.help.append("\n");
+	manual.push_back(kwh_gray_thresh_min);
+
+	kwh_gray_thresh_max.word.assign("gray_thresh_max");
+	kwh_gray_thresh_max.exam.assign("125");
+	kwh_gray_thresh_max.reqd.assign("If subvol_thresh is on");
+	kwh_gray_thresh_max.pool.assign("sub_vols");
+	kwh_gray_thresh_max.hint.assign("### upper limit of a gray threshold range");
+	kwh_gray_thresh_max.help.assign("   Defines the upper limit of a gray scale threshold range.\n");
+	kwh_gray_thresh_max.help.append("   Voxels between (min) and (max) are included in the threshold range.\n");
+	kwh_gray_thresh_max.help.append("\n");
+	manual.push_back(kwh_gray_thresh_max);
+
+	kwh_min_vol_fract.word.assign("min_vol_fract");
+	kwh_min_vol_fract.exam.assign("0.2");
+	kwh_min_vol_fract.reqd.assign("If subvol_thresh is on");
+	kwh_min_vol_fract.pool.assign("sub_vols");
+	kwh_min_vol_fract.hint.assign("### only search if subvol fraction is greater than");
+	kwh_min_vol_fract.help.assign("   Defines a parameter for pre-checking subvolumes for content.\n");
+	kwh_min_vol_fract.help.append("   The fraction of subvolume points within the gray_thresh_min/max range is determined.\n");
+	kwh_min_vol_fract.help.append("   If below min_vol_fract, the subvolume is likely in a void or in a background region.\n");
+	kwh_min_vol_fract.help.append("   A point failing the test is not searched and flagged on output.\n");
+	kwh_min_vol_fract.help.append("\n");
+	manual.push_back(kwh_min_vol_fract);
+	*/
+
+	/*
+	if(parse_line_vec_val(kwh_subvol_thresh, ok_subvol_thresh, run->subvol_thresh, true) != input_line_ok ) return 0;
+	if(run->subvol_thresh == "on")
+	{
+		if(parse_line_min_max(kwh_gray_thresh_min, 0, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_min, true) != input_line_ok ) return 0;
+		if(parse_line_min_max(kwh_gray_thresh_max, run->gray_thresh_min, pow((double)2,(double)run->vol_bit_depth), run->gray_thresh_max, true) != input_line_ok ) return 0;
+		if(parse_line_min_max(kwh_min_vol_fract, 0.0, min_vol_fract_max, run->min_vol_fract, true) != input_line_ok ) return 0;
+	}
+	*/
+
+	/*
+	sta_file << kwh_subvol_thresh.word << "\t" << run->subvol_thresh  << "\n";
+	if(run->subvol_thresh == "on")
+	{
+		sta_file << kwh_gray_thresh_min.word << "\t" << run->gray_thresh_min  << "\n";
+		sta_file << kwh_gray_thresh_max.word << "\t" << run->gray_thresh_max  << "\n";
+		sta_file << kwh_min_vol_fract.word << "\t" << run->min_vol_fract << "\n";
+	}
+	sta_file << "\n";
+	*/
