@@ -20,11 +20,12 @@ The package comes as a [CMake](https://cmake.org) project so you will need CMake
 ### CMake flags
 Flags used during configuration
 
-| CMake flag | type | meaning |
-|:---|:----|:----|
-| `CMAKE_CXX_STANDARD` | string | Defaults to `C++11`.
-| `CMAKE_INSTALL_PREFIX` | path | your favourite install directory |
-|`BUILD_TEST` | bool | `ON\|OFF` whether to build the test mode|
+| CMake flag | type | meaning | default|
+|:---|:----|:----|:----|
+| `CMAKE_CXX_STANDARD` | string | CXX standard | `C++11`|
+| `CMAKE_INSTALL_PREFIX` | path | your favourite install directory | CMake standard location, OS dependent|
+|`BUILD_TEST` | bool | `ON\|OFF` whether to build the test mode| `ON` |
+|`ENABLE_COVERAGE`| bool| `ON\|OFF` whether to run the basic test coverage| `OFF`|
 
 Here an example of build on Linux:
 
@@ -32,8 +33,8 @@ Here an example of build on Linux:
 git clone https://github.com/TomographicImaging/DigitalVolumeCorrelation
 mkdir build
 cd build
-cmake ../DigitalVolumeCorrelation -DCONDA_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>
-make install
+cmake ../DigitalVolumeCorrelation -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<your favourite install directory>
+cmake --build . --target install -j
 ```
 
 ## Open MP
