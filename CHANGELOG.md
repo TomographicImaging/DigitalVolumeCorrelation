@@ -2,7 +2,7 @@
 ## v26.0.0
 
 
-- Update Eigen to version 3.4.0
+- Update Eigen to version 3.4.1
 - Read CSV files for point cloud input
 - Reader for displacement `.disp` file (for strain calculation)
 - Updated default values for optimiser
