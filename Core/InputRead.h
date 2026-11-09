@@ -31,6 +31,7 @@ Author(s): Brian Bay (OSU)
 #include <limits>
 #include <cstdlib>
 #include <ctime>
+#include <cstdint>
 
 // for new point cloud read code
 #include <cerrno>
