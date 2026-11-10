@@ -81,7 +81,7 @@ message(STATUS "DVC will be installed in " ${INSTALL_BIN_DIR})
 include(ExternalProject)
 ExternalProject_Add(eigen
   GIT_REPOSITORY    https://gitlab.com/libeigen/eigen.git
-  GIT_TAG           3.4.0
+  GIT_TAG           3.4.1
   # GIT_REPOSITORY    https://github.com/vais-ral/Eigen3.git
   # GIT_TAG           master
   SOURCE_DIR        ${CMAKE_SOURCE_DIR}/Core/eigen
