@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 		int n = data.order[i];
 
 		// initiate terminal progress output as a single over-written line
-		std::cout << "\r" << i+1 << "/" << N << "  " << std::setw(4) << data.labels[n] << "  " << std::setprecision(2) << std::fixed 
+		std::cout << "\r" << i+1 << "/" << N << " " << std::setw(7) << data.labels[n] << " " << std::setprecision(2) << std::fixed 
 			<< "x= " << data.points[n].x() << " " << "y= " << data.points[n].y() << " " << "z= " << data.points[n].z() << " " << std::flush;
 
 		// this does the actual dvc process for the current point in the list

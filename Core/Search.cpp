@@ -151,6 +151,10 @@ void Search::process_point(int t, int n, bool map_flag, int map_id, DataCloud *s
 	// n is the index of the current search point
 	Point srch_pt = srch_data->points[n];
 
+	// consider fcld as a std::unique_ptr<FloatingCloud> and fcld = std::make_unique<FloatingCloud>(...)
+	delete fcld;		// prevents memory accumulation as points run
+	fcld = nullptr;
+
 	// subvolume sampling mini-clouds are created here for each clouf point to support randomized sampling positions
 	if (rc->sub_geo == sphere) {
 		fcld = new FloatingCloud(srch_pt, subv_rad, subv_num, rc->subvol_aspect[0], rc->subvol_aspect[1], rc->subvol_aspect[2]);
